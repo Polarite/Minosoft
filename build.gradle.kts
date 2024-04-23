@@ -356,17 +356,17 @@ fun DependencyHandler.lwjgl(name: String? = null) {
 
 dependencies {
     implementation("org.slf4j", "slf4j-api", "2.0.9")
-    implementation("com.google.guava", "guava", "33.0.0-jre")
+    implementation("com.google.guava", "guava", "33.1.0-jre")
     implementation("dnsjava", "dnsjava", "3.5.3")
     implementation("net.sourceforge.argparse4j", "argparse4j", "0.9.0")
-    implementation("org.jline", "jline", "3.25.1")
+    implementation("org.jline", "jline", "3.26.0")
     implementation("org.l33tlabs.twl", "pngdecoder", "1.0")
-    implementation("com.github.oshi", "oshi-core", "6.4.12")
-    implementation("com.github.luben", "zstd-jni", "1.5.5-11", classifier = zstdNatives)
+    implementation("com.github.oshi", "oshi-core", "6.6.0")
+    implementation("com.github.luben", "zstd-jni", "1.5.6-2", classifier = zstdNatives)
     implementation("org.apache.commons", "commons-lang3", "3.14.0")
     implementation("org.kamranzafar", "jtar", "2.3")
     implementation("org.reflections", "reflections", "0.10.2")
-    implementation("it.unimi.dsi", "fastutil-core", "8.5.12")
+    implementation("it.unimi.dsi", "fastutil-core", "8.5.13")
     implementation("org.xeustechnologies", "jcl-core", "2.8")
 
 
