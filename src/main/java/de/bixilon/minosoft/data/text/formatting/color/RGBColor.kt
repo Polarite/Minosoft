@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -21,7 +21,8 @@ import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.formatting.TextFormattable
 import org.checkerframework.common.value.qual.IntRange
 
-class RGBColor(val rgba: Int) : TextFormattable {
+@JvmInline
+value class RGBColor(val rgba: Int) : TextFormattable {
     val ansi: String get() = ANSI.rgb(red, green, blue)
 
     @JvmOverloads
@@ -68,21 +69,6 @@ class RGBColor(val rgba: Int) : TextFormattable {
     val rgb: Int
         get() = rgba ushr 8
 
-    override fun hashCode(): Int {
-        return rgba
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (super.equals(other)) {
-            return true
-        }
-        if (other !is RGBColor) {
-            return false
-        }
-        val their = other as RGBColor? ?: return false
-        return rgba == their.rgba
-    }
-
     override fun toString(): String {
         return if (alpha != 255) {
             String.format("#%08X", rgba)
@@ -101,10 +87,6 @@ class RGBColor(val rgba: Int) : TextFormattable {
 
     fun with(red: Float = this.floatRed, green: Float = this.floatGreen, blue: Float = this.floatBlue, alpha: Float = this.floatAlpha): RGBColor {
         return RGBColor(red.clamp(0.0f, 1.0f), green.clamp(0.0f, 1.0f), blue.clamp(0.0f, 1.0f), alpha.clamp(0.0f, 1.0f))
-    }
-
-    fun mix(vararg colors: RGBColor): RGBColor {
-        return Companion.mix(this, *colors)
     }
 
     fun mix(other: RGBColor): RGBColor {
@@ -157,19 +139,6 @@ class RGBColor(val rgba: Int) : TextFormattable {
 
         fun Double.asGray(): RGBColor {
             return RGBColor(this.toFloat(), this.toFloat(), this.toFloat())
-        }
-
-        fun mix(vararg colors: RGBColor): RGBColor {
-            var red = 0
-            var green = 0
-            var blue = 0
-
-            for (color in colors) {
-                red += color.red
-                green += color.green
-                blue += color.blue
-            }
-            return RGBColor(red / colors.size, green / colors.size, blue / colors.size)
         }
     }
 }

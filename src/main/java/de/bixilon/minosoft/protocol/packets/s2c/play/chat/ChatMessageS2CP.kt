@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -22,7 +22,7 @@ import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.modding.event.events.chat.ChatMessageEvent
 import de.bixilon.minosoft.protocol.network.connection.play.PlayConnection
 import de.bixilon.minosoft.protocol.packets.s2c.PlayS2CPacket
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
+import de.bixilon.minosoft.protocol.protocol.KProtocolDefinition
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
 import de.bixilon.minosoft.util.KUtil
@@ -51,7 +51,7 @@ class ChatMessageS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
                 }
             }
         }
-        text.setFallbackColor(ProtocolDefinition.DEFAULT_COLOR)
+        text.setFallbackColor(KProtocolDefinition.DEFAULT_COLOR)
     }
 
     override fun handle(connection: PlayConnection) {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -21,52 +21,21 @@ import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asColor
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
 
 object ChatColors {
-    @JvmField
     val BLACK = RGBColor(0, 0, 0)
-
-    @JvmField
     val DARK_BLUE = RGBColor(0, 0, 170)
-
-    @JvmField
     val DARK_GREEN = RGBColor(0, 170, 0)
-
-    @JvmField
     val DARK_AQUA = RGBColor(0, 170, 170)
-
-    @JvmField
     val DARK_RED = RGBColor(170, 0, 0)
-
-    @JvmField
     val DARK_PURPLE = RGBColor(170, 0, 170)
-
-    @JvmField
     val GOLD = RGBColor(255, 170, 0)
-
-    @JvmField
     val GRAY = RGBColor(170, 170, 170)
-
-    @JvmField
     val DARK_GRAY = RGBColor(85, 85, 85)
-
-    @JvmField
     val BLUE = RGBColor(85, 85, 255)
-
-    @JvmField
     val GREEN = RGBColor(85, 255, 85)
-
-    @JvmField
     val AQUA = RGBColor(85, 255, 255)
-
-    @JvmField
     val RED = RGBColor(255, 85, 85)
-
-    @JvmField
     val LIGHT_PURPLE = RGBColor(255, 85, 255)
-
-    @JvmField
     val YELLOW = RGBColor(255, 255, 85)
-
-    @JvmField
     val WHITE = RGBColor(255, 255, 255)
 
 
@@ -82,10 +51,11 @@ object ChatColors {
 
         var index = 0
         for (field in this::class.java.declaredFields) {
-            val color = field.get(null)
-            if (color !is RGBColor) {
+            val int = field.get(null)
+            if (int !is Int) { // RGBColor is inlined
                 continue
             }
+            val color = RGBColor(int)
             values[index] = color
             CHAR_MAP[color] = index
             nameMap[field.name.lowercase()] = color

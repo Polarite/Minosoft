@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -28,6 +28,7 @@ object RGBColorSerializer : SimpleModule() {
 
     init {
         addDeserializer(RGBColor::class.java, Deserializer)
+        addDeserializer(Int::class.java, IntDeserializer)
         addSerializer(RGBColor::class.java, Serializer)
     }
 
@@ -37,6 +38,16 @@ object RGBColorSerializer : SimpleModule() {
             return when (parser.currentToken) {
                 JsonToken.VALUE_NUMBER_INT -> RGBColor(parser.valueAsInt)
                 JsonToken.VALUE_STRING -> parser.valueAsString.toColor()!!
+                else -> TODO("Can not parse color!")
+            }
+        }
+    }
+    object IntDeserializer : StdDeserializer<Int>(Int::class.java) { // TODO: This is shit?
+
+        override fun deserialize(parser: JsonParser, context: DeserializationContext?): Int {
+            return when (parser.currentToken) {
+                JsonToken.VALUE_NUMBER_INT -> parser.valueAsInt
+                JsonToken.VALUE_STRING -> parser.valueAsString.toColor()!!.rgba
                 else -> TODO("Can not parse color!")
             }
         }
