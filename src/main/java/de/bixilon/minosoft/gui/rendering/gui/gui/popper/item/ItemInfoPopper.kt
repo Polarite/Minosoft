@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.popper.item
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.registries.item.items.DurableItem
 import de.bixilon.minosoft.data.text.BaseComponent
@@ -24,12 +24,12 @@ import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.popper.MouseTrackedPopper
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 class ItemInfoPopper(
     guiRenderer: GUIRenderer,
-    position: Vec2f,
+    position: Vec2,
     val stack: ItemStack,
 ) : MouseTrackedPopper(guiRenderer, position) {
     private val textElement = TextElement(guiRenderer, "", background = null, parent = this)
@@ -38,7 +38,7 @@ class ItemInfoPopper(
         forceSilentApply()
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
 
         textElement.render(offset, consumer, options)
@@ -46,23 +46,28 @@ class ItemInfoPopper(
 
     override fun forceSilentApply() {
         val text = BaseComponent(
-            stack.getDisplayName(context.session.language),
+            stack.displayName,
         )
-        stack.durability?.durability?.let {
-            if (stack.item !is DurableItem) return@let
-            val max = stack.item.maxDurability
+        stack._durability?.durability?.let {
+            if (stack.item.item !is DurableItem) return@let
+            val max = stack.item.item.maxDurability
             if (it in 0 until max) {
                 text += TextComponent(" (${it}/${max})", color = ChatColors.DARK_GRAY)
             }
         }
-        stack.display?.lore?.let {
-            if (it.isEmpty()) return@let
+        stack._display?.lore?.let {
+            if (it.isEmpty()) {
+                return@let
+            }
             for (line in it) {
                 text += "\n"
                 text += line
             }
         }
-        stack.enchanting.enchantments.takeIf { it.isNotEmpty() }?.let {
+        stack._enchanting?.enchantments?.let {
+            if (it.isEmpty()) {
+                return@let
+            }
             text += "\n"
             val language = context.session.language
             for ((enchantment, level) in it) {
@@ -71,11 +76,11 @@ class ItemInfoPopper(
                 text += ", "
             }
             if (text.parts.lastOrNull()?.message == ", ") {
-                text.parts.removeAt(text.parts.size - 1)
+                text.parts.removeLast()
             }
         }
         text += "\n\n"
-        text += TextComponent(stack.item.identifier, color = ChatColors.DARK_GRAY)
+        text += TextComponent(stack.item.item.identifier, color = ChatColors.DARK_GRAY)
         textElement._chatComponent = text
         textElement.forceSilentApply()
         recalculateSize()

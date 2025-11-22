@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,9 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.items
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.registries.item.stack.StackableItem
 import de.bixilon.minosoft.data.text.ChatComponent
@@ -28,15 +30,14 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments.Compa
 import de.bixilon.minosoft.gui.rendering.gui.elements.VerticalAlignments
 import de.bixilon.minosoft.gui.rendering.gui.elements.VerticalAlignments.Companion.getOffset
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ColorElement
-import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ImageElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.models.item.ItemRenderUtil.getModel
 
 class RawItemElement(
     guiRenderer: GUIRenderer,
-    size: Vec2f = DEFAULT_SIZE,
+    size: Vec2 = DEFAULT_SIZE,
     stack: ItemStack?,
     parent: Element?,
 ) : Element(guiRenderer) {
@@ -46,6 +47,9 @@ class RawItemElement(
         set(value) {
             if (field === value) {
                 return
+            }
+            if (value != null) {
+                value::revision.observe(this) { if (value === field) forceSilentApply() } // ToDo: check if watcher is still up-to-date
             }
             field = value
             forceSilentApply()
@@ -67,18 +71,14 @@ class RawItemElement(
         forceApply()
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         val stack = stack ?: return
+        if (!stack._valid) return
         val size = size
         val textureSize = size - 1
 
-        val item = stack.item
+        val item = stack.item.item
         val model = item.getModel(guiRenderer.session)
-
-        if (stack.enchanting.enchantments.isNotEmpty()) {
-            ImageElement(guiRenderer, context.textures.whiteTexture.texture, size = this.size, tint = ENCHANTED_COLOR).forceRender(offset, consumer, options)
-        }
-
         if (model != null) {
             val tints = context.tints.getItemTint(stack)
             model.render(guiRenderer, offset, consumer, options, textureSize, stack, tints)
@@ -87,16 +87,19 @@ class RawItemElement(
         }
 
         val countSize = countText.size
-        countText.render(offset + Vec2f(HorizontalAlignments.RIGHT.getOffset(size.x, countSize.x), VerticalAlignments.BOTTOM.getOffset(size.y, countSize.y)), consumer, options)
+        countText.render(offset + Vec2i(HorizontalAlignments.RIGHT.getOffset(size.x, countSize.x), VerticalAlignments.BOTTOM.getOffset(size.y, countSize.y)), consumer, options)
     }
 
     override fun forceSilentApply() {
         val item = _stack?.item
-        val count = _stack?.count
+        val count = item?.count
         countText.text = when {
             count == null || count == 1 -> ChatComponent.EMPTY
+            count < -99 -> NEGATIVE_INFINITE_TEXT
+            count < 0 -> TextComponent(count, color = ChatColors.RED) // No clue why I do this...
+            count == 0 -> ZERO_TEXT
             count > 99 -> INFINITE_TEXT
-            count > if (item is StackableItem) item.maxStackSize else 1 -> TextComponent(count, color = ChatColors.RED)
+            count > if (item.item is StackableItem) item.item.maxStackSize else 1 -> TextComponent(count, color = ChatColors.RED)
             else -> TextComponent(count)
         }
 
@@ -108,9 +111,10 @@ class RawItemElement(
     }
 
     companion object {
+        private val NEGATIVE_INFINITE_TEXT = TextComponent("-∞").color(ChatColors.RED)
         private val INFINITE_TEXT = TextComponent("∞").color(ChatColors.RED)
-        private val ENCHANTED_COLOR = ChatColors.AQUA.with(alpha = 0.3f)
+        private val ZERO_TEXT = TextComponent("0").color(ChatColors.YELLOW)
 
-        val DEFAULT_SIZE = Vec2f(17, 17) // 16x16 for the item and 1px for the count offset
+        val DEFAULT_SIZE = Vec2(17, 17) // 16x16 for the item and 1px for the count offset
     }
 }

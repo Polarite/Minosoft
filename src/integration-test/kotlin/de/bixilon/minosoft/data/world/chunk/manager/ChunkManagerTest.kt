@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,25 +13,33 @@
 
 package de.bixilon.minosoft.data.world.chunk.manager
 
-import de.bixilon.kmath.vec.vec2.i.MVec2i
-import de.bixilon.minosoft.data.direction.Directions
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.TestBlockStates
+import de.bixilon.minosoft.data.registries.blocks.types.stone.StoneTest0
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.world.biome.accessor.noise.VoronoiBiomeAccessor
 import de.bixilon.minosoft.data.world.biome.source.BiomeSource
 import de.bixilon.minosoft.data.world.biome.source.DummyBiomeSource
-import de.bixilon.minosoft.data.world.chunk.ChunkSize
+import de.bixilon.minosoft.data.world.biome.source.SpatialBiomeArray
+import de.bixilon.minosoft.data.world.chunk.ChunkSection.Companion.getIndex
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
-import de.bixilon.minosoft.data.world.chunk.chunk.ChunkData
-import de.bixilon.minosoft.data.world.chunk.update.AbstractWorldUpdate
-import de.bixilon.minosoft.data.world.chunk.update.WorldUpdateTestUtil.collectUpdates
-import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkDataUpdate
+import de.bixilon.minosoft.data.world.chunk.chunk.ChunkPrototype
+import de.bixilon.minosoft.data.world.chunk.neighbours.ChunkNeighbours
+import de.bixilon.minosoft.data.world.chunk.update.WorldUpdateEvent
+import de.bixilon.minosoft.data.world.chunk.update.block.ChunkLocalBlockUpdate
+import de.bixilon.minosoft.data.world.chunk.update.block.SingleBlockUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkCreateUpdate
 import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkUnloadUpdate
-import de.bixilon.minosoft.data.world.chunk.update.chunk.NeighbourSetUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.NeighbourChangeUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.prototype.PrototypeChangeUpdate
 import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
 import de.bixilon.minosoft.data.world.positions.InChunkPosition
-import de.bixilon.minosoft.data.world.positions.InSectionPosition
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
+import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import org.testng.Assert.*
 import org.testng.annotations.Test
 
@@ -44,168 +52,124 @@ class ChunkManagerTest {
         return session.world.chunks
     }
 
-    private fun ChunkManager.create(position: ChunkPosition, source: BiomeSource = DummyBiomeSource(null)): Chunk {
-        return update(position, ChunkData(biomeSource = source), false)
+    private fun ChunkManager.createMatrix(biomeSource: BiomeSource = DummyBiomeSource(null)): Array<Array<Chunk>> {
+        return arrayOf(
+            arrayOf(create(ChunkPosition(-1, -1), biomeSource), create(ChunkPosition(+0, -1), biomeSource), create(ChunkPosition(+1, -1), biomeSource)),
+            arrayOf(create(ChunkPosition(-1, +0), biomeSource), create(ChunkPosition(+0, +0), biomeSource), create(ChunkPosition(+1, +0), biomeSource)),
+            arrayOf(create(ChunkPosition(-1, +1), biomeSource), create(ChunkPosition(+0, +1), biomeSource), create(ChunkPosition(+1, +1), biomeSource)),
+        )
     }
 
-    private fun ChunkManager.create(x: Int, z: Int, source: BiomeSource = DummyBiomeSource(null)): Chunk {
-        return create(ChunkPosition(x, z), source)
-    }
 
-    private fun ChunkManager.createMatrix(biomeSource: BiomeSource = DummyBiomeSource(null)) = arrayOf(
-        arrayOf(create(-1, -1, biomeSource), create(+0, -1, biomeSource), create(+1, -1, biomeSource)),
-        arrayOf(create(-1, +0, biomeSource), create(+0, +0, biomeSource), create(+1, +0, biomeSource)),
-        arrayOf(create(-1, +1, biomeSource), create(+0, +1, biomeSource), create(+1, +1, biomeSource)),
-    )
-
-
-    fun `size with empty world`() {
+    fun emptyWorldSize() {
         val manager = create()
-        assertEquals(manager.size.size.size, MVec2i.EMPTY)
-        assertEquals(manager.size.size.min, MVec2i(Int.MAX_VALUE)) // TODO: That is undefined, but probably the best
-        assertEquals(manager.size.size.max, MVec2i(Int.MIN_VALUE))
+        assertEquals(manager.size.size.size, Vec2i.EMPTY)
     }
 
-    fun `size with single world`() {
-        val manager = create()
-        val chunk = manager.create(ChunkPosition(0, 1))
-
-        assertEquals(manager.size.size.size, MVec2i(1, 1))
-        assertEquals(manager.size.size.min, MVec2i(0, 1))
-        assertEquals(manager.size.size.max, MVec2i(0, 1))
-    }
-
-    fun `single chunk has correct position`() {
-        val manager = create()
-        val chunk = manager.create(ChunkPosition(0, 1))
-
-        assertEquals(chunk.position, ChunkPosition(0, 1))
-    }
-
-    fun `single chunk correctly stored`() {
+    fun createSingle() {
         val manager = create()
         val chunk = manager.create(ChunkPosition(0, 1))
         assertEquals(1, manager.chunks.size)
 
         assertSame(manager[ChunkPosition(0, 1)], chunk)
+        assertEquals(chunk.chunkPosition, ChunkPosition(0, 1))
+        assertNull(chunk.neighbours.get())
+        assertEquals(manager.size.size.size, Vec2i(1, 1))
     }
 
-    fun `single chunk no neighbours`() {
-        val manager = create()
-        val chunk = manager.create(ChunkPosition(0, 1))
 
-        assertEquals(chunk.neighbours.array, arrayOfNulls(8))
-    }
-
-    fun `ignore block update in unloaded chunk`() {
-        val manager = create()
-        manager.world[17, 1, 18] = TestBlockStates.TEST1
-
-        assertNull(manager.world[BlockPosition(17, 1, 18)])
-    }
-
-    fun `place block at position`() {
+    fun placeBlock() {
         val manager = create()
         val chunk = manager.create(ChunkPosition(1, 1))
-        manager.world[17, 1, 18] = TestBlockStates.TEST1
+        manager.world[17, 1, 18] = StoneTest0.state
 
-        assertSame(manager.world[BlockPosition(17, 1, 18)], TestBlockStates.TEST1)
-        assertSame(chunk[InChunkPosition(1, 1, 2)], TestBlockStates.TEST1)
+        assertSame(manager.world[17, 1, 18], StoneTest0.state)
+        assertSame(chunk[1, 1, 2], StoneTest0.state)
     }
 
-    fun `remove block at position`() {
+    fun destroyBlock() {
         val manager = create()
         val chunk = manager.create(ChunkPosition(1, 1))
 
-        manager.world[17, 1, 18] = TestBlockStates.TEST1
+        manager.world[17, 1, 18] = StoneTest0.state
         manager.world[17, 1, 18] = null
 
-        assertNull(manager.world[BlockPosition(17, 1, 18)])
-        assertNull(chunk[InChunkPosition(1, 1, 2)])
+        assertNull(manager.world[17, 1, 18])
+        assertNull(chunk[1, 1, 2])
     }
 
-    fun `convert empty prototype to chunk`() {
+    fun convertSinglePrototype() {
         val manager = create()
 
-        manager[ChunkPosition(3, 0)] = ChunkData()
+        manager[ChunkPosition(3, 0)] = ChunkPrototype(blocks = arrayOfNulls(16), blockEntities = emptyMap(), biomeSource = DummyBiomeSource(null))
+        assertEquals(1, manager.chunks.size)
 
-        assertNotNull(manager[ChunkPosition(3, 0)])
+        val chunk = manager[ChunkPosition(3, 0)]
+        assertNotNull(chunk)
+        assertEquals(chunk!!.chunkPosition, ChunkPosition(3, 0))
+        assertEquals(manager.size.size.size, Vec2i(1, 1))
     }
 
-    fun `unload single chunk`() {
+    fun unloadSingle() {
         val manager = create()
 
         manager.create(ChunkPosition(0, 1))
         manager -= ChunkPosition(0, 1)
-
         assertEquals(0, manager.chunks.size)
-        assertNull(manager[ChunkPosition(0, 0)])
+        assertEquals(manager.size.size.size, Vec2i.EMPTY)
     }
 
-    fun `size with only chunk unloaded`() {
+    fun neighbours2() {
         val manager = create()
-
-        manager.create(ChunkPosition(0, 1))
-        manager -= ChunkPosition(0, 1)
-
-        assertEquals(manager.size.size.size, MVec2i.EMPTY)
-    }
-
-    fun `two chunks, correct size`() {
-        val manager = create()
-
-        manager.create(ChunkPosition(4, 1))
-        manager.create(ChunkPosition(4, 2))
-
-        assertEquals(manager.size.size.size, MVec2i(1, 2))
-    }
-
-    fun `two chunks, correct chunk neighbours`() {
-        val manager = create()
-
         val a = manager.create(ChunkPosition(4, 1))
         val b = manager.create(ChunkPosition(4, 2))
 
-        assertSame(a.neighbours[Directions.SOUTH], b)
-        assertSame(b.neighbours[Directions.NORTH], a)
+        assertSame(a.neighbours[ChunkNeighbours.SOUTH], b)
+        assertSame(b.neighbours[ChunkNeighbours.NORTH], a)
+
+
+        assertEquals(manager.size.size.size, Vec2i(1, 2))
     }
 
-    fun `chunk with all neighbours`() {
+    fun neighbours9() {
         val manager = create()
-
         val matrix = manager.createMatrix()
-
         assertTrue(matrix[1][1].neighbours.complete)
 
-        assertEquals(matrix[0][0].neighbours.array, arrayOf(null, null, null, null, matrix[1][0], null, matrix[0][1], matrix[1][1]))
-        assertEquals(matrix[0][1].neighbours.array, arrayOf(null, matrix[0][0], matrix[1][0], null, matrix[1][1], null, matrix[0][2], matrix[1][2]))
-        assertEquals(matrix[0][2].neighbours.array, arrayOf(null, matrix[0][1], matrix[1][1], null, matrix[1][2], null, null, null))
+        assertEquals(matrix[0][0].neighbours.neighbours, arrayOf(null, null, null, null, matrix[1][0], null, matrix[0][1], matrix[1][1]))
+        assertEquals(matrix[0][1].neighbours.neighbours, arrayOf(null, matrix[0][0], matrix[1][0], null, matrix[1][1], null, matrix[0][2], matrix[1][2]))
+        assertEquals(matrix[0][2].neighbours.neighbours, arrayOf(null, matrix[0][1], matrix[1][1], null, matrix[1][2], null, null, null))
 
-        assertEquals(matrix[1][0].neighbours.array, arrayOf(null, null, null, matrix[0][0], matrix[2][0], matrix[0][1], matrix[1][1], matrix[2][1]))
-        assertEquals(matrix[1][1].neighbours.array, arrayOf(matrix[0][0], matrix[1][0], matrix[2][0], matrix[0][1], matrix[2][1], matrix[0][2], matrix[1][2], matrix[2][2]))
-        assertEquals(matrix[1][2].neighbours.array, arrayOf(matrix[0][1], matrix[1][1], matrix[2][1], matrix[0][2], matrix[2][2], null, null, null))
+        assertEquals(matrix[1][0].neighbours.neighbours, arrayOf(null, null, null, matrix[0][0], matrix[2][0], matrix[0][1], matrix[1][1], matrix[2][1]))
+        assertEquals(matrix[1][1].neighbours.neighbours, arrayOf(matrix[0][0], matrix[1][0], matrix[2][0], matrix[0][1], matrix[2][1], matrix[0][2], matrix[1][2], matrix[2][2]))
+        assertEquals(matrix[1][2].neighbours.neighbours, arrayOf(matrix[0][1], matrix[1][1], matrix[2][1], matrix[0][2], matrix[2][2], null, null, null))
 
-        assertEquals(matrix[2][0].neighbours.array, arrayOf(null, null, null, matrix[1][0], null, matrix[1][1], matrix[2][1], null))
-        assertEquals(matrix[2][1].neighbours.array, arrayOf(matrix[1][0], matrix[2][0], null, matrix[1][1], null, matrix[1][2], matrix[2][2], null))
-        assertEquals(matrix[2][2].neighbours.array, arrayOf(matrix[1][1], matrix[2][1], null, matrix[1][2], null, null, null, null))
+        assertEquals(matrix[2][0].neighbours.neighbours, arrayOf(null, null, null, matrix[1][0], null, matrix[1][1], matrix[2][1], null))
+        assertEquals(matrix[2][1].neighbours.neighbours, arrayOf(matrix[1][0], matrix[2][0], null, matrix[1][1], null, matrix[1][2], matrix[2][2], null))
+        assertEquals(matrix[2][2].neighbours.neighbours, arrayOf(matrix[1][1], matrix[2][1], null, matrix[1][2], null, null, null, null))
+
+
+        assertEquals(manager.size.size.size, Vec2i(3, 3))
     }
 
-    fun `chunk with all neighbours, after unloading single`() {
+    fun neighboursUnload() {
         val manager = create()
         val matrix = manager.createMatrix()
+        manager.unload(Vec2i(0, 0))
 
-        manager.unload(ChunkPosition(0, 0))
+        assertEquals(matrix[0][0].neighbours.neighbours, arrayOf(null, null, null, null, matrix[1][0], null, matrix[0][1], null))
+        assertEquals(matrix[0][1].neighbours.neighbours, arrayOf(null, matrix[0][0], matrix[1][0], null, null, null, matrix[0][2], matrix[1][2]))
+        assertEquals(matrix[0][2].neighbours.neighbours, arrayOf(null, matrix[0][1], null, null, matrix[1][2], null, null, null))
 
-        assertEquals(matrix[0][0].neighbours.array, arrayOf(null, null, null, null, matrix[1][0], null, matrix[0][1], null))
-        assertEquals(matrix[0][1].neighbours.array, arrayOf(null, matrix[0][0], matrix[1][0], null, null, null, matrix[0][2], matrix[1][2]))
-        assertEquals(matrix[0][2].neighbours.array, arrayOf(null, matrix[0][1], null, null, matrix[1][2], null, null, null))
+        assertEquals(matrix[1][0].neighbours.neighbours, arrayOf(null, null, null, matrix[0][0], matrix[2][0], matrix[0][1], null, matrix[2][1]))
+        assertEquals(matrix[1][2].neighbours.neighbours, arrayOf(matrix[0][1], null, matrix[2][1], matrix[0][2], matrix[2][2], null, null, null))
 
-        assertEquals(matrix[1][0].neighbours.array, arrayOf(null, null, null, matrix[0][0], matrix[2][0], matrix[0][1], null, matrix[2][1]))
-        assertEquals(matrix[1][2].neighbours.array, arrayOf(matrix[0][1], null, matrix[2][1], matrix[0][2], matrix[2][2], null, null, null))
+        assertEquals(matrix[2][0].neighbours.neighbours, arrayOf(null, null, null, matrix[1][0], null, null, matrix[2][1], null))
+        assertEquals(matrix[2][1].neighbours.neighbours, arrayOf(matrix[1][0], matrix[2][0], null, null, null, matrix[1][2], matrix[2][2], null))
+        assertEquals(matrix[2][2].neighbours.neighbours, arrayOf(null, matrix[2][1], null, matrix[1][2], null, null, null, null))
 
-        assertEquals(matrix[2][0].neighbours.array, arrayOf(null, null, null, matrix[1][0], null, null, matrix[2][1], null))
-        assertEquals(matrix[2][1].neighbours.array, arrayOf(matrix[1][0], matrix[2][0], null, null, null, matrix[1][2], matrix[2][2], null))
-        assertEquals(matrix[2][2].neighbours.array, arrayOf(null, matrix[2][1], null, matrix[1][2], null, null, null, null))
+
+        assertEquals(manager.size.size.size, Vec2i(3, 3))
     }
 
     fun clear() {
@@ -214,26 +178,29 @@ class ChunkManagerTest {
 
         manager.clear()
         assertEquals(manager.chunks.size, 0)
-        assertEquals(manager.size.size.size, MVec2i.EMPTY)
+        assertEquals(manager.size.size.size, Vec2i.EMPTY)
     }
 
-    fun `section neighbours when creating chunk`() {
+    fun sectionNeighboursInitial() {
         val manager = create()
         manager.createMatrix()
         manager -= ChunkPosition(0, 0)
 
-        // create all horizontal neighbour sections
-        manager[ChunkPosition(-1, 0)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(0, -1)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(1, 0)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(0, 1)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
+        // create all horizontal neighbour chunks
+        manager[ChunkPosition(-1, 0)]!![3, 16, 3] = StoneTest0.state
+        manager[ChunkPosition(0, -1)]!![3, 16, 3] = StoneTest0.state
+        manager[ChunkPosition(1, 0)]!![3, 16, 3] = StoneTest0.state
+        manager[ChunkPosition(0, 1)]!![3, 16, 3] = StoneTest0.state
 
-        manager[ChunkPosition(0, 0)] = ChunkData(blocks = arrayOf(
-            arrayOfNulls<BlockState>(ChunkSize.BLOCKS_PER_SECTION).apply { this[InSectionPosition(3, 3, 3).index] = TestBlockStates.TEST1 },
-            arrayOfNulls<BlockState>(ChunkSize.BLOCKS_PER_SECTION).apply { this[InSectionPosition(3, 3, 3).index] = TestBlockStates.TEST1 },
-            arrayOfNulls<BlockState>(ChunkSize.BLOCKS_PER_SECTION).apply { this[InSectionPosition(3, 3, 3).index] = TestBlockStates.TEST1 },
+        manager[ChunkPosition(0, 0)] = ChunkPrototype(blocks = arrayOf(
+            arrayOfNulls<BlockState>(ProtocolDefinition.BLOCKS_PER_SECTION).apply { this[getIndex(3, 3, 3)] = StoneTest0.state },
+            arrayOfNulls<BlockState>(ProtocolDefinition.BLOCKS_PER_SECTION).apply { this[getIndex(3, 3, 3)] = StoneTest0.state },
+            arrayOfNulls<BlockState>(ProtocolDefinition.BLOCKS_PER_SECTION).apply { this[getIndex(3, 3, 3)] = StoneTest0.state },
             null, null, null,
-        ))
+        ),
+            blockEntities = emptyMap(),
+            biomeSource = DummyBiomeSource(null)
+        )
 
         val chunk = manager[ChunkPosition(0, 0)]!!
 
@@ -247,19 +214,19 @@ class ChunkManagerTest {
         ))
     }
 
-    fun `section neighbours when creating new section`() {
+    fun sectionNeighboursPost() {
         val manager = create()
         manager.createMatrix()
 
         // create all horizontal neighbour chunks
-        manager[ChunkPosition(-1, 0)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(0, -1)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(1, 0)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(0, 1)]!![InChunkPosition(3, 16, 3)] = TestBlockStates.TEST1
+        manager[ChunkPosition(-1, 0)]!![3, 16, 3] = StoneTest0.state
+        manager[ChunkPosition(0, -1)]!![3, 16, 3] = StoneTest0.state
+        manager[ChunkPosition(1, 0)]!![3, 16, 3] = StoneTest0.state
+        manager[ChunkPosition(0, 1)]!![3, 16, 3] = StoneTest0.state
 
-        manager[ChunkPosition(0, 0)]!![InChunkPosition(3, 3, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(0, 0)]!![InChunkPosition(3, 17, 3)] = TestBlockStates.TEST1
-        manager[ChunkPosition(0, 0)]!![InChunkPosition(3, 35, 3)] = TestBlockStates.TEST1
+        manager[ChunkPosition(0, 0)]!![3, 3, 3] = StoneTest0.state
+        manager[ChunkPosition(0, 0)]!![3, 17, 3] = StoneTest0.state
+        manager[ChunkPosition(0, 0)]!![3, 35, 3] = StoneTest0.state
 
         val chunk = manager[ChunkPosition(0, 0)]!!
 
@@ -273,68 +240,217 @@ class ChunkManagerTest {
         ))
     }
 
-    fun `no event when single empty chunk is created`() {
+    fun getOrPutSection() {
         val manager = create()
-        val events = manager.world.collectUpdates()
-
-        manager[ChunkPosition(0, 0)] = ChunkData()
-
-        assertEquals(events, listOf<AbstractWorldUpdate>())
+        val matrix = manager.createMatrix()
+        matrix[1][1].getOrPut(3)
+        assertEquals(manager[0, 0]!![3]!!.sectionHeight, 3)
     }
 
-    fun `event when chunk created with data`() {
+    fun singleBlockUpdateWorld() {
         val manager = create()
-        val events = manager.world.collectUpdates()
-
-        val chunk = manager.update(ChunkPosition(0, 0), ChunkData(blocks = arrayOf(
-            arrayOfNulls<BlockState>(ChunkSize.BLOCKS_PER_SECTION).apply { this[InSectionPosition(3, 3, 3).index] = TestBlockStates.TEST1 }, null, null, null, null, null,
-        )), false)
-
-        assertEquals(events, listOf(ChunkDataUpdate(chunk, setOf(chunk.sections[0]!!))))
-    }
-
-    fun `event when chunk updated with data`() {
-        val manager = create()
-        val events = manager.world.collectUpdates()
-
-        val chunk = manager.update(ChunkPosition(0, 0), ChunkData(), false)
-
-        manager.update(ChunkPosition(0, 0), ChunkData(blocks = arrayOf(
-            arrayOfNulls<BlockState>(ChunkSize.BLOCKS_PER_SECTION).apply { this[InSectionPosition(3, 3, 3).index] = TestBlockStates.TEST1 }, null, null, null, null, null,
-        )), false)
-
-        assertEquals(events, listOf(ChunkDataUpdate(chunk, setOf(chunk.sections[0]!!))))
-    }
-
-    fun `event when unloading chunk`() {
-        val manager = create()
-
         val chunk = manager.create(ChunkPosition(1, 1))
+        var fired = 0
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is SingleBlockUpdate)
+            val update = it.update as SingleBlockUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            assertSame(update.chunk, chunk)
+            assertEquals(update.position, BlockPosition(18, 12, 19))
+            assertEquals(update.state, StoneTest0.state)
+            fired++
+        }
+        manager.world[BlockPosition(18, 12, 19)] = StoneTest0.state
+        manager.world[BlockPosition(18, 12, 19)] = StoneTest0.state // set twice, one event should be ignored
 
-        val events = manager.world.collectUpdates()
+        assertEquals(fired, 1)
+    }
+
+    fun singleBlockUpdateChunk() {
+        val manager = create()
+        val chunk = manager.create(ChunkPosition(1, 1))
+        var fired = 0
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is SingleBlockUpdate)
+            val update = it.update as SingleBlockUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            assertSame(update.chunk, chunk)
+            assertEquals(update.position, BlockPosition(18, 12, 19))
+            assertEquals(update.state, StoneTest0.state)
+            fired++
+        }
+        chunk[InChunkPosition(2, 12, 3)] = StoneTest0.state
+        chunk[InChunkPosition(2, 12, 3)] = StoneTest0.state  // set twice, one event should be ignored
+
+        assertEquals(fired, 1)
+    }
+
+    fun chunkLocalUpdate() {
+        val manager = create()
+        val chunk = manager.create(ChunkPosition(1, 1))
+        var fired = 0
+        val updates = setOf(ChunkLocalBlockUpdate.LocalUpdate(InChunkPosition(4, 2, 1), StoneTest0.state), ChunkLocalBlockUpdate.LocalUpdate(InChunkPosition(3, 123, 9), StoneTest0.state))
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is ChunkLocalBlockUpdate)
+            val update = it.update as ChunkLocalBlockUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            assertSame(update.chunk, chunk)
+            assertEquals(update.updates, updates)
+            fired++
+        }
+        chunk.apply(updates)
+        chunk.apply(updates)
+
+
+        assertEquals(fired, 1)
+    }
+
+    fun chunkCreateUpdate() {
+        val manager = create()
+        var fired = 0
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is ChunkCreateUpdate)
+            val update = it.update as ChunkCreateUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            fired++
+        }
+
+        manager.create(ChunkPosition(1, 1))
+
+        assertEquals(fired, 1)
+    }
+
+    fun chunkPrototypeUpdate() {
+        val manager = create()
+        var fired = 0
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is ChunkCreateUpdate)
+            val update = it.update as ChunkCreateUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            fired++
+        }
+
+        manager[ChunkPosition(1, 1)] = ChunkPrototype(blocks = arrayOfNulls(16), biomeSource = DummyBiomeSource(null))
+
+        assertEquals(fired, 1)
+    }
+
+    fun chunkUnloadUpdate() {
+        val manager = create()
+        manager.create(ChunkPosition(1, 1))
+        var fired = 0
+
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is ChunkUnloadUpdate)
+            val update = it.update as ChunkUnloadUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            fired++
+        }
 
         manager -= ChunkPosition(1, 1)
 
-        assertEquals(events, listOf(ChunkUnloadUpdate(chunk)))
+
+        assertEquals(fired, 1)
     }
 
-    fun `no event when unloading not existent chunk`() {
+    fun chunkUnloadedUnloadUpdate() {
         val manager = create()
-        val events = manager.world.collectUpdates()
+        var fired = 0
+
+        manager.world.session.events.listen<WorldUpdateEvent> { fired++ }
 
         manager -= ChunkPosition(1, 1)
 
-        assertEquals(events, listOf<AbstractWorldUpdate>())
+        assertEquals(fired, 0)
     }
 
-    fun `event when neighbour changes`() {
+    fun prototypeChangeUpdateReplace() {
         val manager = create()
         val chunk = manager.create(ChunkPosition(1, 1))
+        chunk[4, 36, 5] = StoneTest0.state
+        chunk[4, 3, 5] = StoneTest0.state
+        var fired = 0
 
-        val events = manager.world.collectUpdates()
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is PrototypeChangeUpdate)
+            val update = it.update as PrototypeChangeUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            assertEquals(update.affected, setOf(0, 2))
+            fired++
+        }
 
-        val neighbour = manager.create(ChunkPosition(1, 2))
+        manager.set(ChunkPosition(1, 1), ChunkPrototype(blocks = arrayOfNulls(16)), true)
 
-        assertEquals(events, listOf(NeighbourSetUpdate(chunk)))
+        assertNotNull(manager[ChunkPosition(1, 1)])
+
+        assertEquals(fired, 1)
+    }
+
+    fun prototypeChangeUpdateUpdate() {
+        val manager = create()
+        val chunk = manager.create(ChunkPosition(1, 1))
+        chunk[4, 36, 5] = StoneTest0.state
+        chunk[4, 3, 5] = StoneTest0.state
+        var fired = 0
+
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            assertTrue(it.update is PrototypeChangeUpdate)
+            val update = it.update as PrototypeChangeUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            assertEquals(update.affected, setOf(0))
+            fired++
+        }
+
+        manager.set(ChunkPosition(1, 1), ChunkPrototype(blocks = Array(16) { if (it == 0) arrayOfNulls(ProtocolDefinition.BLOCKS_PER_SECTION) else null }), false)
+
+        assertNotNull(manager[ChunkPosition(1, 1)])
+
+        assertEquals(fired, 1)
+    }
+
+    fun chunkNeighbourChange() {
+        val manager = create()
+        manager.create(ChunkPosition(1, 1))
+        var fired = 0
+
+        manager.world.session.events.listen<WorldUpdateEvent> {
+            if (it.update is ChunkCreateUpdate) return@listen
+            assertTrue(it.update is NeighbourChangeUpdate)
+            val update = it.update as NeighbourChangeUpdate
+            assertEquals(update.chunkPosition, ChunkPosition(1, 1))
+            assertNotNull(update.chunk.neighbours[ChunkNeighbours.SOUTH])
+            fired++
+        }
+
+        manager.create(ChunkPosition(1, 2))
+
+
+        assertEquals(fired, 1)
+    }
+
+    fun noBiomeCache() {
+        val manager = create()
+        manager.world.biomes.noise = null
+        val matrix = manager.createMatrix()
+
+        val chunk = matrix[1][1]
+        assertEquals(chunk.getOrPut(0)!!.biomes.count, 0)
+    }
+
+    fun noiseBiomeCache() {
+        val manager = create()
+        val biome = Biome(minosoft("test"), 0.0f, 0.0f)
+        manager.world.biomes.noise = VoronoiBiomeAccessor(manager.world, 0L)
+        val source = SpatialBiomeArray(Array(SpatialBiomeArray.SIZE) { biome })
+        val matrix = manager.createMatrix(source)
+
+        val chunk = matrix[1][1]
+        val section = chunk.getOrPut(0)!!.biomes
+        assertEquals(section[3, 3, 3], biome)
+        assertEquals(section[3, 3, 3], biome)
+        assertEquals(section[0], biome)
+
+        assertEquals(manager.world.biomes.getBiome(BlockPosition(5, 5, 5)), biome)
+        assertEquals(chunk.getBiome(BlockPosition(5, 5, 5)), biome)
     }
 }

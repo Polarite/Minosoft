@@ -15,7 +15,7 @@
 
 #define DISABLE_MIPMAPS
 
-out lowp vec4 foutColor;
+out vec4 foutColor;
 
 #include "minosoft:tint"
 #include "minosoft:texture"

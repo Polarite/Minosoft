@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,9 @@
 
 package de.bixilon.minosoft.data.world.view
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import kotlin.math.abs
 
-@Deprecated("biggest junk ever")
 open class WorldView(
     private val session: PlaySession,
 ) {
@@ -69,8 +67,8 @@ open class WorldView(
     open fun updateServerDistance() {
         val cameraPosition = session.player.physics.positionInfo.chunkPosition
         val size = session.world.chunks.size.size
-        val min = Vec2i(size.min.x - cameraPosition.x, size.min.y - cameraPosition.z)
-        val max = Vec2i(size.max.x - cameraPosition.x, size.max.y - cameraPosition.z)
+        val max = size.max - cameraPosition
+        val min = size.min - cameraPosition
         serverViewDistance = maxOf(3, minOf(abs(min.x), abs(max.x), abs(min.y), abs(max.y)))
     }
 }

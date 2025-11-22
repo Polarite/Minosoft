@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -18,18 +18,16 @@ import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.world.World
 import de.bixilon.minosoft.data.world.biome.source.SpatialBiomeArray
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
-import de.bixilon.minosoft.data.world.positions.ChunkPosition
-import de.bixilon.minosoft.data.world.positions.InChunkPosition
 
 class VoronoiBiomeAccessor(
     world: World,
     seed: Long = 0L,
 ) : NoiseBiomeAccessor(world, seed) {
 
-    override fun get(position: InChunkPosition, chunk: Chunk): Biome? {
-        val biomeY = if (world.dimension.supports3DBiomes) position.y else 0
+    override fun get(x: Int, y: Int, z: Int, chunk: Chunk): Biome? {
+        val biomeY = if (world.dimension.supports3DBiomes) y else 0
 
-        return getBiome(seed, position.x, biomeY, position.z, chunk)
+        return getBiome(seed, x, biomeY, z, chunk)
     }
 
     private fun getBiome(seed: Long, x: Int, y: Int, z: Int, chunk: Chunk): Biome? {
@@ -38,9 +36,9 @@ class VoronoiBiomeAccessor(
         val biomeY = unpackY(offset)
         val biomeZ = unpackZ(offset)
 
-        val biomeChunk = chunk.neighbours.traceChunk(ChunkPosition(biomeX shr 4, biomeZ shr 4))
+        val biomeChunk = chunk.neighbours.trace(biomeX shr 4, biomeZ shr 4)
 
-        return biomeChunk?.biomeSource?.get(InChunkPosition(biomeX and 0x0F, biomeY, biomeZ and 0x0F))
+        return biomeChunk?.biomeSource?.get(biomeX and 0x0F, biomeY, biomeZ and 0x0F)
     }
 
     fun getBiomeOffset(seed: Long, x: Int, y: Int, z: Int): Int {
@@ -139,7 +137,8 @@ class VoronoiBiomeAccessor(
     private fun nextNoiseOffset(seed: Long): Float {
         val floor = Math.floorMod((seed shr 24), SpatialBiomeArray.SIZE.toLong()).toInt()
 
-        return ((floor - (SpatialBiomeArray.SIZE / 2)) / SpatialBiomeArray.SIZE.toFloat()) * 0.9f
+        // return ((floor - (SpatialBiomeArray.SIZE / 2)) / SpatialBiomeArray.SIZE.toDouble()) * 0.9
+        return (1.0f / 1137.0f) * floor + (-0.45f) // roughly equivalent and minimal faster
     }
 
     // https://en.wikipedia.org/wiki/Linear_congruential_generator

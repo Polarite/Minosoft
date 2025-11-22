@@ -25,12 +25,12 @@ out vec3 finFragmentPosition;
 #include "minosoft:color"
 #include "minosoft:skeletal/vertex"
 
-uniform vec4 uTintColor;
+uniform uint uTintColor;
 
 
 void main() {
     run_skeletal(floatBitsToUint(vinTransformNormal), vinPosition);
     setTexture(vinUV, vinIndexLayerAnimation);
 
-    finTintColor *= uTintColor;
+    finTintColor *= getRGBColor(uTintColor & 0xFFFFFFu);
 }

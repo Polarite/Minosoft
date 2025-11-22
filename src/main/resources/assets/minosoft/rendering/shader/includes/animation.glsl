@@ -36,23 +36,23 @@ layout(std140) uniform uSpriteBuffer
 #if defined SHADER_TYPE_VERTEX
 uint animationArray1; float animationLayer1;
 uint animationArray2; float animationLayer2;
-lowp float animationInterpolation;
+float animationInterpolation;
 #ifndef HAS_GEOMETRY_SHADER
 flat out uint finAnimationArray1; out float finAnimationLayer1;
 flat out uint finAnimationArray2; out float finAnimationLayer2;
-out mediump vec2 finAnimationUV;
-out lowp float finAnimationInterpolation;
+out vec2 finAnimationUV;
+out float finAnimationInterpolation;
 #endif
 #elif defined SHADER_TYPE_GEOMETRY
 flat out uint finAnimationArray1; out float finAnimationLayer1;
 flat out uint finAnimationArray2; out float finAnimationLayer2;
-out mediump vec2 finAnimationUV;
-out lowp float finAnimationInterpolation;
+out vec2 finAnimationUV;
+out float finAnimationInterpolation;
 #elif defined SHADER_TYPE_FRAGMENT
 flat in uint finAnimationArray1; in float finAnimationLayer1;
 flat in uint finAnimationArray2; in float finAnimationLayer2;
-in mediump vec2 finAnimationUV;
-in lowp float finAnimationInterpolation;
+in vec2 finAnimationUV;
+in float finAnimationInterpolation;
 #endif
 
 
@@ -62,7 +62,7 @@ in lowp float finAnimationInterpolation;
 #include "minosoft:alpha"
 
 vec4 getAnimationTexture() {
-vec4 texel1 = getTexture(finAnimationArray1, vec3(finAnimationUV, finAnimationLayer1));
+    vec4 texel1 = getTexture(finAnimationArray1, vec3(finAnimationUV, finAnimationLayer1));
     discard_if_0(texel1.a);
 
     float interpolation = finAnimationInterpolation;
@@ -70,7 +70,7 @@ vec4 texel1 = getTexture(finAnimationArray1, vec3(finAnimationUV, finAnimationLa
     if (interpolation == 0.0f) { // no animation
         return texel1;
     }
-vec4 texel2 = getTexture(finAnimationArray2, vec3(finAnimationUV, finAnimationLayer2));
+    vec4 texel2 = getTexture(finAnimationArray2, vec3(finAnimationUV, finAnimationLayer2));
     discard_if_0(texel2.a);
 
     return mix(texel1, texel2, interpolation);
@@ -117,7 +117,7 @@ void animation_animated(uint animationId) {
     animationArray2 = animation_extractArray(texture2);
     animationLayer2 = animation_extractLayer(texture2);
 
-    animationInterpolation = uintBitsToFloat(data.z);
+    animationInterpolation = data.z / 100.0f;
 }
 
 void setTexture(uint animation) {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -20,15 +20,15 @@ import org.testng.Assert.assertTrue
 import org.testng.annotations.Test
 
 @Test(groups = ["item"])
-class LavaBucketTest : ItemTest<FilledBucketItem.Lava>() {
+class LavaBucketTest : ItemTest<FilledBucketItem.LavaBucketItem>() {
 
     init {
         LavaBucketTest0 = this
     }
 
     fun getLava() {
-        super.retrieveItem(FilledBucketItem.Lava)
-        assertTrue(item is FilledBucketItem.Lava)
+        super.retrieveItem(FilledBucketItem.LavaBucketItem)
+        assertTrue(item is FilledBucketItem.LavaBucketItem)
         assertTrue(item.fluid is LavaFluid, "Expected lava, found ${item.fluid}")
     }
 }

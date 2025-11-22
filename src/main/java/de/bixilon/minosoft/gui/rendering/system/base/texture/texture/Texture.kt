@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base.texture.texture
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureStates
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureTransparencies
@@ -25,13 +25,12 @@ import de.bixilon.minosoft.gui.rendering.system.base.texture.data.buffer.Texture
 import de.bixilon.minosoft.gui.rendering.system.base.texture.shader.ShaderTexture
 import de.bixilon.minosoft.gui.rendering.textures.TextureAnimation
 import de.bixilon.minosoft.gui.rendering.textures.properties.ImageProperties
-import de.bixilon.minosoft.gui.rendering.util.mesh.uv.PackedUV
 
 interface Texture : ShaderTexture {
     var array: TextureArrayProperties
     val state: TextureStates
     val size: Vec2i
-    override val transparency: TextureTransparencies
+    val transparency: TextureTransparencies
     val properties: ImageProperties
     val animation: TextureAnimation? get() = null
 
@@ -43,14 +42,17 @@ interface Texture : ShaderTexture {
 
     fun load(context: RenderContext)
 
-    override val shaderId get() = renderData.shaderTextureId
+    override val shaderId: Int
+        get() = renderData.shaderTextureId
 
 
-    override fun transformUV(uv: Vec2f) = renderData.transformUV(uv)
-    override fun transformUV(u: Float, v: Float) = renderData.transformUV(u, v)
-    override fun transformU(u: Float) = renderData.transformU(u)
-    override fun transformV(v: Float) = renderData.transformV(v)
-    override fun transformUV(uv: PackedUV) = renderData.transformUV(uv)
+    override fun transformUV(end: FloatArray?): FloatArray {
+        return renderData.transformUV(end)
+    }
+
+    override fun transformUV(end: Vec2?): Vec2 {
+        return renderData.transformUV(end)
+    }
 
     fun createData(mipmaps: Int = this.mipmaps, buffer: TextureBuffer): TextureData {
         if (mipmaps <= 0) return TextureData(buffer)

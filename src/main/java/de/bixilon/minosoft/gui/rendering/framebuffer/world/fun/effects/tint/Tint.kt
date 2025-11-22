@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,20 +13,20 @@
 
 package de.bixilon.minosoft.gui.rendering.framebuffer.world.`fun`.effects.tint
 
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.kutil.random.RandomUtil.nextInt
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.framebuffer.world.`fun`.FunEffect
 import de.bixilon.minosoft.gui.rendering.framebuffer.world.`fun`.FunEffectFactory
-import de.bixilon.minosoft.util.Backports.nextIntPort
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import java.util.*
 
 class Tint(override val context: RenderContext) : FunEffect {
     override val identifier: ResourceLocation get() = Tint.identifier
-    override val shader = createShader(fragment = minosoft("framebuffer/world/fun/tint.fsh")) { TintShader(it) }
+    override val shader = createShader(fragment = "minosoft:framebuffer/world/fun/tint.fsh".toResourceLocation()) { TintShader(it) }
     private var updateUniform = true
-    var color = Random().let { RGBColor(it.nextIntPort(20, 255), it.nextIntPort(20, 255), it.nextIntPort(20, 255)) }
+    var color = Random().let { RGBColor(it.nextInt(20, 255), it.nextInt(20, 255), it.nextInt(20, 255), 0xFF) }
         set(value) {
             field = value
             updateUniform = true
@@ -34,14 +34,14 @@ class Tint(override val context: RenderContext) : FunEffect {
 
     override fun update() {
         if (updateUniform) {
-            shader.tintColor = color.rgba()
+            shader.tintColor = color
             updateUniform = false
         }
     }
 
 
     companion object : FunEffectFactory<Tint> {
-        override val identifier = minosoft("tint")
+        override val identifier: ResourceLocation = "minosoft:tint".toResourceLocation()
 
         override fun build(context: RenderContext): Tint {
             return Tint(context)

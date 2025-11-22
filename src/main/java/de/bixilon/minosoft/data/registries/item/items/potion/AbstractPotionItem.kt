@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -20,8 +20,7 @@ import de.bixilon.minosoft.data.registries.item.items.legacy.ItemWithMeta
 
 abstract class AbstractPotionItem(identifier: ResourceLocation) : Item(identifier), ItemWithMeta {
 
-    override fun withMeta(stack: ItemStack, meta: Int): ItemStack? {
+    override fun setMeta(stack: ItemStack, meta: Int) {
         // TODO: the item might actually be a different item (drinking vs lingering vs splash)
-        return stack
     }
 }

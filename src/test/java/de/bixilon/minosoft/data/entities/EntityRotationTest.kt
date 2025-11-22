@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.data.entities
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.entities.EntityRotation.Companion.interpolateYaw
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -58,18 +58,18 @@ class EntityRotationTest {
     @Test
     fun front1() {
         val front = EntityRotation(10.0f, 20.0f).front
-        assertEquals(front, Vec3f(-0.16317593f, -0.34202015f, 0.92541665f))
+        assertEquals(front, Vec3(-0.16317593, -0.34202015, 0.92541665))
     }
 
     @Test
     fun front2() {
         val front = EntityRotation(-10.0f, -20.0f).front
-        assertEquals(front, Vec3f(0.16317593f, 0.34202015f, 0.92541665f))
+        assertEquals(front, Vec3(0.16317593, 0.34202015, 0.92541665))
     }
 
     @Test
     fun front3() {
         val front = EntityRotation(-80.0f, 80.0f).front
-        assertEquals(front, Vec3f(0.1710101f, -0.9848077f, 0.030153705f))
+        assertEquals(front, Vec3(0.1710101, -0.9848077, 0.030153705))
     }
 }

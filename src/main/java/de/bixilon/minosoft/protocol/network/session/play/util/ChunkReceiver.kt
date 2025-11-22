@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.protocol.network.session.play.util
 
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.time.TimeUtil.nanos
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.c2s.play.NextChunkBatchC2SP
 
@@ -22,13 +21,13 @@ class ChunkReceiver(
     private val session: PlaySession,
 ) {
     private var count = 0
-    private var start = TimeUtil.NULL
+    private var start = -1L
     private var expected = Int.MAX_VALUE
 
     @Synchronized
     fun onBatchStart() {
         reset()
-        start = now()
+        start = nanos()
     }
 
     @Synchronized
@@ -45,13 +44,13 @@ class ChunkReceiver(
 
     fun reset() {
         count = 0
-        start = TimeUtil.NULL
+        start = -1L
         expected = Int.MAX_VALUE
     }
 
     private fun checkExpected() {
         if (count < expected) return
-        val end = now()
+        val end = nanos()
         val delta = end - start
 
         session.connection.send(NextChunkBatchC2SP(100.0f)) // TODO: calculate size

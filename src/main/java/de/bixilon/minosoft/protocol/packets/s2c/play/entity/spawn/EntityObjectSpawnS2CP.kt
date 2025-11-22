@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.entity.spawn
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -42,7 +42,7 @@ class EntityObjectSpawnS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
         } else {
             buffer.readVarInt()
         }
-        val position = buffer.readVec3d()
+        val position: Vec3d = buffer.readVec3d()
         val pitch = buffer.readAngle() // yaw/pitch is swapped
         val yaw = buffer.readAngle()
         val rotation = EntityRotation(yaw, pitch)
@@ -62,11 +62,11 @@ class EntityObjectSpawnS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
         }
         entity.startInit()
         entity.setObjectData(data)
-        velocity?.let { entity.physics.velocity.put(it) }
     }
 
     override fun handle(session: PlaySession) {
         session.world.entities.add(entityId, entityUUID, entity)
+        velocity?.let { entity.physics.velocity = it }
     }
 
     override fun log(reducedLog: Boolean) {

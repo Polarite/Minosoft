@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -26,12 +26,11 @@ import de.bixilon.minosoft.data.registries.item.items.armor.slots.HelmetItem
 import de.bixilon.minosoft.data.registries.item.items.armor.slots.LeggingsItem
 import de.bixilon.minosoft.data.registries.registries.Registries
 
-abstract class NetheriteArmor(identifier: ResourceLocation) : ArmorItem(identifier), WearableItem, DefendingArmorItem {
+abstract class NetheriteArmor(resourceLocation: ResourceLocation) : ArmorItem(resourceLocation), WearableItem, DefendingArmorItem {
 
 
-    open class NetheriteBoots(identifier: ResourceLocation = this.identifier) : NetheriteArmor(identifier), BootsItem {
+    open class NetheriteBoots(resourceLocation: ResourceLocation = this.identifier) : NetheriteArmor(resourceLocation), BootsItem {
         override val defense: Int get() = 3
-        override val maxDurability get() = 481
 
         companion object : ItemFactory<NetheriteBoots> {
             override val identifier = minecraft("netherite_boots")
@@ -40,9 +39,8 @@ abstract class NetheriteArmor(identifier: ResourceLocation) : ArmorItem(identifi
         }
     }
 
-    open class NetheriteLeggings(identifier: ResourceLocation = this.identifier) : NetheriteArmor(identifier), LeggingsItem {
+    open class NetheriteLeggings(resourceLocation: ResourceLocation = this.identifier) : NetheriteArmor(resourceLocation), LeggingsItem {
         override val defense: Int get() = 6
-        override val maxDurability get() = 555
 
         companion object : ItemFactory<NetheriteLeggings> {
             override val identifier = minecraft("netherite_leggings")
@@ -51,9 +49,8 @@ abstract class NetheriteArmor(identifier: ResourceLocation) : ArmorItem(identifi
         }
     }
 
-    open class NetheriteChestplate(identifier: ResourceLocation = this.identifier) : NetheriteArmor(identifier), ChestplateItem {
+    open class NetheriteChestplate(resourceLocation: ResourceLocation = this.identifier) : NetheriteArmor(resourceLocation), ChestplateItem {
         override val defense: Int get() = 8
-        override val maxDurability get() = 592
 
         companion object : ItemFactory<NetheriteChestplate> {
             override val identifier = minecraft("netherite_chestplate")
@@ -62,9 +59,8 @@ abstract class NetheriteArmor(identifier: ResourceLocation) : ArmorItem(identifi
         }
     }
 
-    open class NetheriteHelmet(identifier: ResourceLocation = this.identifier) : NetheriteArmor(identifier), HelmetItem {
+    open class NetheriteHelmet(resourceLocation: ResourceLocation = this.identifier) : NetheriteArmor(resourceLocation), HelmetItem {
         override val defense: Int get() = 3
-        override val maxDurability get() = 407
 
         companion object : ItemFactory<NetheriteHelmet> {
             override val identifier = minecraft("netherite_helmet")

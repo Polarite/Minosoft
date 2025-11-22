@@ -14,7 +14,7 @@
 #version 330 core
 
 
-out lowp vec4 foutColor;
+out vec4 foutColor;
 
 
 #include "minosoft:tint"

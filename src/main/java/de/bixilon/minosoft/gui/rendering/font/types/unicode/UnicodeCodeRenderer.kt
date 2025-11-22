@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,21 +13,21 @@
 
 package de.bixilon.minosoft.gui.rendering.font.types.unicode
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.font.renderer.code.RasterizedCodePointRenderer
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
 
 class UnicodeCodeRenderer(
     override val texture: Texture,
-    override val uvStart: Vec2f,
-    override val uvEnd: Vec2f,
+    override val uvStart: Vec2,
+    override val uvEnd: Vec2,
     override val width: Float,
 ) : RasterizedCodePointRenderer {
 
 
     fun updateArray() {
         val end = texture.array.uvEnd ?: return
-        uvStart.unsafe *= end
-        uvEnd.unsafe *= end
+        uvStart *= end
+        uvEnd *= end
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.framebuffer
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
 import de.bixilon.minosoft.gui.rendering.system.base.BlendingFunctions
@@ -25,16 +25,12 @@ import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
 interface IntegratedFramebuffer : Drawable {
     val context: RenderContext
     val shader: FramebufferShader
-    var framebuffer: Framebuffer
+    val framebuffer: Framebuffer
     val mesh: Mesh
     val polygonMode: PolygonModes
 
-    var size: Vec2i
-    var scale: Float
-
 
     fun init() {
-        framebuffer = create() // unsafeNull
         framebuffer.init()
         shader.load()
         // shader.setInt("uDepth", 1)
@@ -48,21 +44,6 @@ interface IntegratedFramebuffer : Drawable {
         context.system.clear(IntegratedBufferTypes.COLOR_BUFFER, IntegratedBufferTypes.DEPTH_BUFFER)
     }
 
-    fun create(): Framebuffer
-
-    fun update() {
-        if (this.size == framebuffer.size && this.scale == framebuffer.scale) return
-
-        framebuffer.delete()
-        framebuffer = create()
-        framebuffer.init()
-    }
-
-    fun bind() {
-        context.system.framebuffer = framebuffer
-        context.system.polygonMode = polygonMode
-    }
-
     override fun draw() {
         context.system.framebuffer = null
         context.system.reset(
@@ -73,5 +54,10 @@ interface IntegratedFramebuffer : Drawable {
         framebuffer.bindTexture()
         shader.use()
         mesh.draw()
+    }
+
+    fun resize(size: Vec2i) = resize(size, 1.0f)
+    fun resize(size: Vec2i, scale: Float) {
+        framebuffer.resize(size, scale)
     }
 }

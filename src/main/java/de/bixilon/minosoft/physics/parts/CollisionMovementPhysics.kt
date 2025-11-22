@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,26 +13,71 @@
 
 package de.bixilon.minosoft.physics.parts
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kutil.primitive.DoubleUtil.matches
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kotlinglm.vec3.swizzle.xz
 import de.bixilon.minosoft.data.Axes
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.CollisionPredicate
+import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.CollisionContext
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.EntityCollisionContext
+import de.bixilon.minosoft.data.registries.blocks.types.entity.BlockWithEntity
+import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.collision.CollidableBlock
+import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.collision.fixed.FixedCollidable
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
-import de.bixilon.minosoft.data.registries.shapes.collision.CollisionShape
-import de.bixilon.minosoft.data.registries.shapes.shape.Shape
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.registries.shapes.voxel.AbstractVoxelShape
+import de.bixilon.minosoft.data.registries.shapes.voxel.VoxelShape
+import de.bixilon.minosoft.data.world.World
+import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
+import de.bixilon.minosoft.data.world.iterator.WorldIterator
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.EMPTY
 import de.bixilon.minosoft.physics.entities.EntityPhysics
 import kotlin.math.abs
 
 object CollisionMovementPhysics {
 
-    fun EntityPhysics<*>.collectCollisions(movement: Vec3d, aabb: AABB, predicate: CollisionPredicate? = null): CollisionShape {
-        return CollisionShape(this.entity.session.world, EntityCollisionContext(entity, this, aabb), aabb, movement, positionInfo.chunk, predicate)
+    fun World.collectCollisions(context: CollisionContext, movement: Vec3d, aabb: AABB, chunk: Chunk?, predicate: CollisionPredicate? = null): VoxelShape {
+        val shapes: ArrayList<AABB> = ArrayList()
+        // TODO: add entity collisions (boat, shulker)
+        // TODO: add world border collision shape
+
+        val inChunk = Vec3i.EMPTY
+
+        for ((position, state, chunk) in WorldIterator(aabb.extend(movement).grow(1.0).positions(), this, chunk)) {
+            if (state.block !is CollidableBlock) continue
+
+            if (predicate != null && !predicate.invoke(state)) continue
+            // TODO: filter blocks (e.g. moving piston), whatever that means
+
+            var shape = when (state.block) {
+                is FixedCollidable -> state.block.getCollisionShape(state)
+                is BlockWithEntity<*> -> {
+                    inChunk.x = position.x and 0x0F
+                    inChunk.z = position.z and 0x0F
+
+                    state.block.getCollisionShape(session, context, position, state, chunk.getBlockEntity(inChunk))
+                }
+
+                else -> {
+                    state.block.getCollisionShape(session, context, position, state, null)
+                }
+            } ?: continue
+            shape += position
+
+            if (position in aabb && shape.intersect(aabb)) {
+                continue
+            }
+            shapes += shape
+        }
+
+        return VoxelShape(shapes)
     }
 
-    private fun checkMovement(axis: Axes, originalValue: Double, offsetAABB: Boolean, aabb: AABB, collisions: Shape): Double {
+    fun EntityPhysics<*>.collectCollisions(movement: Vec3d, aabb: AABB, predicate: CollisionPredicate? = null): VoxelShape {
+        return this.entity.session.world.collectCollisions(EntityCollisionContext(entity, this, aabb), movement, aabb, positionInfo.chunk, predicate)
+    }
+
+    private fun checkMovement(axis: Axes, originalValue: Double, offsetAABB: Boolean, aabb: AABB, collisions: AbstractVoxelShape): Double {
         var value = originalValue
         if (value == 0.0 || abs(value) < 1.0E-7) {
             return 0.0
@@ -44,12 +89,11 @@ object CollisionMovementPhysics {
         return value
     }
 
-    fun collide(movement: Vec3d, aabb: AABB, collisions: Shape): MVec3d {
-        val length2 = movement.length2()
-        if (length2 < 1.0E-7) return MVec3d.EMPTY
+    fun collide(movement: Vec3d, aabb: AABB, collisions: AbstractVoxelShape): Vec3d {
+        if (movement.length2() < 1.0E-7) return movement
 
         val adjustedAABB = AABB(aabb)
-        val adjusted = MVec3d(movement)
+        val adjusted = Vec3d(movement)
 
         adjusted.y = checkMovement(Axes.Y, adjusted.y, true, adjustedAABB, collisions)
 
@@ -66,38 +110,30 @@ object CollisionMovementPhysics {
         }
 
 
-        if (adjusted.length2() > length2) {
-            adjusted.clear()
+        if (adjusted.length2() > movement.length2()) {
+            return Vec3d.EMPTY // movement exceeds expected, some value gets invalid
         }
 
         return adjusted
     }
 
-    fun EntityPhysics<*>.collide(movement: Vec3d): MVec3d {
+    fun EntityPhysics<*>.collide(movement: Vec3d): Vec3d {
         val aabb = aabb
-        if (aabb.min.y <= BlockPosition.MIN_Y || aabb.max.y >= BlockPosition.MAX_Y) return MVec3d(movement) // TODO: also check movement
-
         val collisions = collectCollisions(movement, aabb)
-        try {
-            val collision = collide(movement, aabb, collisions)
-            if (stepHeight <= 0.0) {
-                return collision
-            }
-
-            return collideStepping(movement, collision, collisions)
-        } finally {
-            collisions.free()
+        val collision = collide(movement, aabb, collisions)
+        if (stepHeight <= 0.0) {
+            return collision
         }
+
+        return collideStepping(movement, collision, collisions)
     }
 
-    private fun EntityPhysics<*>.collideStepping(movement: Vec3d, collision: MVec3d, collisions: Shape): MVec3d {
-        val collidedX = movement.x.matches(collision.x) // TODO: currently not collided
-        val collidedY = movement.y.matches(collision.y)
-        val collidedZ = movement.z.matches(collision.z)
+    private fun EntityPhysics<*>.collideStepping(movement: Vec3d, collision: Vec3d, collisions: AbstractVoxelShape): Vec3d {
+        val collided = movement.equal(collision)
 
-        val grounded = this.onGround || collidedY && movement.y < 0.0
+        val grounded = this.onGround || collided.y && movement.y < 0.0
 
-        if (!grounded || !(collidedX || collidedZ)) return collision
+        if (!grounded || !(collided.x || collided.z)) return collision
 
         val stepHeight = stepHeight.toDouble()
 

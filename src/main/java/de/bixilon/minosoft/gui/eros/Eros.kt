@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -21,8 +21,6 @@ import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.minosoft.config.profile.profiles.eros.ErosProfileManager
 import de.bixilon.minosoft.config.profile.profiles.other.OtherProfileManager
 import de.bixilon.minosoft.data.registries.identified.Namespaces.i18n
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
-import de.bixilon.minosoft.gui.eros.crash.CrashReportState
 import de.bixilon.minosoft.gui.eros.dialog.UpdateAvailableDialog
 import de.bixilon.minosoft.gui.eros.dialog.simple.ConfirmationDialog
 import de.bixilon.minosoft.gui.eros.main.MainErosController
@@ -34,6 +32,7 @@ import de.bixilon.minosoft.modding.event.events.FinishBootEvent
 import de.bixilon.minosoft.modding.event.master.GlobalEventMaster
 import de.bixilon.minosoft.properties.MinosoftProperties
 import de.bixilon.minosoft.updater.MinosoftUpdater
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
@@ -41,8 +40,8 @@ import javafx.stage.Modality
 import javafx.stage.Window
 
 object Eros {
-    private val TITLE = minosoft("eros_window_title")
-    private val LAYOUT = minosoft("eros/main/main.fxml")
+    private val TITLE = "minosoft:eros_window_title".toResourceLocation()
+    private val LAYOUT = "minosoft:eros/main/main.fxml".toResourceLocation()
 
     private val latch = SimpleLatch(2)
 
@@ -60,10 +59,12 @@ object Eros {
 
     @Synchronized
     fun setVisibility(visible: Boolean) {
-        if (visible == this.visible) return
-        if (CrashReportState.crashed) return
-        if (!initialized) return
-
+        if (visible == this.visible) {
+            return
+        }
+        if (!initialized) {
+            return
+        }
         if (visible) {
             mainErosController.stage.show()
         } else {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,15 @@
 
 package de.bixilon.minosoft.gui.rendering.system.dummy.buffer.uniform
 
-import de.bixilon.minosoft.gui.rendering.shader.AbstractShader
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.GpuBufferStates
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.RenderableBufferStates
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.RenderableBufferTypes
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.uniform.IntUniformBuffer
-import java.nio.IntBuffer
+import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
 
 class DummyIntUniformBuffer(
-    override var data: IntBuffer,
+    override var data: IntArray,
 ) : IntUniformBuffer {
+    override val bindingIndex: Int = 0
 
     override fun upload(start: Int, end: Int) {
     }
@@ -28,12 +29,22 @@ class DummyIntUniformBuffer(
     override fun upload() {
     }
 
-    override fun use(shader: AbstractShader, bufferName: String) {
+    override fun use(shader: NativeShader, bufferName: String) {
     }
 
-    override val state: GpuBufferStates = GpuBufferStates.INITIALIZED
+    override val state: RenderableBufferStates = RenderableBufferStates.UPLOADED
+    override val type: RenderableBufferTypes = RenderableBufferTypes.UNIFORM_BUFFER
 
     override fun init() {
+    }
+
+    override fun initialUpload() {
+    }
+
+    override fun bind() {
+    }
+
+    override fun unbind() {
     }
 
     override fun unload() {

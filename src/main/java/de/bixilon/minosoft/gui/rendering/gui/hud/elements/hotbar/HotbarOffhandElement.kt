@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.hotbar
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.data.entities.entities.player.Arms
 import de.bixilon.minosoft.data.entities.entities.player.Arms.Companion.opposite
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
@@ -22,9 +22,10 @@ import de.bixilon.minosoft.gui.rendering.gui.atlas.Atlas.Companion.get
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.items.ContainerItemsElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
-import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4fUtil.marginOf
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4Util.marginOf
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 
 class HotbarOffhandElement(guiRenderer: GUIRenderer) : Element(guiRenderer) {
@@ -41,7 +42,7 @@ class HotbarOffhandElement(guiRenderer: GUIRenderer) : Element(guiRenderer) {
     private val containerElement = ContainerItemsElement(guiRenderer, guiRenderer.context.session.player.items.inventory, frame?.slots ?: Int2ObjectOpenHashMap())
 
     init {
-        _size = Vec2f(frame?.size ?: Vec2i.EMPTY)
+        _size = Vec2(frame?.size ?: Vec2i.EMPTY)
         val margin = if (offArm == Arms.LEFT) {
             marginOf(right = 5.0f)
         } else {
@@ -52,7 +53,7 @@ class HotbarOffhandElement(guiRenderer: GUIRenderer) : Element(guiRenderer) {
     }
 
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         frameImage.render(offset, consumer, options)
         containerElement.render(offset, consumer, options)
     }

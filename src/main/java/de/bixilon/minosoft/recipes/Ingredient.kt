@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,10 +15,15 @@ package de.bixilon.minosoft.recipes
 import de.bixilon.minosoft.data.container.stack.ItemStack
 
 data class Ingredient(val stacks: Array<ItemStack?>) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
 
-    override fun equals(other: Any?) = when {
-        other !is Ingredient -> false
-        else -> stacks.contentEquals(other.stacks)
+        other as Ingredient
+
+        if (!stacks.contentEquals(other.stacks)) return false
+
+        return true
     }
 
     override fun hashCode(): Int {

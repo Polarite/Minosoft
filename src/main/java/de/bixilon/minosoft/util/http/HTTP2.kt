@@ -15,6 +15,7 @@ package de.bixilon.minosoft.util.http
 
 import de.bixilon.kutil.collections.CollectionUtil.extend
 import de.bixilon.kutil.http.QueryUtil.toQuery
+import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.minosoft.util.json.Jackson
 import java.net.URI
 import java.net.http.HttpClient
@@ -51,7 +52,7 @@ object HTTP2 {
             url = url,
             data = this,
             bodyPublisher = { Jackson.MAPPER.writeValueAsString(it) },
-            bodyBuilder = { if (it.isBlank()) null else Jackson.MAPPER.readValue(it, Jackson.JSON_MAP_TYPE) as Map<String, Any>? },
+            bodyBuilder = { it.isBlank().decide(null) { Jackson.MAPPER.readValue(it, Jackson.JSON_MAP_TYPE) as Map<String, Any> } },
             headers = headers.extend(
                 "Content-Type" to "application/json",
                 "Accept" to "application/json",
@@ -64,7 +65,7 @@ object HTTP2 {
             url = url,
             data = this,
             bodyPublisher = { this.toQuery() },
-            bodyBuilder = { if(it.isBlank()) null else Jackson.MAPPER.readValue(it, Jackson.JSON_MAP_TYPE) as Map<String, Any>? },
+            bodyBuilder = { it.isBlank().decide(null) { Jackson.MAPPER.readValue(it, Jackson.JSON_MAP_TYPE) as Map<String, Any> } },
             headers = headers.extend(
                 "Content-Type" to "application/x-www-form-urlencoded",
             )
@@ -86,7 +87,7 @@ object HTTP2 {
 
     fun String.getJson(headers: Map<String, Any> = emptyMap()): HTTPResponse<Map<String, Any>?> {
         return this.get(
-            bodyBuilder = { if(it.isBlank()) null else Jackson.MAPPER.readValue(it, Jackson.JSON_MAP_TYPE) as Map<String, Any>? },
+            bodyBuilder = { it.isBlank().decide(null) { Jackson.MAPPER.readValue(it, Jackson.JSON_MAP_TYPE) as Map<String, Any> } },
             headers = headers.extend(
                 "Content-Type" to "application/json",
                 "Accept" to "application/json",

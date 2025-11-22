@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -26,6 +26,10 @@ open class Statistic(
     val unit: StatisticUnits,
 ) : RegistryItem(), Translatable {
 
+    override fun toString(): String {
+        return identifier.toString()
+    }
+
     companion object : IdentifierCodec<Statistic> {
         override fun deserialize(registries: Registries?, identifier: ResourceLocation, data: Map<String, Any>): Statistic {
             val translationKey = data["translation_id"]?.toResourceLocation()
@@ -37,7 +41,7 @@ open class Statistic(
                     custom += value.toResourceLocation()
                 }
                 return OtherStatistic(
-                    identifier = identifier,
+                    resourceLocation = identifier,
                     translationKey = translationKey,
                     unit = unit,
                     custom = custom,

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,12 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.planet
 
-import de.bixilon.kmath.mat.mat4.f.MMat4f
-import de.bixilon.kmath.mat.mat4.f.Mat4f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec4.f.Vec4f
+import de.bixilon.kotlinglm.func.rad
+import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec4.Vec4
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
-import de.bixilon.kutil.primitive.FloatUtil.rad
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.world.time.WorldTime
 import de.bixilon.minosoft.gui.rendering.sky.SkyChildRenderer
@@ -26,43 +26,42 @@ import de.bixilon.minosoft.gui.rendering.sky.SkyRenderer
 import de.bixilon.minosoft.gui.rendering.system.base.BlendingFunctions
 import de.bixilon.minosoft.gui.rendering.system.base.RenderingCapabilities
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
-import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.translateYAssign
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.Z
 
 abstract class PlanetRenderer(
     protected val sky: SkyRenderer,
 ) : SkyChildRenderer {
     protected abstract val texture: Texture
-    protected val shader = sky.context.system.shader.create(minosoft("sky/planet")) { PlanetShader(it) }
-    private lateinit var mesh: Mesh
+    protected val shader = sky.context.system.createShader(minosoft("sky/planet")) { PlanetShader(it) }
+    private var mesh = PlanetMesh(sky.context)
     protected var day = -1L
-    protected var matrix = Mat4f()
+    protected var matrix = Mat4()
     private var matrixUpdate = true
     protected var modifier = 0.0f
     protected var intensity = -1.0f
     protected var meshInvalid = false
 
-    open var uvStart = Vec2f(0.0f, 0.0f)
-    open var uvEnd = Vec2f(1.0f, 1.0f)
+    open var uvStart = Vec2(0.0f, 0.0f)
+    open var uvEnd = Vec2(1.0f, 1.0f)
 
     private fun prepareMesh() {
-        val mesh = PlanetMeshBuilder(sky.context)
         mesh.addYQuad(
-            start = Vec2f(-0.2f, -0.2f),
+            start = Vec2(-0.2f, -0.2f),
             y = 1f,
-            end = Vec2f(+0.2f, +0.2f),
+            end = Vec2(+0.2f, +0.2f),
             uvStart = uvStart,
             uvEnd = uvEnd,
             vertexConsumer = { position, uv ->
                 mesh.addVertex(
                     position = position,
-                    uv = uv,
                     texture = texture,
+                    uv = uv,
                 )
             }
         )
 
-        this.mesh = mesh.bake()
-        this.mesh.load()
+        mesh.load()
         this.meshInvalid = false
     }
 
@@ -76,16 +75,16 @@ abstract class PlanetRenderer(
     protected abstract fun calculateIntensity(): Float
 
 
-    private fun calculateMatrix(base: Mat4f) {
-        val matrix = MMat4f(base)
-
-        matrix.apply {
-            rotateZAssign(calculateAngle().rad)
-            translateYAssign(-modifier) // moves the planet closer to the player (appears bigger)
-        }
+    private fun calculateMatrix(base: Mat4) {
+        val matrix = Mat4(base)
 
 
-        this.matrix = matrix.unsafe
+        matrix.rotateAssign(calculateAngle().rad, Vec3.Z)
+
+        matrix.translateYAssign(-modifier) // moves the planet closer to the player (appears bigger)
+
+
+        this.matrix = matrix
         this.matrixUpdate = true
     }
 
@@ -111,21 +110,21 @@ abstract class PlanetRenderer(
 
             val intensity = calculateIntensity()
             if (this.intensity != intensity) {
-                shader.tint = Vec4f(1.0f, 1.0f, 1.0f, intensity)
+                shader.tintColor = Vec4(1.0f, 1.0f, 1.0f, intensity)
                 this.intensity = intensity
             }
             this.matrixUpdate = false
         }
         if (meshInvalid) {
             this.mesh.unload()
+            this.mesh = PlanetMesh(sky.context)
             prepareMesh()
         }
 
-        val system = sky.context.system
-        system.enable(RenderingCapabilities.BLENDING)
-        system.setBlendFunction(BlendingFunctions.SOURCE_ALPHA, BlendingFunctions.ONE, BlendingFunctions.ONE, BlendingFunctions.ZERO)
+        sky.renderSystem.enable(RenderingCapabilities.BLENDING)
+        sky.renderSystem.setBlendFunction(BlendingFunctions.SOURCE_ALPHA, BlendingFunctions.ONE, BlendingFunctions.ONE, BlendingFunctions.ZERO)
 
         mesh.draw()
-        system.resetBlending()
+        sky.renderSystem.resetBlending()
     }
 }

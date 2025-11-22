@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.font.renderer.component
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.formatting.FormattingCodes
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.font.manager.FontManager
 import de.bixilon.minosoft.gui.rendering.font.renderer.CodePointAddResult
 import de.bixilon.minosoft.gui.rendering.font.renderer.code.CodePointRenderer
@@ -26,8 +25,8 @@ import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextOffset
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderInfo
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.font.types.FontType
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.CharVertexConsumer
 
 object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
 
@@ -35,7 +34,7 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
         return properties.font?.get(codePoint) ?: textFont?.get(codePoint) ?: fontManager.default[codePoint]
     }
 
-    private fun getColor(properties: TextRenderProperties, text: TextComponent): RGBAColor {
+    private fun getColor(properties: TextRenderProperties, text: TextComponent): RGBColor {
         return properties.forcedColor ?: text.color ?: properties.fallbackColor
     }
 
@@ -54,21 +53,21 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
         return false
     }
 
-    private fun renderStrikethrough(offset: Vec2f, width: Float, italic: Boolean, color: RGBAColor, properties: TextRenderProperties, consumer: CharVertexConsumer, options: GUIVertexOptions?) {
+    private fun renderStrikethrough(offset: Vec2, width: Float, italic: Boolean, color: RGBColor, properties: TextRenderProperties, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         val y = offset.y + properties.charSpacing.top + properties.charBaseHeight / 2.0f - 1.0f
 
         // TODO: italic
-        consumer.addQuad(Vec2f(offset.x, y), Vec2f(offset.x + width, y + 1.0f), color, options)
+        consumer.addQuad(Vec2(offset.x, y), Vec2(offset.x + width, y + 1.0f), color, options)
     }
 
-    private fun renderUnderline(offset: Vec2f, width: Float, italic: Boolean, color: RGBAColor, properties: TextRenderProperties, consumer: CharVertexConsumer, options: GUIVertexOptions?) {
+    private fun renderUnderline(offset: Vec2, width: Float, italic: Boolean, color: RGBColor, properties: TextRenderProperties, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         val y = offset.y + properties.charSpacing.top + properties.charBaseHeight
 
         // TODO: italic
-        consumer.addQuad(Vec2f(offset.x, y), Vec2f(offset.x + width, y + 1.0f), color, options)
+        consumer.addQuad(Vec2(offset.x, y), Vec2(offset.x + width, y + 1.0f), color, options)
     }
 
-    private fun renderFormatting(offset: Vec2f, text: TextComponent, width: Float, color: RGBAColor, properties: TextRenderProperties, consumer: CharVertexConsumer, options: GUIVertexOptions?) {
+    private fun renderFormatting(offset: Vec2, text: TextComponent, width: Float, color: RGBColor, properties: TextRenderProperties, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         if (width <= 0.0f) return
         val italic = FormattingCodes.ITALIC in text.formatting
         if (FormattingCodes.UNDERLINED in text.formatting) {
@@ -80,7 +79,7 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
     }
 
 
-    private fun LineRenderInfo.pushAndRender(offset: Vec2f, text: TextComponent, line: StringBuilder, width: Float, color: RGBAColor, properties: TextRenderProperties, consumer: CharVertexConsumer?, options: GUIVertexOptions?) {
+    private fun LineRenderInfo.pushAndRender(offset: Vec2, text: TextComponent, line: StringBuilder, width: Float, color: RGBColor, properties: TextRenderProperties, consumer: GUIVertexConsumer?, options: GUIVertexOptions?) {
         if (consumer == null) {
             push(text, line)
         } else {
@@ -89,13 +88,13 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
     }
 
 
-    override fun render(offset: TextOffset, fontManager: FontManager, properties: TextRenderProperties, info: TextRenderInfo, consumer: CharVertexConsumer?, options: GUIVertexOptions?, text: TextComponent): TextRenderResults {
-        if (text.message.isEmpty()) return TextRenderResults.OK
+    override fun render(offset: TextOffset, fontManager: FontManager, properties: TextRenderProperties, info: TextRenderInfo, consumer: GUIVertexConsumer?, options: GUIVertexOptions?, text: TextComponent): Boolean {
+        if (text.message.isEmpty()) return false
 
 
         if (consumer != null && info.lineIndex == 0 && info.lines.isNotEmpty() && offset.offset.x == offset.initial.x) {
             // switched to consumer mode but offset was not updated yet
-            offset.align(properties.alignment, info.lines.first().width, info.size.unsafe)
+            offset.align(properties.alignment, info.lines.first().width, info.size)
         }
 
         val textFont = fontManager[text.font]
@@ -103,10 +102,10 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
         val formatting = text.formatting
         var skipWhitespaces = false
 
-        val line = StringBuilder(text.message.length)
+        val line = StringBuilder()
         var update = false
         var filled = false
-        val lineStart = MVec2f(offset.offset)
+        val lineStart = Vec2(offset.offset)
 
 
         val stream = text.message.codePoints().iterator()
@@ -118,9 +117,9 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
                 val width = offset.offset.x - lineStart.x
                 filled = renderNewline(properties, offset, info, consumer != null)
                 if (line.isNotEmpty()) {
-                    info.lines[lineIndex].pushAndRender(lineStart.unsafe, text, line, width, color, properties, consumer, options)
+                    info.lines[lineIndex].pushAndRender(lineStart, text, line, width, color, properties, consumer, options)
                 }
-                lineStart.put(offset.offset)
+                lineStart(offset.offset)
                 skipWhitespaces = true
                 update = false
                 if (filled) break else continue
@@ -143,8 +142,8 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
 
             val lineInfo = renderer.render(offset, color, properties, info, formatting, codePoint, consumer, options)
             if (lineIndex != info.lineIndex && info.lines.isNotEmpty() && consumer != null) {
-                renderFormatting(lineStart.unsafe, text, width, color, properties, consumer, options)
-                lineStart.put(offset.offset)
+                renderFormatting(lineStart, text, width, color, properties, consumer, options)
+                lineStart(offset.offset)
             }
             if (lineInfo == CodePointAddResult.BREAK) {
                 filled = true
@@ -166,10 +165,10 @@ object TextComponentRenderer : ChatComponentRenderer<TextComponent> {
             info.update(offset, properties, 0.0f, 0.0f, true)
         }
         if (line.isNotEmpty()) {
-            info.lines[info.lineIndex].pushAndRender(lineStart.unsafe, text, line, offset.offset.x - lineStart.x, color, properties, consumer, options)
+            info.lines[info.lineIndex].pushAndRender(lineStart, text, line, offset.offset.x - lineStart.x, color, properties, consumer, options)
         }
 
-        return if (filled) TextRenderResults.CUT_OFF else TextRenderResults.OK
+        return filled
     }
 
     override fun calculatePrimitiveCount(text: TextComponent): Int {

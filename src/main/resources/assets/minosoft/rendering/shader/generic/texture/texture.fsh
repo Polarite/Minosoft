@@ -13,7 +13,7 @@
 
 #version 330 core
 
-out lowp vec4 foutColor;
+out vec4 foutColor;
 
 in vec2 finUV;
 

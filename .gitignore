@@ -6,7 +6,7 @@ hs_err_pid*.log
 
 # Ignore Gradle project-specific cache directory
 .gradle
-.home
+.gradle_home
 
 .kotlin/
 
@@ -16,5 +16,3 @@ build
 it/
 
 .*~
-
-*.perf

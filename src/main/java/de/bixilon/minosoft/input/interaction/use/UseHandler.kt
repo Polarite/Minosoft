@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -34,11 +34,20 @@ class UseHandler(
     private var previous = false
 
 
-    override fun onPress() = tick(true)
-    override fun onTick() = tick(true)
-    override fun onRelease() = tick(false)
+    override fun onPress() {
+        tick()
+    }
 
-    private fun tick(interact: Boolean) {
+    override fun onRelease() {
+        tick()
+    }
+
+    override fun onTick() {
+        tick()
+    }
+
+    private fun tick() {
+        val interact = isPressed
         val previous = this.previous
         this.previous = interact
 
@@ -54,8 +63,10 @@ class UseHandler(
             autoInteractionDelay = AUTO_INTERACTION_COOLDOWN
             long.tick(slot)
 
-            // still or again using, can not use short interaction
-            if (long.isUsing) return
+            if (long.isUsing) {
+                // still or again using, can not use short interaction
+                return
+            }
         }
 
         if (interactions.breaking.digging.status != null) {
@@ -102,11 +113,13 @@ class UseHandler(
 
             val player = session.player
             player.physics().sender.sendPositionRotation()
-
-            if (long.tryUse(hand, slot, stack)) return
-
-            // try without target
-            if (short.tryUse(hand, stack)) return
+            if (long.tryUse(hand, slot, stack)) {
+                return
+            }
+            if (short.tryUse(hand, stack)) {
+                // try without target
+                return
+            }
             sendItemUse(hand, stack)
         }
     }
@@ -115,7 +128,7 @@ class UseHandler(
         if (session.player.gamemode == Gamemodes.SPECTATOR) {
             return false
         }
-        if (interactions.isCoolingDown(stack.item)) {
+        if (interactions.isCoolingDown(stack.item.item)) {
             return false
         }
         return true

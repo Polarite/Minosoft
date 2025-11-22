@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,8 @@
  */
 package de.bixilon.minosoft.data.registries.blocks.types.pixlyzer
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.cast.CollectionCast.asAnyMap
@@ -23,8 +24,13 @@ import de.bixilon.kutil.primitive.IntUtil.toInt
 import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.minosoft.data.registries.blocks.factory.PixLyzerBlockFactories
 import de.bixilon.minosoft.data.registries.blocks.factory.PixLyzerBlockFactory
+import de.bixilon.minosoft.data.registries.blocks.properties.BlockProperties
+import de.bixilon.minosoft.data.registries.blocks.properties.BlockProperty
 import de.bixilon.minosoft.data.registries.blocks.settings.BlockSettings
+import de.bixilon.minosoft.data.registries.blocks.state.AdvancedBlockState
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateBuilder
+import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateSettings
 import de.bixilon.minosoft.data.registries.blocks.types.Block
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.water.WaterloggableBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.ReplaceableBlock
@@ -36,6 +42,7 @@ import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.JumpB
 import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.VelocityBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.collision.CollidableBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.outline.OutlinedBlock
+import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.special.PotentialFullOpaqueBlock
 import de.bixilon.minosoft.data.registries.factory.clazz.MultiClassFactory
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.item.items.Item
@@ -47,14 +54,16 @@ import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.tint.TintProvider
 import de.bixilon.minosoft.gui.rendering.tint.TintedBlock
 import de.bixilon.minosoft.gui.rendering.util.VecUtil.getWorldOffset
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.protocol.versions.Version
 import de.bixilon.minosoft.protocol.versions.Versions
 
 open class PixLyzerBlock(
     identifier: ResourceLocation,
     registries: Registries,
     data: Map<String, Any>,
-) : Block(identifier, BlockSettings(Versions.AUTOMATIC, soundGroup = data["sound_group"]?.toInt()?.let { registries.soundGroup[it] })), FrictionBlock, JumpBlock, VelocityBlock, RandomOffsetBlock, OutlinedBlock, ReplaceableBlock, WaterloggableBlock, CollidableBlock, ToolRequirement, BlockWithItem<Item>, TintedBlock {
+) : Block(identifier, BlockSettings(Versions.AUTOMATIC, soundGroup = data["sound_group"]?.toInt()?.let { registries.soundGroup[it] })), FrictionBlock, JumpBlock, VelocityBlock, RandomOffsetBlock, OutlinedBlock, BlockStateBuilder, ReplaceableBlock, PotentialFullOpaqueBlock, WaterloggableBlock, CollidableBlock, ToolRequirement, BlockWithItem<Item>, TintedBlock {
     override val randomOffset: RandomOffsetTypes? = data["offset_type"].nullCast<String>()?.let { RandomOffsetTypes[it] }
 
     override val friction = data["friction"]?.toFloat() ?: FrictionBlock.DEFAULT_FRICTION
@@ -67,6 +76,8 @@ open class PixLyzerBlock(
     val requiresTool: Boolean
     val replaceable: Boolean
     override val item: Item = unsafeNull()
+    var waterloggable: Boolean = true
+        private set
 
     init {
         val state = data["states"]?.asAnyMap()!!.iterator().next().value.asJsonObject()
@@ -78,24 +89,45 @@ open class PixLyzerBlock(
         ITEM_FIELD.inject<RegistryItem>(data["item"])
     }
 
-    @Suppress("DEPRECATION")
-    override fun getCollisionShape(state: BlockState) = state.collisionShape
+    override fun updateStates(states: Set<BlockState>, default: BlockState, properties: Map<BlockProperty<*>, Array<Any>>) {
+        super.updateStates(states, default, properties)
+        waterloggable = BlockProperties.WATERLOGGED in properties
+    }
 
-    @Suppress("DEPRECATION")
-    override fun getOutlineShape(state: BlockState) = state.outlineShape
+    override fun buildState(version: Version, settings: BlockStateSettings): BlockState {
+        return AdvancedBlockState(this, settings)
+    }
 
-    override fun canReplace(session: PlaySession, state: BlockState, position: BlockPosition) = replaceable
+    override fun canReplace(session: PlaySession, state: BlockState, position: BlockPosition): Boolean {
+        return replaceable
+    }
 
-    override fun isCorrectTool(item: Item) = false
+    override fun isFullOpaque(state: BlockState): Boolean {
+        if (state !is AdvancedBlockState) return false
+        return state.solidRenderer
+    }
 
-    override fun offsetShape(position: BlockPosition): Vec3f {
-        val offset = randomOffset ?: return Vec3f.EMPTY
+    override fun isCorrectTool(item: Item): Boolean {
+        return false
+    }
+
+    override fun toString(): String {
+        return identifier.toString()
+    }
+
+    override fun offsetShape(position: Vec3i): Vec3 {
+        val offset = randomOffset ?: return Vec3.EMPTY
         return super.offsetShape(position) + if (offset == RandomOffsetTypes.XZ) NULL_OFFSET_XZ else NULL_OFFSET_XYZ  // this corrects wrong pixlyzer data
     }
 
+    override fun offsetModel(position: Vec3i): Vec3 {
+        return super.offsetShape(position)
+    }
+
+
     companion object : IdentifierCodec<Block>, PixLyzerBlockFactory<Block>, MultiClassFactory<Block> {
-        private val NULL_OFFSET_XYZ = BlockPosition(0, 0, 0).getWorldOffset(RandomOffsetTypes.XYZ)
-        private val NULL_OFFSET_XZ = BlockPosition(0, 0, 0).getWorldOffset(RandomOffsetTypes.XZ)
+        private val NULL_OFFSET_XYZ = Vec3i(0, 0, 0).getWorldOffset(RandomOffsetTypes.XYZ)
+        private val NULL_OFFSET_XZ = Vec3i(0, 0, 0).getWorldOffset(RandomOffsetTypes.XZ)
         private val ITEM_FIELD = PixLyzerBlock::item.field
         override val ALIASES: Set<String> = setOf("Block")
 
@@ -108,8 +140,8 @@ open class PixLyzerBlock(
             return factory.build(identifier, registries, data)
         }
 
-        override fun build(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>): PixLyzerBlock {
-            return PixLyzerBlock(identifier, registries, data)
+        override fun build(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>): PixLyzerBlock {
+            return PixLyzerBlock(resourceLocation, registries, data)
         }
     }
 }

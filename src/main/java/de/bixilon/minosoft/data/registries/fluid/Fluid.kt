@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,19 +12,21 @@
  */
 package de.bixilon.minosoft.data.registries.fluid
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidBlock
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidFilled
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidHolder
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.registry.RegistryItem
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.chunkPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.inChunkPosition
 import de.bixilon.minosoft.gui.rendering.models.fluid.FluidModel
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.physics.entities.living.LivingEntityPhysics
 import de.bixilon.minosoft.physics.input.MovementInput
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -37,53 +39,47 @@ abstract class Fluid(override val identifier: ResourceLocation) : RegistryItem()
 
     abstract fun getVelocityMultiplier(session: PlaySession): Double
 
-    fun getVelocity(session: PlaySession, state: BlockState, position: BlockPosition): MVec3d? {
-        val chunk = session.world.chunks[position.chunkPosition] ?: return null
-        return getVelocity(state, position, chunk)
+    fun getVelocity(session: PlaySession, blockState: BlockState, blockPosition: Vec3i): Vec3d {
+        val chunk = session.world.chunks[blockPosition.chunkPosition] ?: return Vec3d.EMPTY
+        return getVelocity(blockState, blockPosition, chunk)
     }
 
-    open fun getVelocity(state: BlockState, position: BlockPosition, chunk: Chunk): MVec3d? {
-        if (!this.matches(state)) return null
+    open fun getVelocity(blockState: BlockState, blockPosition: Vec3i, chunk: Chunk): Vec3d {
+        if (!this.matches(blockState)) {
+            return Vec3d.EMPTY
+        }
+        val fluidHeight = getHeight(blockState)
 
-        val velocity = MVec3d.EMPTY
-        updateVelocity(state, position, chunk, velocity)
-        if (velocity.isEmpty()) return null
+        val velocity = Vec3d.EMPTY
 
-        return velocity
-    }
-
-    open fun updateVelocity(state: BlockState, position: BlockPosition, chunk: Chunk, velocity: MVec3d) {
-        velocity.clear()
-        if (!this.matches(state)) return
-        val fluidHeight = getHeight(state)
-
-
-        val offset = position.inChunkPosition
+        val offset = blockPosition.inChunkPosition
         for (direction in Directions.SIDES) {
-            val neighbour = chunk.neighbours.traceBlock(offset, direction) ?: continue
+            val neighbour = chunk.neighbours.traceBlock(offset + direction) ?: continue
             if (!this.matches(neighbour)) {
                 continue
             }
             val height = getHeight(neighbour)
 
-            var delta = 0.0f
+            var heightDifference = 0.0f
 
             if (height == 0.0f) {
                 // ToDo
             } else {
-                delta = fluidHeight - height
+                heightDifference = fluidHeight - height
             }
 
-            if (delta != 0.0f) {
-                velocity += (direction.vectord * delta)
+            if (heightDifference != 0.0f) {
+                velocity += (direction.vectord * heightDifference)
             }
         }
 
         // ToDo: Falling fluid
 
-        if (velocity.isEmpty()) return
+        if (velocity == Vec3d.EMPTY) {
+            return velocity
+        }
 
-        velocity.normalizeAssign()
+        return velocity.normalize()
     }
 
 
@@ -100,20 +96,22 @@ abstract class Fluid(override val identifier: ResourceLocation) : RegistryItem()
             motion.y - gravity / 16.0
         }
 
-        this.velocity.x = motion.x
-        this.velocity.y = up
-        this.velocity.z = motion.z
+        this.velocity = Vec3d(motion.x, up, motion.z)
     }
 
 
     protected fun LivingEntityPhysics<*>.applyBouncing(y: Double) {
         val velocity = this.velocity
         if (!horizontalCollision || !doesNotCollide(Vec3d(velocity.x, velocity.y + 0.6f - position.y + y, velocity.z))) return
-        this.velocity.y = 0.3
+        this.velocity = Vec3d(velocity.x, 0.3, velocity.z)
     }
 
     protected fun LivingEntityPhysics<*>.applyFriction(horizontal: Double, vertical: Double = 0.8f.toDouble()) {
-        this.velocity *= Vec3d(horizontal, vertical, horizontal)
+        this.velocity = velocity * Vec3d(horizontal, vertical, horizontal)
+    }
+
+    override fun toString(): String {
+        return identifier.toString()
     }
 
     open fun matches(other: Fluid): Boolean {
@@ -121,16 +119,14 @@ abstract class Fluid(override val identifier: ResourceLocation) : RegistryItem()
     }
 
     open fun matches(other: BlockState?): Boolean {
-        if (other == null) return false
-        if (BlockStateFlags.FLUID !in other.flags) return false
-        if (other.block !is FluidHolder) return false
-
+        if (other == null || other.block !is FluidHolder) return false
         return matches(other.block.fluid)
     }
 
-    open fun getHeight(state: BlockState?): Float {
-        if (state == null || !matches(state)) return 0.0f
-
+    open fun getHeight(state: BlockState): Float {
+        if (state.block !is FluidHolder || state.block.fluid != this) {
+            return 0.0f
+        }
         if (state.block is FluidFilled && state.block.fluid == this) {
             return MAX_LEVEL
         }
@@ -141,7 +137,7 @@ abstract class Fluid(override val identifier: ResourceLocation) : RegistryItem()
         return (LEVELS - level) / DIVIDER
     }
 
-    open fun randomTick(session: PlaySession, blockState: BlockState, blockPosition: BlockPosition, random: Random) = Unit
+    open fun randomTick(session: PlaySession, blockState: BlockState, blockPosition: Vec3i, random: Random) = Unit
 
     open fun createModel(): FluidModel? {
         return null

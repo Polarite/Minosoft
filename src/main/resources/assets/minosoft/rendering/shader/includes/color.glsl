@@ -12,10 +12,10 @@
  */
 
 
-lowp vec4 getRGBColor(uint color) {
+vec4 getRGBColor(uint color) {
     return vec4(((color >> 16u) & 0xFFu) / 255.0f, ((color >> 8u) & 0xFFu) / 255.0f, (color & 0xFFu) / 255.0f, 1.0f);
 }
 
-lowp vec4 getRGBAColor(uint color) {
+vec4 getRGBAColor(uint color) {
     return vec4(((color >> 24u) & 0xFFu) / 255.0f, ((color >> 16u) & 0xFFu) / 255.0f, ((color >> 8u) & 0xFFu) / 255.0f, (color & 0xFFu) / 255.0f);
 }

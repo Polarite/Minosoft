@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.text.mark
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
@@ -25,8 +25,8 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ColorElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.background.TextBackground
 import de.bixilon.minosoft.gui.rendering.gui.input.ModifierKeys
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
 
 class MarkTextElement(
@@ -72,20 +72,20 @@ class MarkTextElement(
         forceSilentApply()
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         if (markStartPosition >= 0) {
             val message = chatComponent.message // ToDo: This does not include formatting
             val preMark = TextElement(guiRenderer, message.substring(0, markStartPosition), properties = properties, parent = _parent)
             val mark = TextElement(guiRenderer, message.substring(markStartPosition, markEndPosition), properties = properties, parent = _parent)
-            val markOffset = MVec2f(preMark.info.lines.lastOrNull()?.width ?: 0f, preMark.size.y)
+            val markOffset = Vec2i(preMark.info.lines.lastOrNull()?.width ?: 0, preMark.size.y)
             if (markOffset.y > 0 && (preMark.info.lines.lastOrNull()?.width ?: 0.0f) <= (info.lines.lastOrNull()?.width ?: 0.0f)) {
                 markOffset.y -= (properties.lineHeight).toInt()
             }
 
             for (line in mark.info.lines) {
-                ColorElement(guiRenderer, size = Vec2f(line.width, properties.lineHeight), color = ChatColors.DARK_BLUE).render(offset + markOffset, consumer, options)
-                markOffset.x = 0.0f
-                markOffset.y += properties.lineHeight
+                ColorElement(guiRenderer, size = Vec2(line.width, (properties.lineHeight).toInt()), color = ChatColors.DARK_BLUE).render(offset + markOffset, consumer, options)
+                markOffset.x = 0
+                markOffset.y += (properties.lineHeight).toInt()
             }
         }
 

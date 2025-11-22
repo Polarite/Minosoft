@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,6 +13,7 @@
 
 package de.bixilon.minosoft.data.registries.item.items.block
 
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.minosoft.camera.target.targets.BlockTarget
 import de.bixilon.minosoft.data.abilities.Gamemodes
@@ -25,6 +26,7 @@ import de.bixilon.minosoft.data.registries.blocks.state.BlockState
 import de.bixilon.minosoft.data.registries.blocks.types.properties.ReplaceableBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.collision.CollidableBlock
 import de.bixilon.minosoft.data.registries.item.handler.ItemInteractBlockHandler
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.plusAssign
 import de.bixilon.minosoft.input.interaction.InteractionResults
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
@@ -34,7 +36,7 @@ interface PlaceableItem : ItemInteractBlockHandler {
     fun getPlacementState(session: PlaySession, target: BlockTarget, stack: ItemStack): BlockState
 
 
-    fun place(player: LocalPlayerEntity, target: BlockTarget, hand: Hands, stack: ItemStack): InteractionResults {
+    fun place(player: LocalPlayerEntity, target: BlockTarget, stack: ItemStack): InteractionResults {
         if (!player.gamemode.canBuild) {
             return InteractionResults.INVALID
         }
@@ -45,7 +47,7 @@ interface PlaceableItem : ItemInteractBlockHandler {
         val session = player.session
         val world = session.world
 
-        var placePosition = target.blockPosition
+        val placePosition = Vec3i(target.blockPosition)
         if (target.state.block !is ReplaceableBlock || !target.state.block.canReplace(session, target.state, target.blockPosition)) {
             placePosition += target.direction
 
@@ -67,15 +69,15 @@ interface PlaceableItem : ItemInteractBlockHandler {
 
         val state: BlockState = getPlacementState(session, target, stack)
         if (state.block is CollidableBlock) {
-            val shape = state.block.getCollisionShape(session, EntityCollisionContext(player), placePosition, state)?.plus(placePosition) // TODO: block entity
-            if (shape != null && session.world.entities.isEntityIn(shape, true)) {
+            val shape = state.block.getCollisionShape(session, EntityCollisionContext(player), placePosition, state, null)?.plus(placePosition)
+            if (shape != null && session.world.entities.isEntityIn(shape)) {
                 return InteractionResults.INVALID
             }
         }
 
 
         if (player.gamemode != Gamemodes.CREATIVE) {
-            player.items.inventory[hand] = stack.with(count = stack.count - 1)
+            stack.item.decreaseCount()
         }
         DefaultThreadPool += {
             world[placePosition] = state
@@ -86,13 +88,13 @@ interface PlaceableItem : ItemInteractBlockHandler {
         }
 
         state.block.soundGroup?.let { group ->
-            group.place?.let { world.audio?.play(it, placePosition, group.volume, group.pitch) }
+            group.place?.let { world.playSoundEvent(it, placePosition, group.volume, group.pitch) }
         }
         return InteractionResults.SUCCESS
     }
 
 
     override fun interactBlock(player: LocalPlayerEntity, target: BlockTarget, hand: Hands, stack: ItemStack): InteractionResults {
-        return place(player, target, hand, stack)
+        return place(player, target, stack)
     }
 }

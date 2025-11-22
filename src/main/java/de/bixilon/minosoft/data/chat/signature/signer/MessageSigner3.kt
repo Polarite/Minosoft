@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,14 @@
 
 package de.bixilon.minosoft.data.chat.signature.signer
 
-import de.bixilon.kutil.primitive.IntUtil.toByteArray
-import de.bixilon.kutil.primitive.LongUtil.toByteArray
+import com.google.common.primitives.Ints
+import com.google.common.primitives.Longs
 import de.bixilon.minosoft.data.chat.signature.LastSeenMessageList
 import de.bixilon.minosoft.data.chat.signature.signer.MessageSigningUtil.update
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.protocol.ProtocolUtil.encodeNetwork
 import de.bixilon.minosoft.protocol.protocol.encryption.CryptManager
 import de.bixilon.minosoft.protocol.versions.Version
-import java.nio.ByteOrder
 import java.security.PrivateKey
 import java.time.Instant
 import java.util.*
@@ -46,22 +45,22 @@ class MessageSigner3(
 
         signature.initSign(privateKey)
 
-        signature.update(1.toByteArray(ByteOrder.BIG_ENDIAN))
+        signature.update(Ints.toByteArray(1))
 
         signature.update(sender)
         signature.update(sessionId)
 
         val index = index.getAndIncrement()
-        signature.update(index.toByteArray(ByteOrder.BIG_ENDIAN))
+        signature.update(Ints.toByteArray(index))
 
         // message body
-        signature.update(salt.toByteArray(ByteOrder.BIG_ENDIAN))
-        signature.update(time.epochSecond.toByteArray(ByteOrder.BIG_ENDIAN))
+        signature.update(Longs.toByteArray(salt))
+        signature.update(Longs.toByteArray(time.epochSecond))
         val encoded = message.encodeNetwork()
-        signature.update(encoded.size.toByteArray(ByteOrder.BIG_ENDIAN))
+        signature.update(Ints.toByteArray(encoded.size))
         signature.update(encoded)
 
-        signature.update(lastSeen.entries.size.toByteArray(ByteOrder.BIG_ENDIAN))
+        signature.update(Ints.toByteArray(lastSeen.entries.size))
 
         for (lastSeenMessage in lastSeen.entries) {
             signature.update(lastSeenMessage.signature)

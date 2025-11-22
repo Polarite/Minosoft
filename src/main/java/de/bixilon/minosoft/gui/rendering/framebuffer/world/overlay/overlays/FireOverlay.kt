@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,17 @@
 
 package de.bixilon.minosoft.gui.rendering.framebuffer.world.overlay.overlays
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.registries.fluid.fluids.LavaFluid
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.framebuffer.world.overlay.Overlay
 import de.bixilon.minosoft.gui.rendering.framebuffer.world.overlay.OverlayFactory
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.texture
-import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
-import de.bixilon.minosoft.gui.rendering.util.mesh.integrated.SimpleTextureMeshBuilder
+import de.bixilon.minosoft.gui.rendering.util.mesh.SimpleTextureMesh
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class FireOverlay(
     private val context: RenderContext,
@@ -32,7 +31,7 @@ class FireOverlay(
     private val config = context.session.profiles.rendering.overlay.fire
     private val player = context.session.player
     private val shader = context.shaders.genericTexture2dShader
-    private var texture: Texture = context.textures.static.create(if (context.session.version.flattened) TEXTURE else LEGACY_TEXTURE)
+    private var texture: Texture = context.textures.static.create("block/fire_1".toResourceLocation().texture())
     private val lava = context.session.registries.fluid[LavaFluid]
     override val render: Boolean
         get() {
@@ -42,45 +41,41 @@ class FireOverlay(
             if (player.gamemode == Gamemodes.CREATIVE && !config.creative) {
                 return false
             }
-            if (player.physics.submersion[lava] > 0.0 && !config.lava) {
+            if (player.physics.submersion[lava] != null && !config.lava) {
                 return false
             }
             return player.isOnFire
         }
-    private lateinit var mesh: Mesh
-    private val tintColor = RGBAColor(1.0f, 1.0f, 1.0f, 0.9f)
+    private lateinit var mesh: SimpleTextureMesh
+    private val tintColor = RGBColor(1.0f, 1.0f, 1.0f, 0.9f)
 
 
-    private fun updateMesh() {
-        val mesh = SimpleTextureMeshBuilder(context)
+    override fun postInit() {
+        mesh = SimpleTextureMesh(context)
 
         // ToDo: Minecraft does this completely different...
         mesh.addQuad(arrayOf(
-            Vec3f(-2.0f, -2.4f, +0.0f),
-            Vec3f(-2.0f, +0.4f, +0.0f),
-            Vec3f(+0.0f, +0.4f, +0.0f),
-            Vec3f(+0.0f, -2.4f, +0.0f),
+            Vec3(-2.0f, -2.4f, +0.0f),
+            Vec3(-2.0f, +0.4f, +0.0f),
+            Vec3(+0.0f, +0.4f, +0.0f),
+            Vec3(+0.0f, -2.4f, +0.0f),
         )) { position, uv -> mesh.addVertex(position, texture, uv, tintColor) }
 
         mesh.addQuad(arrayOf(
-            Vec3f(-0.0f, -2.4f, +0.0f),
-            Vec3f(-0.0f, +0.4f, +0.0f),
-            Vec3f(+2.0f, +0.4f, +0.0f),
-            Vec3f(+2.0f, -2.4f, +0.0f),
+            Vec3(-0.0f, -2.4f, +0.0f),
+            Vec3(-0.0f, +0.4f, +0.0f),
+            Vec3(+2.0f, +0.4f, +0.0f),
+            Vec3(+2.0f, -2.4f, +0.0f),
         )) { position, uv -> mesh.addVertex(position, texture, uv, tintColor) }
 
-        this.mesh = mesh.bake()
-        this.mesh.load()
-    }
 
-    override fun postInit() {
-        updateMesh()
+        mesh.load()
     }
 
 
     override fun draw() {
         mesh.unload()
-        updateMesh()
+        postInit()
         context.system.reset(blending = true, depthTest = false)
         shader.use()
         mesh.draw()
@@ -88,8 +83,6 @@ class FireOverlay(
 
 
     companion object : OverlayFactory<FireOverlay> {
-        private val TEXTURE = minecraft("block/fire_1").texture()
-        private val LEGACY_TEXTURE = minecraft("blocks/fire_layer_1").texture()
 
         override fun build(context: RenderContext): FireOverlay {
             return FireOverlay(context)

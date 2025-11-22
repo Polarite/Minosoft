@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
-import de.bixilon.kutil.primitive.f
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.entities.block.sign.SignBlockEntity
 import de.bixilon.minosoft.data.entities.block.sign.SignSides
@@ -25,7 +24,6 @@ import de.bixilon.minosoft.data.registries.blocks.state.BlockState
 import de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.entity.sign.SignBlock
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.text.ChatComponent
-import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.chunk.entities.renderer.sign.SignBlockEntityRenderer
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
@@ -44,8 +42,8 @@ import de.bixilon.minosoft.gui.rendering.gui.gui.AbstractLayout.Companion.getAtC
 import de.bixilon.minosoft.gui.rendering.gui.gui.elements.input.TextInputElement
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.BakedModel
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
 import de.bixilon.minosoft.modding.event.events.OpenSignEditorEvent
@@ -54,7 +52,7 @@ import de.bixilon.minosoft.protocol.packets.c2s.play.block.SignTextC2SP
 
 class SignEditorScreen(
     guiRenderer: GUIRenderer,
-    val blockPosition: BlockPosition,
+    val blockPosition: Vec3i,
     val side: SignSides,
     val blockState: BlockState? = guiRenderer.session.world[blockPosition],
     val blockEntity: SignBlockEntity? = guiRenderer.session.world.getBlockEntity(blockPosition).nullCast(),
@@ -63,7 +61,7 @@ class SignEditorScreen(
     private val positionElement = TextElement(guiRenderer, "at $blockPosition", background = null, parent = this)
     private val backgroundElement = getFront()
     private val lines = Array(SignBlockEntity.LINES) { TextInputElement(guiRenderer, blockEntity?.get(side)?.text?.get(it)?.message ?: "", SIGN_MAX_CHARS, properties = TEXT_PROPERTIES, background = null, cutAtSize = true, parent = this) }
-    private val doneButton = ButtonElement(guiRenderer, "Done") { guiRenderer.gui.pop() }.apply { size = Vec2f(BACKGROUND_SIZE.x, size.y);parent = this@SignEditorScreen }
+    private val doneButton = ButtonElement(guiRenderer, "Done") { guiRenderer.gui.pop() }.apply { size = Vec2(BACKGROUND_SIZE.x, size.y);parent = this@SignEditorScreen }
     private val lengthLimitSwitch = SwitchElement(guiRenderer, "Limit length", guiRenderer.session.profiles.gui.sign.limitLength, parent = this) { guiRenderer.session.profiles.gui.sign.limitLength = it; forceSilentApply() }
     override var activeElement: Element? = null
     override var activeDragElement: Element? = null
@@ -71,7 +69,7 @@ class SignEditorScreen(
 
     init {
         for (line in lines) {
-            line.prefMaxSize = Vec2f(SignBlockEntityRenderer.SIGN_MAX_WIDTH * TEXT_PROPERTIES.scale, TEXT_PROPERTIES.lineHeight)
+            line.prefMaxSize = Vec2(SignBlockEntityRenderer.SIGN_MAX_WIDTH * TEXT_PROPERTIES.scale, TEXT_PROPERTIES.lineHeight)
             line.hideCursor()
         }
         forceSilentApply()
@@ -90,32 +88,31 @@ class SignEditorScreen(
         return ImageElement(guiRenderer, texture, uvStart = SIGN_UV_START, uvEnd = SIGN_UV_END, size = BACKGROUND_SIZE)
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
         lengthLimitSwitch.render(offset + VerticalAlignments.BOTTOM.getOffset(size, lengthLimitSwitch.size), consumer, options)
 
         val size = size
-        val offset = MVec2f(offset)
 
         offset.y += size.y / 8
-        headerElement.render(offset.unsafe + HorizontalAlignments.CENTER.getOffset(size, headerElement.size), consumer, options)
+        headerElement.render(offset + HorizontalAlignments.CENTER.getOffset(size, headerElement.size), consumer, options)
         offset.y += headerElement.size.y
 
         offset.y += size.y / 100
-        positionElement.render(offset.unsafe + HorizontalAlignments.CENTER.getOffset(size, positionElement.size), consumer, options)
+        positionElement.render(offset + HorizontalAlignments.CENTER.getOffset(size, positionElement.size), consumer, options)
         offset.y += positionElement.size.y
 
         offset.y += size.y / 12
-        backgroundElement?.render(offset.unsafe + HorizontalAlignments.CENTER.getOffset(size, backgroundElement.size), consumer, options)
+        backgroundElement?.render(offset + HorizontalAlignments.CENTER.getOffset(size, backgroundElement.size), consumer, options)
 
         offset.y += (1.8f * BACKGROUND_SCALE).toInt()
         for (line in lines) {
-            line.render(offset.unsafe + HorizontalAlignments.CENTER.getOffset(size, line.size), consumer, options)
+            line.render(offset + HorizontalAlignments.CENTER.getOffset(size, line.size), consumer, options)
             offset.y += TEXT_PROPERTIES.lineHeight + TEXT_PROPERTIES.lineSpacing
         }
         offset.y += size.y / 8
 
-        doneButton.render(offset.unsafe + HorizontalAlignments.CENTER.getOffset(size, doneButton.size), consumer, options)
+        doneButton.render(offset + HorizontalAlignments.CENTER.getOffset(size, doneButton.size), consumer, options)
     }
 
     private fun getText(): Array<ChatComponent> {
@@ -136,13 +133,12 @@ class SignEditorScreen(
         super.forceSilentApply()
 
         for (line in lines) {
-            line.prefMaxSize = Vec2f(if (lengthLimitSwitch.state) SignBlockEntityRenderer.SIGN_MAX_WIDTH * TEXT_PROPERTIES.scale else SIGN_MAX_CHARS.f, line.prefMaxSize.y)
+            line.prefMaxSize = Vec2(if (lengthLimitSwitch.state) SignBlockEntityRenderer.SIGN_MAX_WIDTH * TEXT_PROPERTIES.scale else SIGN_MAX_CHARS, line.prefMaxSize.y)
         }
     }
 
-    override fun getAt(position: Vec2f): Pair<Element, Vec2f>? {
+    override fun getAt(position: Vec2): Pair<Element, Vec2>? {
         val size = size
-        val position = MVec2f(position)
 
         if (position.y in size.y - lengthLimitSwitch.size.y..size.y) {
             position.y -= size.y - lengthLimitSwitch.size.y
@@ -164,7 +160,7 @@ class SignEditorScreen(
         position.y -= (1.8f * BACKGROUND_SCALE).toInt()
 
         for (line in lines) {
-            getAtCheck(position, line, HorizontalAlignments.CENTER, true, Vec2f(SignBlockEntityRenderer.SIGN_MAX_WIDTH * TEXT_PROPERTIES.scale, TEXT_PROPERTIES.lineHeight))?.let { return it }
+            getAtCheck(position, line, HorizontalAlignments.CENTER, true, Vec2(SignBlockEntityRenderer.SIGN_MAX_WIDTH * TEXT_PROPERTIES.scale, TEXT_PROPERTIES.lineHeight))?.let { return it }
             if (position.y < 0) {
                 return null
             }
@@ -200,7 +196,7 @@ class SignEditorScreen(
         return lines[activeLine].onKey(key, type)
     }
 
-    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         val (element, offset) = getAt(position) ?: return false
         val lineIndex = lines.indexOf(element)
         if (element is TextInputElement && lineIndex >= 0 && lineIndex != this.activeLine) {
@@ -225,12 +221,12 @@ class SignEditorScreen(
     companion object {
         private val ATLAS = minecraft("block/sign")
         private val TEXT_PROPERTIES = TextRenderProperties(scale = 2.0f, allowNewLine = false)
-        private val SIGN_UV_START = Vec2f(0.5f / 16.0f, 1.0f / 32.0f)
-        private val SIGN_UV_END = Vec2f(6.5f / 16.0f, 7.0f / 32.0f)
+        private val SIGN_UV_START = Vec2(0.5f / 16.0f, 1.0f / 32.0f)
+        private val SIGN_UV_END = Vec2(6.5f / 16.0f, 7.0f / 32.0f)
         private const val SIGN_MAX_CHARS = 384
 
         private const val BACKGROUND_SCALE = 9
-        private val BACKGROUND_SIZE = Vec2f(24, 12) * BACKGROUND_SCALE
+        private val BACKGROUND_SIZE = Vec2(24, 12) * BACKGROUND_SCALE
 
         fun register(guiRenderer: GUIRenderer) {
             guiRenderer.atlas.load(ATLAS)

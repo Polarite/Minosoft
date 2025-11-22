@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.feature
 
-import de.bixilon.minosoft.gui.rendering.entities.draw.EntityDrawer
+import de.bixilon.minosoft.gui.rendering.entities.feature.properties.InvisibleFeature.Companion.isInvisible
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
-import de.bixilon.minosoft.gui.rendering.entities.visibility.EntityVisibilityLevels
-import kotlin.time.Duration
 
 class FeatureManager(val renderer: EntityRenderer<*>) : Iterable<EntityRenderFeature> {
     private val features: ArrayList<EntityRenderFeature> = ArrayList(10)
@@ -32,35 +30,42 @@ class FeatureManager(val renderer: EntityRenderer<*>) : Iterable<EntityRenderFea
         this.features -= feature
     }
 
-    fun update(delta: Duration) {
+    fun update(millis: Long, delta: Float) {
         for (feature in features) {
-            if (!feature.isVisible()) continue
-            feature.update(delta)
+            if (feature.isInvisible()) continue
+            feature.update(millis, delta)
+        }
+    }
+
+    fun prepare() {
+        for (feature in features) {
+            if (feature.isInvisible()) continue
+            feature.prepare()
         }
     }
 
     fun unload() {
-        features.forEach { it.unload() }
-        features.clear()
-    }
-
-    fun enqueueUnload() {
-        features.forEach { it.enqueueUnload() }
-    }
-
-    @Deprecated("What, why and how?")
-    fun invalidate() = features.forEach { it.invalidate() }
-    fun updateVisibility(level: EntityVisibilityLevels) = features.forEach { it.updateVisibility(level) }
-    fun collect(drawer: EntityDrawer) {
         for (feature in features) {
-            if (!feature.isVisible()) continue
-            feature.collect(drawer)
+            feature.unload()
+        }
+    }
+
+    fun reset() {
+        for (feature in features) {
+            feature.reset()
+        }
+    }
+
+    fun updateVisibility(occluded: Boolean) {
+        for (feature in features) {
+            feature.updateVisibility(occluded)
         }
     }
 
     fun clear() {
         features.clear()
     }
+
 
     override fun iterator(): Iterator<EntityRenderFeature> {
         return features.iterator()

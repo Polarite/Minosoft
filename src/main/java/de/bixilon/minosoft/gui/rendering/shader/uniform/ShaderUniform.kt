@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,45 @@
 
 package de.bixilon.minosoft.gui.rendering.shader.uniform
 
-import de.bixilon.minosoft.gui.rendering.shader.AbstractShader
-import de.bixilon.minosoft.gui.rendering.shader.Shader
+import de.bixilon.minosoft.gui.rendering.shader.ShaderSetter
+import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
-abstract class ShaderUniform(
-    protected val shader: AbstractShader,
-    val name: String,
-) {
+class ShaderUniform<T>(
+    private val native: NativeShader,
+    default: T,
+    private val name: String,
+    private val setter: ShaderSetter<T>,
+) : ReadWriteProperty<Any, T> {
+    private var value = default
+    private var upload: Boolean = true
 
-    open fun upload() {
-        shader.use()
+    fun upload() {
+        if (!upload) {
+            return
+        }
+        forceUpload()
+    }
+
+    fun forceUpload() {
+        native.use()
+        setter.set(native, name, value)
+        upload = false
+    }
+
+    override fun getValue(thisRef: Any, property: KProperty<*>): T {
+        return value
+    }
+
+    override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
+        if (this.value == value) {
+            return
+        }
+        this.value = value
+        upload = true
+        if (Thread.currentThread() == native.context.thread) {
+            upload()
+        }
     }
 }

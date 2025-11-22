@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,12 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base.texture
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.RenderConstants
 import de.bixilon.minosoft.gui.rendering.gui.atlas.textures.CodeTexturePart
-import de.bixilon.minosoft.gui.rendering.shader.types.TextureShader
+import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
 import de.bixilon.minosoft.gui.rendering.system.base.shader.ShaderUniforms
 import de.bixilon.minosoft.gui.rendering.system.base.texture.array.StaticTextureArray
 import de.bixilon.minosoft.gui.rendering.system.base.texture.array.font.FontTextureArray
@@ -45,7 +45,7 @@ abstract class TextureManager {
             throw IllegalStateException("Already initialized!")
         }
         debugTexture = static.create(RenderConstants.DEBUG_TEXTURE_RESOURCE_LOCATION)
-        whiteTexture = CodeTexturePart(texture = static.create(minosoft("white").texture(), mipmaps = false), uvStart = Vec2f(0.0f, 0.0f), uvEnd = Vec2f(0.001f, 0.001f), size = Vec2i(16, 16))
+        whiteTexture = CodeTexturePart(texture = static.create(minosoft("white").texture(), mipmaps = false), uvStart = Vec2(0.0f, 0.0f), uvEnd = Vec2(0.001f, 0.001f), size = Vec2i(16, 16))
     }
 
     fun initializeSkins(session: PlaySession) {
@@ -53,7 +53,7 @@ abstract class TextureManager {
         skins.initialize(session.account, session.assetsManager)
     }
 
-    fun use(shader: TextureShader, name: String = ShaderUniforms.TEXTURES) {
+    fun use(shader: NativeShader, name: String = ShaderUniforms.TEXTURES) {
         static.use(shader, name)
         dynamic.use(shader, name)
         font.use(shader, name)
@@ -61,9 +61,5 @@ abstract class TextureManager {
 
     fun reload() {
         dynamic.reload()
-    }
-
-    fun unload() {
-        static.animator.unload()
     }
 }

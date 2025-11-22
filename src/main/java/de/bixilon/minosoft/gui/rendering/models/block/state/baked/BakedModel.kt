@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,22 +13,16 @@
 
 package de.bixilon.minosoft.gui.rendering.models.block.state.baked
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.block.BlockEntity
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
-import de.bixilon.minosoft.data.text.formatting.color.RGBArray
 import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.chunk.mesh.BlockVertexConsumer
-import de.bixilon.minosoft.gui.rendering.chunk.mesh.details.ChunkMeshDetails
-import de.bixilon.minosoft.gui.rendering.chunk.mesh.details.ChunkMeshDetails.toMeshDetail
-import de.bixilon.minosoft.gui.rendering.light.ao.AmbientOcclusionUtil
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.cull.FaceCulling
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.cull.side.SideProperties
 import de.bixilon.minosoft.gui.rendering.models.block.state.render.BlockRender
-import de.bixilon.minosoft.gui.rendering.models.block.state.render.WorldRenderProps
 import de.bixilon.minosoft.gui.rendering.models.raw.display.DisplayPositions
 import de.bixilon.minosoft.gui.rendering.models.raw.display.ModelDisplay
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
@@ -48,44 +42,20 @@ class BakedModel(
 
     override fun getProperties(direction: Directions) = properties[direction.ordinal]
 
-    override fun getParticleTexture(random: Random?, position: BlockPosition) = particle
+    override fun getParticleTexture(random: Random?, position: Vec3i) = particle
 
-    override fun render(props: WorldRenderProps, position: BlockPosition, state: BlockState, entity: BlockEntity?, tints: RGBArray?): Boolean {
-        val details = props.details
-        val aggressive = ChunkMeshDetails.AGGRESSIVE_CULLING in details
-        val cave = BlockStateFlags.CAVE_SURFACE in state.flags
-
-        val darkCaveSurface = ChunkMeshDetails.DARK_CAVE_SURFACE in details // TODO: only check sky light?
-
+    override fun render(position: BlockPosition, offset: FloatArray, mesh: BlockVertexConsumer, random: Random?, state: BlockState, neighbours: Array<BlockState?>, light: ByteArray, tints: IntArray?, entity: BlockEntity?): Boolean {
         var rendered = false
-
-        val offset = props.offset
-        val mesh = props.mesh
-        val light = props.light
-        val ao = props.ao
-        val neighbours = props.neighbours
-
 
         for ((directionIndex, faces) in faces.withIndex()) {
             val neighbour = neighbours[directionIndex]
-            val direction = Directions.VALUES[directionIndex]
-            if (direction.toMeshDetail() !in details) continue
-            val inverted = direction.inverted
-            if (cave && !darkCaveSurface && light[directionIndex] == 0.toByte() && neighbours[directionIndex] == null) continue
-
+            val direction = Directions.VALUES[directionIndex].inverted
 
             for (face in faces) {
-                if (FaceCulling.canCull(state, face.properties, inverted, neighbour, aggressive)) {
+                if (FaceCulling.canCull(state, face.properties, direction, neighbour)) {
                     continue
                 }
-
-                var aoRaw = AmbientOcclusionUtil.EMPTY
-
-                if (ao != null && face.properties != null) {
-                    aoRaw = ao.apply(direction, position.inSectionPosition)
-                }
-
-                face.render(offset, mesh, light, tints, aoRaw)
+                face.render(offset, mesh, light, tints)
 
                 rendered = true
             }
@@ -94,16 +64,16 @@ class BakedModel(
         return rendered
     }
 
-    private fun render(offset: Vec3f, mesh: BlockVertexConsumer, tints: RGBArray?) {
-        for (side in this.faces) {
-            for (face in side) {
-                face.render(offset, mesh, tints)
+    private fun render(mesh: BlockVertexConsumer, tints: IntArray?) {
+        for (faces in faces) {
+            for (face in faces) {
+                face.render(mesh, tints)
             }
         }
     }
 
-    override fun render(consumer: BlockVertexConsumer, state: BlockState, tints: RGBArray?) = render(Vec3f.EMPTY, consumer, tints)
-    override fun render(offset: Vec3f, consumer: BlockVertexConsumer, stack: ItemStack, tints: RGBArray?) = render(offset, consumer, tints)
+    override fun render(mesh: BlockVertexConsumer, state: BlockState, tints: IntArray?) = render(mesh, tints)
+    override fun render(mesh: BlockVertexConsumer, stack: ItemStack, tints: IntArray?) = render(mesh, tints)
 
     override fun getDisplay(position: DisplayPositions): ModelDisplay? {
         return this.display?.get(position)

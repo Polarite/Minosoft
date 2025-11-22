@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.physics.entities.living.player
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kutil.math.simple.DoubleMath.clamp
+import de.bixilon.kotlinglm.func.common.clamp
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.entities.Poses
 import de.bixilon.minosoft.data.entities.entities.player.PlayerEntity

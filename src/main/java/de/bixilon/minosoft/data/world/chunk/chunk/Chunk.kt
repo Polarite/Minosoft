@@ -12,142 +12,227 @@
  */
 package de.bixilon.minosoft.data.world.chunk.chunk
 
-import de.bixilon.kutil.cast.CastUtil.unsafeNull
-import de.bixilon.kutil.concurrent.lock.LockUtil.acquired
-import de.bixilon.kutil.concurrent.lock.LockUtil.locked
-import de.bixilon.kutil.concurrent.lock.locks.reentrant.ReentrantRWLock
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kutil.concurrent.lock.RWLock
 import de.bixilon.kutil.math.simple.IntMath.clamp
-import de.bixilon.minosoft.data.Tickable
+import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.block.BlockEntity
 import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.world.World
+import de.bixilon.minosoft.data.registries.blocks.types.entity.BlockWithEntity
+import de.bixilon.minosoft.data.world.biome.accessor.BiomeAccessor
 import de.bixilon.minosoft.data.world.biome.source.BiomeSource
 import de.bixilon.minosoft.data.world.chunk.ChunkSection
-import de.bixilon.minosoft.data.world.chunk.light.section.ChunkLight
+import de.bixilon.minosoft.data.world.chunk.light.ChunkLight
 import de.bixilon.minosoft.data.world.chunk.neighbours.ChunkNeighbours
 import de.bixilon.minosoft.data.world.chunk.update.block.ChunkLocalBlockUpdate
-import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkLightUpdate.Causes
+import de.bixilon.minosoft.data.world.chunk.update.block.SingleBlockUpdate
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
 import de.bixilon.minosoft.data.world.positions.InChunkPosition
 import de.bixilon.minosoft.data.world.positions.SectionHeight
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.inSectionHeight
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.sectionHeight
+import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
+import java.util.*
 
 /**
- * Collection of chunk sections (height aligned)
+ * Collection of chunks sections (from the lowest section to the highest section in y axis)
  */
 class Chunk(
-    val world: World,
-    val position: ChunkPosition,
-) : Tickable {
-    val lock = ReentrantRWLock()
+    val session: PlaySession,
+    val chunkPosition: ChunkPosition,
+    var biomeSource: BiomeSource,
+) : Iterable<ChunkSection?>, BiomeAccessor {
+    val lock = RWLock.rwlock()
+    val world = session.world
     val light = ChunkLight(this)
-    val sections = ChunkSectionManagement(this)
-    var biomeSource: BiomeSource? = null
-
-    @Deprecated("move to biome source?")
+    val minSection = world.dimension.minSection
+    val maxSection = world.dimension.maxSection
     val cacheBiomes = world.biomes.noise != null
+    var sections: Array<ChunkSection?> = arrayOfNulls(world.dimension.sections)
 
     val neighbours = ChunkNeighbours(this)
 
-    operator fun get(sectionHeight: SectionHeight): ChunkSection? = sections[sectionHeight]
 
-    operator fun get(position: InChunkPosition): BlockState? {
-        return this[position.sectionHeight]?.blocks?.get(position.inSectionPosition)
+    init {
+        light.heightmap.recalculate()
     }
 
-    operator fun set(position: InChunkPosition, state: BlockState?) {
-        sections.create(position.sectionHeight)?.set(position.inSectionPosition, state)
+    operator fun get(sectionHeight: SectionHeight): ChunkSection? = sections.getOrNull(sectionHeight - minSection)
+
+    operator fun get(x: Int, y: Int, z: Int): BlockState? {
+        return this[y.sectionHeight]?.blocks?.get(x, y.inSectionHeight, z)
     }
 
-    fun getBlockEntity(position: InChunkPosition): BlockEntity? {
-        return this[position.sectionHeight]?.entities?.get(position.inSectionPosition)
+    operator fun get(position: InChunkPosition): BlockState? = get(position.x, position.y, position.z)
+
+    operator fun set(x: Int, y: Int, z: Int, state: BlockState?) {
+        val section = getOrPut(y.sectionHeight) ?: return
+        val previous = section.blocks.set(x, y and 0x0F, z, state)
+        if (previous == state) return
+        if (previous?.block != state?.block) {
+            this[y.sectionHeight]?.blockEntities?.set(x, y and 0x0F, z, null)
+        }
+        val entity = getOrPutBlockEntity(x, y, z)
+
+        if (world.dimension.light) {
+            light.onBlockChange(x, y, z, section, previous, state)
+        }
+
+        SingleBlockUpdate(Vec3i(chunkPosition.x * ProtocolDefinition.SECTION_WIDTH_X + x, y, chunkPosition.y * ProtocolDefinition.SECTION_WIDTH_Z + z), this, state, entity).fire(session)
     }
 
-    fun updateBlockEntity(position: InChunkPosition): BlockEntity? {
-        return this[position.sectionHeight]?.entities?.update(position.inSectionPosition)
+    operator fun set(position: Vec3i, blockState: BlockState?) = set(position.x, position.y, position.z, blockState)
+
+    fun getBlockEntity(x: Int, y: Int, z: Int): BlockEntity? {
+        return this[y.sectionHeight]?.blockEntities?.get(x, y.inSectionHeight, z)
     }
 
-    fun apply(update: ChunkLocalBlockUpdate.Change) {
+    fun getOrPutBlockEntity(x: Int, y: Int, z: Int): BlockEntity? {
+        val sectionHeight = y.sectionHeight
+        val inSectionHeight = y.inSectionHeight
+        var blockEntity = this[sectionHeight]?.blockEntities?.get(x, inSectionHeight, z)
+        val state = this[sectionHeight]?.blocks?.get(x, inSectionHeight, z) ?: return null
+        if (blockEntity != null && state.block !is BlockWithEntity<*>) {
+            this[sectionHeight]?.blockEntities?.set(x, inSectionHeight, z, null)
+            return null
+        }
+        if (blockEntity != null) {
+            return blockEntity
+        }
+        if (state.block !is BlockWithEntity<*>) {
+            return null
+        }
+        blockEntity = state.block.createBlockEntity(session) ?: return null
+        (this.getOrPut(sectionHeight) ?: return null).blockEntities[x, inSectionHeight, z] = blockEntity
+
+        return blockEntity
+    }
+
+    fun getBlockEntity(position: Vec3i): BlockEntity? = getBlockEntity(position.x, position.y, position.z)
+    fun getOrPutBlockEntity(position: Vec3i): BlockEntity? = getOrPutBlockEntity(position.x, position.y, position.z)
+
+    operator fun set(x: Int, y: Int, z: Int, blockEntity: BlockEntity) {
+        this.set(x, y, z, blockEntity as BlockEntity?)
+    }
+
+    @JvmName("set2")
+    fun set(x: Int, y: Int, z: Int, blockEntity: BlockEntity?) {
+        (getOrPut(y.sectionHeight) ?: return).blockEntities[x, y.inSectionHeight, z] = blockEntity
+    }
+
+    operator fun set(position: Vec3i, blockEntity: BlockEntity) = set(position.x, position.y, position.z, blockEntity)
+
+    @JvmName("set2")
+    fun set(position: Vec3i, blockEntity: BlockEntity?) = set(position.x, position.y, position.z, blockEntity)
+
+
+    fun apply(update: ChunkLocalBlockUpdate.LocalUpdate) {
         this[update.position] = update.state
     }
 
-    private fun unsafeApply(vararg updates: ChunkLocalBlockUpdate.Change): MutableSet<ChunkLocalBlockUpdate.Change> {
-        val executed: MutableSet<ChunkLocalBlockUpdate.Change> = HashSet(updates.size)
-
-        for (update in updates) {
-            val (position, state) = update
-            val sectionHeight = position.sectionHeight
-
-            var section = this[sectionHeight]
-            if (state == null && section == null) continue
-
-            section = this.sections.create(sectionHeight) ?: continue
-
-            val previous = section.blocks.set(position.inSectionPosition, state)
-
-            if (previous == update.state) continue
-            if (previous?.block != state?.block) {
-                section.entities[position.inSectionPosition] = null
-            }
-
-            section.entities.update(position.inSectionPosition)
-
-            executed += update
-        }
-
-        return executed
-    }
-
-    fun apply(vararg updates: ChunkLocalBlockUpdate.Change) {
+    fun apply(updates: Collection<ChunkLocalBlockUpdate.LocalUpdate>) {
         if (updates.isEmpty()) return
         if (updates.size == 1) return apply(updates.first())
 
+        val executed: MutableSet<ChunkLocalBlockUpdate.LocalUpdate> = hashSetOf()
+        val sections: MutableSet<ChunkSection> = hashSetOf()
 
-        var executed: Set<ChunkLocalBlockUpdate.Change> = unsafeNull()
-        lock.locked {
-            executed = unsafeApply(*updates)
+        lock.lock()
+        for (update in updates) {
+            val sectionHeight = update.position.y.sectionHeight
+            var section = this[sectionHeight]
+            if (update.state == null && section == null) continue
 
-            if (executed.isEmpty()) return
-
-            light.heightmap.recalculate() // TODO: Only changed ones
-            light.recalculate(fireEvent = false, cause = Causes.INITIAL)
+            section = getOrPut(sectionHeight, lock = false) ?: continue
+            val previous = section.blocks.noOcclusionSet(update.position.x, update.position.y.inSectionHeight, update.position.z, update.state)
+            if (previous == update.state) continue
+            if (previous?.block != update.state?.block) {
+                this[update.position.y.sectionHeight]?.blockEntities?.set(update.position.x, update.position.y and 0x0F, update.position.z, null)
+            }
+            getOrPutBlockEntity(update.position)
+            executed += update
+            sections += section
         }
 
-        if (neighbours.complete) {
-            val sections: HashSet<ChunkSection> = hashSetOf()
+        if (executed.isEmpty()) {
+            return lock.unlock()
+        }
+        light.heightmap.recalculate()
+        light.recalculate()
 
-            for (change in executed) {
-                sections += this[change.position.sectionHeight] ?: continue
-            }
-
-            for (section in sections) {
-                light.fireLightChange(section, Causes.BLOCK_CHANGE)
-            }
-            light.fireLightChange(Causes.PROPAGATION)
+        for (section in sections) {
+            section.blocks.occlusion.recalculate(true)
         }
 
-        ChunkLocalBlockUpdate(this, executed).fire(world.session)
+        lock.unlock()
+
+        ChunkLocalBlockUpdate(chunkPosition, this, executed).fire(session)
     }
 
-    @Deprecated("sections.create")
-    fun getOrPut(height: Int, light: Boolean = true) = sections.create(height, light)
+    fun getOrPut(sectionHeight: Int, calculateLight: Boolean = true, lock: Boolean = true): ChunkSection? {
+        val index = sectionHeight - minSection
+        if (index < 0 || index >= sections.size) {
+            return null
+        }
+        sections[index]?.let { return it }
+        if (lock) this.lock.lock()
 
-    override fun tick() {
+        var section = sections[index] // get another time, it might have changed already
+        if (section == null) {
+            section = ChunkSection(sectionHeight, chunk = this)
+            val neighbours = this.neighbours.get()
+            if (neighbours != null) {
+                this.neighbours.completeSection(neighbours, section, sectionHeight, world.biomes.noise)
+            }
+
+            sections[index] = section
+
+            if (index > 0) {
+                sections[index - 1]?.neighbours?.set(Directions.O_UP, section)
+            }
+            if (index < maxSection - 1) {
+                sections[index + 1]?.neighbours?.set(Directions.O_DOWN, section)
+            }
+
+            if (neighbours != null) {
+                for (neighbour in neighbours) {
+                    val neighbourNeighbours = neighbour.neighbours.get() ?: continue
+                    neighbour.neighbours.update(neighbourNeighbours, sectionHeight)
+                }
+            }
+
+            // check light of neighbours to check if their light needs to be traced into our own chunk
+            if (calculateLight) {
+                section.light.propagateFromNeighbours()
+            }
+        }
+        if (lock) this.lock.unlock()
+        return section
+    }
+
+    fun tick(session: PlaySession, chunkPosition: Vec2i, random: Random) {
         if (!neighbours.complete) return
-        lock.acquired { sections.forEach { it.tick() } }
-    }
-
-    fun getBiome(position: InChunkPosition): Biome? {
-        val position = position.with(y = position.y.clamp(world.dimension.minY, world.dimension.maxY))
-        if (!cacheBiomes) {
-            return biomeSource?.get(position)
+        lock.acquire()
+        for ((index, section) in sections.withIndex()) {
+            section?.tick(session, chunkPosition, index + minSection, random)
         }
-        this[position.sectionHeight]?.let { return it.biomes[position] }
-
-        return world.biomes.noise?.get(position, this)
+        lock.release()
     }
 
-    override fun toString() = "Chunk($position)"
+    override fun iterator(): Iterator<ChunkSection?> {
+        return sections.iterator()
+    }
+
+    override fun getBiome(x: Int, y: Int, z: Int): Biome? {
+        val y = y.clamp(world.dimension.minY, world.dimension.maxY)
+        if (!cacheBiomes) {
+            return biomeSource.get(x, y, z)
+        }
+        return session.world.biomes.getBiome(x, y, z, this)
+    }
 }
 
 

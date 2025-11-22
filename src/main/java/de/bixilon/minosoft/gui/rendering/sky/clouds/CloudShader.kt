@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,22 +13,23 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.clouds
 
-import de.bixilon.kmath.mat.mat4.f.Mat4f
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.gui.rendering.camera.fog.FogManager
 import de.bixilon.minosoft.gui.rendering.shader.Shader
 import de.bixilon.minosoft.gui.rendering.shader.types.FogShader
 import de.bixilon.minosoft.gui.rendering.shader.types.ViewProjectionShader
 import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
 
 class CloudShader(
-    native: NativeShader,
-) : Shader(native), ViewProjectionShader, FogShader {
-    override var viewProjectionMatrix: Mat4f by viewProjectionMatrix()
-    override var cameraPosition: Vec3f by cameraPosition()
+    override val native: NativeShader,
+) : Shader(), ViewProjectionShader, FogShader {
+    override var viewProjectionMatrix: Mat4 by viewProjectionMatrix()
+    override var cameraPosition: Vec3 by cameraPosition()
     override var fog: FogManager by fog()
 
-    var cloudsColor by uniform("uCloudsColor", Vec3f.EMPTY)
+    var cloudsColor by uniform("uCloudsColor", Vec3.EMPTY)
     var offset by uniform("uOffset", 0.0f)
     var yOffset by uniform("uYOffset", 0.0f)
 }

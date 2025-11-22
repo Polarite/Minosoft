@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,20 +13,18 @@
 
 package de.bixilon.minosoft.gui.rendering.input.count
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import kotlin.time.Duration
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class KeyClickCounter(
-    maxDelay: Duration = ClickCounter.MAX_DELAY,
-    minDelayBetween: Duration = ClickCounter.MIN_DELAY_BETWEEN,
+    maxDelay: Int = ClickCounter.MAX_DELAY,
+    minDelayBetween: Int = ClickCounter.MIN_DELAY_BETWEEN,
 ) : ClickCounter {
     val press = SingleClickCounter(maxDelay, minDelayBetween)
     val release = SingleClickCounter(maxDelay, minDelayBetween)
 
-    override fun getClicks(buttons: MouseButtons, action: MouseActions, position: Vec2f, time: ValueTimeMark): Int {
+    override fun getClicks(buttons: MouseButtons, action: MouseActions, position: Vec2, time: Long): Int {
         return if (action == MouseActions.PRESS) {
             press.getClicks(buttons, action, position, time)
         } else {

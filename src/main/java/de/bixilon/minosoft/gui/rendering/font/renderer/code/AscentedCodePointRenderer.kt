@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.font.renderer.code
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 
 /**
@@ -26,8 +25,8 @@ interface AscentedCodePointRenderer : RasterizedCodePointRenderer {
     val height: Float
 
 
-    override fun calculateStart(properties: TextRenderProperties, base: Vec2f, scale: Float): MVec2f {
-        val position = MVec2f(base)
+    override fun calculateStart(properties: TextRenderProperties, base: Vec2, scale: Float): Vec2 {
+        val position = Vec2(base)
         var diff = ascent - DEFAULT_ASCENT
         if (diff > 2.0f) {
             diff += 0.8f // TODO: dirty hack
@@ -38,8 +37,8 @@ interface AscentedCodePointRenderer : RasterizedCodePointRenderer {
         return position
     }
 
-    override fun calculateEnd(properties: TextRenderProperties, start: Vec2f, scale: Float): MVec2f {
-        val position = MVec2f(start)
+    override fun calculateEnd(properties: TextRenderProperties, start: Vec2, scale: Float): Vec2 {
+        val position = Vec2(start)
         position.y += (height * scale)
         position.x += width * scale
 

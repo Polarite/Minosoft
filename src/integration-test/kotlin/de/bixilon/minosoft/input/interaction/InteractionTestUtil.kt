@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.input.interaction
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
@@ -30,6 +30,7 @@ import de.bixilon.minosoft.data.entities.entities.player.additional.PlayerAdditi
 import de.bixilon.minosoft.data.physics.PhysicsTestUtil.createPlayer
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PacketTestUtil.assertPacket
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil
@@ -46,7 +47,7 @@ object InteractionTestUtil {
 
     fun createSession(): PlaySession {
         val session = SessionTestUtil.createSession(0)
-        createPlayer(session)
+        val player = createPlayer(session)
 
         return session
     }
@@ -80,10 +81,12 @@ object InteractionTestUtil {
 
 
     fun KeyHandler.unsafePress() {
+        this::isPressed.forceSet(true)
         PRESS.invoke(this)
     }
 
     fun KeyHandler.unsafeRelease() {
+        this::isPressed.forceSet(false)
         RELEASE.invoke(this)
     }
 

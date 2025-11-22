@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,27 +13,27 @@
 
 package de.bixilon.minosoft.data.world.iterator
 
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.CollisionPredicate
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.CollisionContext
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.EmptyCollisionContext
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.EntityCollisionContext
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidHolder
 import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.collision.CollidableBlock
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
-import de.bixilon.minosoft.data.registries.shapes.aabb.AABBIterator
-import de.bixilon.minosoft.data.registries.shapes.shape.Shape
 import de.bixilon.minosoft.data.world.World
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.assignChunkPosition
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
 
 class WorldIterator(
-    private val iterator: AABBIterator,
+    private val iterator: Iterator<Vec3i>,
     private val world: World,
     private var chunk: Chunk? = null,
 ) : Iterator<BlockPair> {
-    private var pair: BlockPair? = null
     private var next: BlockPair? = null
     private var revision = -1
 
@@ -48,32 +48,27 @@ class WorldIterator(
         val minY = world.dimension.minY
         val maxY = world.dimension.maxY
 
+        val chunkPosition = Vec2i.EMPTY
+        val offset = Vec2i.EMPTY
         for (position in iterator) {
             if (position.y !in minY..maxY) continue
-            val chunkPosition = position.chunkPosition
+            chunkPosition.assignChunkPosition(position)
 
             if (chunk == null) {
                 if (revision == world.chunks.revision) continue // previously found no chunk, can not find it now
                 this.revision = world.chunks.revision
                 chunk = world.chunks[chunkPosition] ?: continue
-            } else if (chunk.position != chunkPosition) {
-                chunk = chunk.neighbours.traceChunk(chunkPosition - chunk.position) ?: continue
+            } else if (chunk.chunkPosition != chunkPosition) {
+                offset.x = chunkPosition.x - chunk.chunkPosition.x
+                offset.y = chunkPosition.y - chunk.chunkPosition.y
+                chunk = chunk.neighbours.trace(offset) ?: continue
             }
             if (this.chunk !== chunk) {
                 this.chunk = chunk
             }
-            // TODO: some fast skip? (if section is empty, can not be in section or chunk is null)
 
-            val state = chunk[position.inChunkPosition] ?: continue
-
-            val pair = pair ?: BlockPair(position, state, chunk)
-            this.pair = pair
-
-            pair.position = position
-            pair.state = state
-            pair.chunk = chunk
-            this.next = pair
-
+            val state = chunk[position.x and 0x0F, position.y, position.z and 0x0F] ?: continue
+            this.next = BlockPair(position, state, chunk)
             return true
         }
 
@@ -109,25 +104,17 @@ class WorldIterator(
     fun hasCollisions(context: CollisionContext, fluids: Boolean = true, predicate: CollisionPredicate? = null): Boolean {
         val aabb = context.aabb
         for ((position, state) in this) {
-            if (fluids && (BlockStateFlags.FLUID in state.flags && state.block is FluidHolder)) {
+            if (fluids && (state.block is FluidHolder)) {
                 //   val height = state.block.fluid.getHeight(state)
                 //   if (position.y + height > aabb.min.y) {
                 return true
                 //    }
             }
-            if (BlockStateFlags.COLLISIONS !in state.flags || state.block !is CollidableBlock) continue
+            if (state.block !is CollidableBlock) continue
             if (predicate != null && !predicate.invoke(state)) continue
 
-            val entity = chunk?.getBlockEntity(position.inChunkPosition)
-
-            val block = state.block
-            val shape = when {
-                BlockStateFlags.FULL_COLLISION in state.flags -> Shape.FULL
-                else -> block.collisionShape ?: block.getCollisionShape(state) ?: block.getCollisionShape(world.session, context, position, state) ?: entity?.let { block.getCollisionShape(world.session, context, position, state, it) }
-            } ?: continue
-
-
-            if ((shape + position).intersects(aabb)) {
+            val shape = state.block.getCollisionShape(world.session, context, position, state, null) ?: continue
+            if ((shape + position).intersect(aabb)) {
                 return true
             }
         }

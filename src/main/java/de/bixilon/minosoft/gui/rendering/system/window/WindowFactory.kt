@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,17 +14,13 @@
 package de.bixilon.minosoft.gui.rendering.system.window
 
 import de.bixilon.minosoft.gui.rendering.RenderContext
-import de.bixilon.minosoft.gui.rendering.system.window.glfw.GlfwWindowFactory
 
 interface WindowFactory {
 
-    fun create(context: RenderContext): Window
+    fun create(context: RenderContext): BaseWindow
 
 
     companion object {
-        val FACTORIES: Map<String, WindowFactory> = mapOf(
-            "glfw" to GlfwWindowFactory,
-        )
-        var factory: WindowFactory? = GlfwWindowFactory
+        var factory: WindowFactory? = null
     }
 }

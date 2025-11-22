@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,15 @@
 
 package de.bixilon.minosoft.physics.entities.item
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.swizzle.xz
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.minosoft.data.entities.entities.item.ItemEntity
 import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.FrictionBlock
 import de.bixilon.minosoft.data.registries.fluid.Fluid
 import de.bixilon.minosoft.data.registries.fluid.fluids.LavaFluid
 import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.inChunkPosition
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.blockPosition
 import de.bixilon.minosoft.physics.PhysicsConstants
 import de.bixilon.minosoft.physics.entities.EntityPhysics
@@ -28,25 +30,27 @@ class ItemEntityPhysics(entity: ItemEntity) : EntityPhysics<ItemEntity>(entity) 
 
 
     private fun updateFluidVelocity(friction: Float) {
-        this.velocity.x *= friction
-        this.velocity.y += if (this.velocity.y < 0.06f) 5.0E-4f else 0.0f
-        this.velocity.z *= friction
+        val velocity = this.velocity
+        this.velocity = Vec3d(
+            velocity.x * friction,
+            velocity.y + if (this.velocity.y < 0.06f) 5.0E-4f else 0.0f,
+            velocity.z * friction,
+        )
     }
 
     private fun updateVelocity() {
-        if (submersion.heights.isNotEmpty()) {
-            val minLevel = entity.eyeHeight - Fluid.MIN_LEVEL
-            for ((fluid, height) in submersion.heights) {
-                if (height <= minLevel) continue
-                updateFluidVelocity(fluid.friction)
-                return
-            }
+        val minLevel = entity.eyeHeight - Fluid.MIN_LEVEL
+
+        for ((fluid, height) in submersion.heights) {
+            if (height <= minLevel) continue
+            updateFluidVelocity(fluid.friction)
+            return
         }
 
         if (!entity.hasGravity) return
         if (onGround && this.velocity.y == GRAVITY) return
 
-        this.velocity.y += GRAVITY
+        this.velocity = velocity + GRAVITY_MOVEMENT
     }
 
     private fun updateFriction() {
@@ -55,9 +59,7 @@ class ItemEntityPhysics(entity: ItemEntity) : EntityPhysics<ItemEntity>(entity) 
             val frictionPosition = (position + FRICTION_OFFSET).blockPosition.inChunkPosition
             friction *= positionInfo.chunk?.get(frictionPosition)?.block?.nullCast<FrictionBlock>()?.friction ?: FrictionBlock.DEFAULT_FRICTION
         }
-        this.velocity.x *= friction
-        this.velocity.y *= PhysicsConstants.AIR_RESISTANCE
-        this.velocity.z *= friction
+        this.velocity = this.velocity * Vec3d(friction, PhysicsConstants.AIR_RESISTANCE, friction)
     }
 
     private fun boost() {
@@ -65,7 +67,7 @@ class ItemEntityPhysics(entity: ItemEntity) : EntityPhysics<ItemEntity>(entity) 
 
         val velocity = this.velocity
         if (velocity.y < 0.0) {
-            this.velocity.y *= -0.5
+            this.velocity = Vec3d(velocity.x, velocity.y * -0.5, velocity.z)
         }
     }
 
@@ -74,10 +76,9 @@ class ItemEntityPhysics(entity: ItemEntity) : EntityPhysics<ItemEntity>(entity) 
         if (position.y < entity.session.world.dimension.minY - 20.0) return // ignore out of world entities
 
         updateVelocity()
-        val velocity = this.velocity
-        if (onGround && (velocity.x * velocity.x + velocity.z * velocity.z) <= 9.999999747378752E-6 && entity.age % 4 != 0) return
+        if (onGround && this.velocity.xz.length2() <= 9.999999747378752E-6 && entity.age % 4 != 0) return
 
-        move()
+        move(this.velocity)
 
         updateFriction()
         boost()
@@ -85,6 +86,7 @@ class ItemEntityPhysics(entity: ItemEntity) : EntityPhysics<ItemEntity>(entity) 
 
     companion object {
         const val GRAVITY = -0.04
+        val GRAVITY_MOVEMENT = Vec3d(0.0, GRAVITY, 0.0)
         val FRICTION_OFFSET = Vec3d(0, -1, 0)
 
         val Fluid.friction: Float

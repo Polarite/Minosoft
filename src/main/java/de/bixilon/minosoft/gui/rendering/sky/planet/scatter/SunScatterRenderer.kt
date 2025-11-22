@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.planet.scatter
 
-import de.bixilon.kmath.mat.mat4.f.MMat4f
-import de.bixilon.kmath.mat.mat4.f.Mat4f
-import de.bixilon.kmath.vec.vec3.f.Vec3f
-import de.bixilon.kmath.vec.vec4.f.Vec4f
+import de.bixilon.kotlinglm.func.rad
+import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec4.Vec4
+import de.bixilon.kotlinglm.vec4.swizzle.xyz
 import de.bixilon.kutil.math.MathConstants.PIf
 import de.bixilon.kutil.math.Trigonometry.sin
-import de.bixilon.kutil.primitive.FloatUtil.rad
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.world.time.DayPhases
 import de.bixilon.minosoft.data.world.time.WorldTime
@@ -28,19 +28,25 @@ import de.bixilon.minosoft.gui.rendering.sky.SkyRenderer
 import de.bixilon.minosoft.gui.rendering.sky.planet.SunRenderer
 import de.bixilon.minosoft.gui.rendering.system.base.BlendingFunctions
 import de.bixilon.minosoft.gui.rendering.system.base.RenderingCapabilities
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.Z
 import kotlin.math.abs
 
 class SunScatterRenderer(
     private val sky: SkyRenderer,
     private val sun: SunRenderer,
 ) : SkyChildRenderer {
-    private val shader = sky.context.system.shader.create(minosoft("sky/scatter/sun")) { SunScatterShader(it) }
-    private val mesh = SunScatterMeshBuilder(sky.context).bake()
+    private val shader = sky.renderSystem.createShader(minosoft("sky/scatter/sun")) { SunScatterShader(it) }
+    private val mesh = SunScatterMesh(sky.context)
+    private var matrix = Mat4()
     private var timeUpdate = true
-    private var skyMatrix = Mat4f()
+    private var skyMatrix = Mat4()
 
-    private fun calculateMatrix(skyMatrix: Mat4f) = MMat4f(skyMatrix).apply {
-        rotateZAssign((sun.calculateAngle() + 90.0f).rad)
+    private fun calculateMatrix(skyMatrix: Mat4) {
+        val matrix = Mat4(skyMatrix)
+
+        matrix.rotateAssign((sun.calculateAngle() + 90.0f).rad, Vec3.Z)
+
+        this.matrix = matrix
     }
 
     override fun init() {
@@ -57,12 +63,11 @@ class SunScatterRenderer(
         return maxOf(sin(delta * PIf / 2.0f), 0.5f)
     }
 
-    private fun calculateSunPosition(): Vec3f {
-        val matrix = MMat4f().apply {
-            rotateZAssign((sun.calculateAngle() + 90.0f).rad)
-        }
+    private fun calculateSunPosition(): Vec3 {
+        val matrix = Mat4()
+        matrix.rotateAssign((sun.calculateAngle() + 90.0f).rad, Vec3.Z)
 
-        val barePosition = Vec4f(1.0f, 0.128f, 0.0f, 1.0f)
+        val barePosition = Vec4(1.0f, 0.128f, 0.0f, 1.0f)
 
         return (matrix * barePosition).xyz
     }
@@ -91,21 +96,20 @@ class SunScatterRenderer(
             shader.intensity = (1.0f - weatherLevel) * calculateIntensity(sky.time.progress)
         }
         val skyMatrix = sky.matrix
-        if (this.skyMatrix != skyMatrix) {
-            shader.scatterMatrix = calculateMatrix(skyMatrix).unsafe
+        if (this.skyMatrix !== skyMatrix) {
+            calculateMatrix(skyMatrix)
+            shader.scatterMatrix = matrix
             this.skyMatrix = skyMatrix
         }
 
-        val system = sky.context.system
-
-        system.enable(RenderingCapabilities.BLENDING)
-        system.setBlendFunction(
+        sky.renderSystem.enable(RenderingCapabilities.BLENDING)
+        sky.renderSystem.setBlendFunction(
             sourceRGB = BlendingFunctions.SOURCE_ALPHA,
             destinationRGB = BlendingFunctions.ONE_MINUS_SOURCE_ALPHA,
             sourceAlpha = BlendingFunctions.SOURCE_ALPHA,
             destinationAlpha = BlendingFunctions.DESTINATION_ALPHA,
         )
         mesh.draw()
-        system.resetBlending()
+        sky.renderSystem.resetBlending()
     }
 }

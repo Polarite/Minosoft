@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.protocol.packets.s2c.play.map.legacy
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.font.types.bitmap
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.kutil.json.JsonObject
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.primitive.IntUtil.toInt
@@ -68,7 +67,7 @@ class BitmapFontType(
         override val identifier = minecraft("bitmap")
 
         override fun build(context: RenderContext, manager: FontManager, data: JsonObject): BitmapFontType? {
-            val file = data["file"]?.toString()?.toResourceLocation()?.texture() ?: throw IllegalArgumentException("Missing file!")
+            val file = data["file"]?.toString()?.let { it.toResourceLocation().texture() } ?: throw IllegalArgumentException("Missing file!")
             val height = data["height"]?.toInt() ?: 8
             val ascent = data["ascent"]?.toInt() ?: DEFAULT_ASCENT.toInt()
             val chars = data["chars"]?.listCast<String>() ?: throw IllegalArgumentException("Missing chars!")
@@ -101,16 +100,16 @@ class BitmapFontType(
             }
         }
 
-        private fun createRenderer(texture: Texture, offset: Vec2f, pixel: Vec2f, start: Int, end: Int, height: Int, ascent: Int): CodePointRenderer {
+        private fun createRenderer(texture: Texture, offset: Vec2, pixel: Vec2, start: Int, end: Int, height: Int, ascent: Int): CodePointRenderer {
             if (end < start) return EmptyCodeRenderer()
 
             val width = end - start + 1
 
-            val uvStart = MVec2f(offset)
+            val uvStart = Vec2(offset)
             uvStart.x += start * pixel.x
             uvStart.fixUVStart()
 
-            val uvEnd = MVec2f(offset)
+            val uvEnd = Vec2(offset)
             uvEnd.x += width * pixel.x
             uvEnd.y += height * pixel.y
             uvEnd.fixUVEnd()
@@ -118,7 +117,7 @@ class BitmapFontType(
             val scale = if (height < CHAR_BASE_HEIGHT) 1 else height / CHAR_BASE_HEIGHT
             val scaledWidth = width / scale
 
-            return BitmapCodeRenderer(texture, uvStart.unsafe, uvEnd.unsafe, scaledWidth.toFloat(), (height / scale).toFloat(), ascent.toFloat())
+            return BitmapCodeRenderer(texture, uvStart, uvEnd, scaledWidth.toFloat(), (height / scale).toFloat(), ascent.toFloat())
         }
 
         private fun load(texture: Texture, height: Int, ascent: Int, chars: Array<IntStream>): BitmapFontType? {
@@ -130,8 +129,8 @@ class BitmapFontType(
 
             val renderer = Int2ObjectOpenHashMap<CodePointRenderer>()
 
-            val pixel = Vec2f(1.0f / texture.size.x, 1.0f / texture.size.y)
-            val offset = MVec2f()
+            val pixel = Vec2(1.0f / texture.size.x, 1.0f / texture.size.y)
+            val offset = Vec2()
             for (row in 0 until rows) {
                 val iterator = chars[row].iterator()
 
@@ -142,7 +141,7 @@ class BitmapFontType(
                 var column = 0
                 while (iterator.hasNext()) {
                     val codePoint = iterator.nextInt()
-                    renderer[codePoint] = createRenderer(texture, offset.unsafe, pixel, start[column], end[column], height, ascent)
+                    renderer[codePoint] = createRenderer(texture, offset, pixel, start[column], end[column], height, ascent)
                     column++
                     offset.x += pixel.x * width
                 }

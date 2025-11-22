@@ -13,10 +13,15 @@
 
 package de.bixilon.minosoft.data.registries.fluid.fluids
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kutil.primitive.BooleanUtil.toBoolean
 import de.bixilon.kutil.random.RandomUtil.chance
+import de.bixilon.minosoft.data.registries.blocks.properties.BlockProperties
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
+import de.bixilon.minosoft.data.registries.blocks.state.PropertyBlockState
+import de.bixilon.minosoft.data.registries.blocks.types.fluid.water.WaterloggableBlock
+import de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.PixLyzerBlock
 import de.bixilon.minosoft.data.registries.effects.movement.MovementEffect
 import de.bixilon.minosoft.data.registries.enchantment.armor.MovementEnchantment
 import de.bixilon.minosoft.data.registries.fluid.Fluid
@@ -28,13 +33,14 @@ import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.Registries
 import de.bixilon.minosoft.data.world.World
-import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.camera.fog.FogOptions
 import de.bixilon.minosoft.gui.rendering.camera.fog.FoggedFluid
 import de.bixilon.minosoft.gui.rendering.models.fluid.fluids.WaterFluidModel
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.water.UnderwaterParticle
 import de.bixilon.minosoft.gui.rendering.tint.TintedBlock
 import de.bixilon.minosoft.gui.rendering.tint.tints.fluid.WaterTintProvider
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.toVec3d
 import de.bixilon.minosoft.physics.EntityPositionInfo
 import de.bixilon.minosoft.physics.entities.EntityPhysics
 import de.bixilon.minosoft.physics.entities.living.LivingEntityPhysics
@@ -45,7 +51,7 @@ import de.bixilon.minosoft.physics.parts.input.InputPhysics.applyMovementInput
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import java.util.*
 
-class WaterFluid(identifier: ResourceLocation = Companion.identifier) : Fluid(identifier), FluidEnterHandler, FluidCollisionHandler, TintedBlock, FoggedFluid {
+class WaterFluid(resourceLocation: ResourceLocation = identifier) : Fluid(resourceLocation), FluidEnterHandler, FluidCollisionHandler, TintedBlock, FoggedFluid {
     override val priority: Int get() = 0
     override val tintProvider get() = WaterTintProvider
 
@@ -57,28 +63,31 @@ class WaterFluid(identifier: ResourceLocation = Companion.identifier) : Fluid(id
 
     override fun matches(other: BlockState?): Boolean {
         if (other == null) return false
-        if (super.matches(other)) return true
+        if (super.matches(other)) {
+            return true
+        }
         return other.isWaterlogged()
     }
 
-    override fun getHeight(state: BlockState?): Float {
-        if (state == null) return 0.0f
-        if (state.isWaterlogged()) return MAX_LEVEL
+    override fun getHeight(state: BlockState): Float {
         val `super` = super.getHeight(state)
         if (`super` != 0.0f) {
             return `super`
         }
+        if (state.isWaterlogged()) {
+            return MAX_LEVEL
+        }
         return 0.0f
     }
 
-    override fun randomTick(session: PlaySession, blockState: BlockState, blockPosition: BlockPosition, random: Random) {
+    override fun randomTick(session: PlaySession, blockState: BlockState, blockPosition: Vec3i, random: Random) {
         super.randomTick(session, blockState, blockPosition, random)
 
         val particle = session.world.particle ?: return
 
         // ToDo: if not sill and not falling
         if (random.chance(10)) {
-            particle += UnderwaterParticle(session, Vec3d(blockPosition.x + random.nextDouble(), blockPosition.y + random.nextDouble(), blockPosition.z + random.nextDouble()))
+            particle += UnderwaterParticle(session, blockPosition.toVec3d + { random.nextDouble() })
         }
     }
 
@@ -105,20 +114,21 @@ class WaterFluid(identifier: ResourceLocation = Companion.identifier) : Fluid(id
         }
 
         physics.applyMovementInput(input, speed)
-        physics.move(physics.velocity.unsafe)
+        physics.move(physics.velocity)
 
         physics.floatUp()
 
         physics.applyFriction(friction.toDouble())
 
-        physics.applyFluidMovingSpeed(gravity, falling, physics.velocity.unsafe)
+        physics.applyFluidMovingSpeed(gravity, falling, physics.velocity)
 
         physics.applyBouncing(y)
     }
 
     private fun LivingEntityPhysics<*>.floatUp() {
         if (!horizontalCollision || !isClimbing()) return
-        this.velocity.y = ClimbingPhysics.UPWARDS
+        val velocity = velocity
+        this.velocity = Vec3d(velocity.x, ClimbingPhysics.UPWARDS, velocity.z)
     }
 
     override fun onCollision(physics: EntityPhysics<*>, height: Double) {
@@ -138,8 +148,13 @@ class WaterFluid(identifier: ResourceLocation = Companion.identifier) : Fluid(id
         override val identifier = minecraft("water")
         override val identifiers = setOf(minecraft("flowing_water"))
 
-        override fun build(identifier: ResourceLocation, registries: Registries) = WaterFluid()
+        override fun build(resourceLocation: ResourceLocation, registries: Registries) = WaterFluid()
 
-        fun BlockState.isWaterlogged() = BlockStateFlags.WATERLOGGED in this.flags
+        fun BlockState.isWaterlogged(): Boolean {
+            if (block is PixLyzerBlock && !block.waterloggable) return false
+            if (this !is PropertyBlockState) return false
+            if (this.block !is WaterloggableBlock) return false // check for interfaces is rather slow, so do it after class checking
+            return properties[BlockProperties.WATERLOGGED]?.toBoolean() ?: return false
+        }
     }
 }

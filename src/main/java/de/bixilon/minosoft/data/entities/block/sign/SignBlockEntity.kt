@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -19,16 +19,15 @@ import de.bixilon.kutil.json.JsonUtil.toJsonObject
 import de.bixilon.kutil.primitive.BooleanUtil.toBoolean
 import de.bixilon.minosoft.data.entities.block.BlockEntity
 import de.bixilon.minosoft.data.entities.block.BlockEntityFactory
-import de.bixilon.minosoft.data.registries.blocks.state.BlockState
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.EmptyComponent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
-class SignBlockEntity(session: PlaySession, position: BlockPosition, state: BlockState) : BlockEntity(session, position, state) {
+class SignBlockEntity(session: PlaySession) : BlockEntity(session) {
     val front = SignTextProperties()
     val back = SignTextProperties()
     var waxed = false
@@ -57,7 +56,7 @@ class SignBlockEntity(session: PlaySession, position: BlockPosition, state: Bloc
 
     class SignTextProperties(
         var glowing: Boolean = false,
-        var color: RGBAColor? = null,
+        var color: RGBColor? = null,
         val text: Array<ChatComponent> = Array(LINES) { EmptyComponent },
     ) {
 
@@ -85,9 +84,11 @@ class SignBlockEntity(session: PlaySession, position: BlockPosition, state: Bloc
     }
 
     companion object : BlockEntityFactory<SignBlockEntity> {
-        override val identifier = minecraft("sign")
+        override val identifier: ResourceLocation = minecraft("sign")
         const val LINES = 4
 
-        override fun build(session: PlaySession, position: BlockPosition, state: BlockState) = SignBlockEntity(session, position, state)
+        override fun build(session: PlaySession): SignBlockEntity {
+            return SignBlockEntity(session)
+        }
     }
 }

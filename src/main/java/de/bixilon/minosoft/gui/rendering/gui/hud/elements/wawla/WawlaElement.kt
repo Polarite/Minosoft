@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.wawla
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
@@ -22,26 +21,26 @@ import de.bixilon.minosoft.data.text.formatting.color.ChatColors
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 import de.bixilon.minosoft.util.KUtil.format
 
 abstract class WawlaElement(protected val wawla: WawlaHUDElement) : Element(wawla.guiRenderer) {
     abstract val elements: List<Element?>
 
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
-        val offset = MVec2f(offset)
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         for (element in elements) {
             if (element == null) continue
 
-            element.render(offset.unsafe, consumer, options)
+            element.render(offset, consumer, options)
             offset.y += element.size.y
         }
     }
 
     override fun forceSilentApply() {
-        val size = MVec2f.EMPTY
+        val size = Vec2.EMPTY
 
         for (element in elements) {
             if (element == null) continue
@@ -51,7 +50,7 @@ abstract class WawlaElement(protected val wawla: WawlaHUDElement) : Element(wawl
             size.y += elementSize.y
         }
 
-        this._size = size.unsafe
+        this._size = size
     }
 
     protected fun createNameElement(text: ChatComponent?, translationKey: ResourceLocation?, fallback: ChatComponent): TextElement {

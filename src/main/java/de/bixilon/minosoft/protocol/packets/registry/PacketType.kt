@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,10 @@
 
 package de.bixilon.minosoft.protocol.packets.registry
 
-import de.bixilon.kutil.buffer.arbitrary.ArbitraryByteArray
 import de.bixilon.kutil.cast.CastUtil.nullCast
-import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.protocol.network.NetworkConnection
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.buffer.PacketBufferOverflowException
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.buffer.PacketBufferUnderflowException
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.type.PacketNotImplementedException
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.PacketBufferUnderflowException
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.implementation.PacketNotImplementedException
 import de.bixilon.minosoft.protocol.network.session.Session
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.status.StatusSession
@@ -36,18 +33,15 @@ class PacketType(
     var factory: PacketFactory?,
 ) {
 
-    fun create(data: ArbitraryByteArray, session: Session): Packet {
-        val connection = session.nullCast<StatusSession>()?.connection ?: session.nullCast<PlaySession>()?.connection?.nullCast<NetworkConnection>() ?: Broken("No connection?")
-        val factory = this.factory ?: throw PacketNotImplementedException(name, connection.state!!, session.version)
+    fun create(data: ByteArray, session: Session): Packet {
+        val connection = session.nullCast<StatusSession>()?.connection ?: session.nullCast<PlaySession>()?.connection?.nullCast<NetworkConnection>()
+        val factory = this.factory ?: throw PacketNotImplementedException(name, connection!!.state!!, session.version)
 
         val buffer = if (session is PlaySession) PlayInByteBuffer(data, session) else InByteBuffer(data)
         val packet = factory.create(buffer)
 
-        val read = buffer.offset - data.offset
-
-        when {
-            read < data.size -> throw PacketBufferUnderflowException(this, data.size, read)
-            read > data.size -> throw PacketBufferOverflowException(this, data.size, read)
+        if (buffer.pointer < buffer.size) {
+            throw PacketBufferUnderflowException(this, buffer.size, buffer.size - buffer.pointer)
         }
 
         return packet

@@ -12,23 +12,23 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.block.chunk
 
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kutil.array.ArrayUtil.cast
 import de.bixilon.kutil.compression.zlib.ZlibUtil.decompress
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.json.JsonObject
 import de.bixilon.kutil.json.JsonUtil.asJsonObject
-import de.bixilon.kutil.json.JsonUtil.asMutableJsonObject
 import de.bixilon.kutil.json.JsonUtil.toJsonObject
-import de.bixilon.kutil.memory.allocator.ByteAllocator
 import de.bixilon.kutil.primitive.IntUtil.toInt
 import de.bixilon.minosoft.config.StaticConfiguration
 import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.registries.dimension.DimensionProperties
 import de.bixilon.minosoft.data.world.biome.source.SpatialBiomeArray
-import de.bixilon.minosoft.data.world.chunk.chunk.ChunkData
-import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.data.world.positions.ChunkPosition
-import de.bixilon.minosoft.data.world.positions.InChunkPosition
+import de.bixilon.minosoft.data.world.chunk.chunk.ChunkPrototype
 import de.bixilon.minosoft.datafixer.rls.BlockEntityFixer.fixBlockEntity
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.of
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.s2c.PlayS2CPacket
 import de.bixilon.minosoft.protocol.packets.s2c.play.block.chunk.light.ChunkLightS2CP
@@ -50,12 +50,11 @@ import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import java.util.*
 
 class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
-    val position: ChunkPosition
-    val prototype: ChunkData = ChunkData()
+    val position: Vec2i
+    val prototype: ChunkPrototype = ChunkPrototype()
     var action: ChunkAction = ChunkAction.CREATE
         private set
     private lateinit var readingData: ChunkReadingData
@@ -76,7 +75,7 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
             } else {
                 buffer
             }
-            val chunkData = ChunkPacketUtil.readChunkPacket(decompressed, dimension, sectionBitMask, addBitMask, action == ChunkAction.CREATE, dimension.skyLight)
+            val chunkData = ChunkUtil.readChunkPacket(decompressed, dimension, sectionBitMask, addBitMask, action == ChunkAction.CREATE, dimension.skyLight)
             if (chunkData == null) {
                 action = ChunkAction.UNLOAD
             } else {
@@ -99,18 +98,15 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
             if (action == ChunkAction.CREATE && buffer.versionId >= V_19W36A && buffer.versionId < V_21W37A) {
                 this.prototype.biomeSource = SpatialBiomeArray(buffer.readBiomeArray())
             }
-            val length = buffer.readVarInt()
-            val data = ALLOCATOR.allocate(length)
-            buffer.readByteArray(data, 0, length)
-            readingData = ChunkReadingData(data, PlayInByteBuffer(data, buffer.session), dimension, sectionBitMask)
+            readingData = ChunkReadingData(PlayInByteBuffer(buffer.readByteArray(), buffer.session), dimension, sectionBitMask)
 
             // set position to expected read positions; the server sometimes sends a bunch of useless zeros (~ 190k), thanks @pokechu22
 
-            this.prototype.entities = buffer.readBlockEntities(dimension)
+            this.prototype.blockEntities = buffer.readBlockEntities(dimension)
 
             if (buffer.versionId >= V_21W37A) {
                 if (StaticConfiguration.IGNORE_SERVER_LIGHT) {
-                    buffer.offset = buffer.data.offset + buffer.size
+                    buffer.pointer = buffer.size
                 } else {
                     this.prototype.update(ChunkLightS2CP(buffer, position).prototype)
                 }
@@ -118,23 +114,23 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
         }
     }
 
-    private fun PlayInByteBuffer.readBlockEntities(dimension: DimensionProperties): Int2ObjectOpenHashMap<JsonObject>? {
+    private fun PlayInByteBuffer.readBlockEntities(dimension: DimensionProperties): Map<Vec3i, JsonObject>? {
         if (versionId < V_1_9_4) return null
         val count = readVarInt()
         if (count <= 0) return null
-        val entities = Int2ObjectOpenHashMap<JsonObject>(count)
+        val entities: MutableMap<Vec3i, JsonObject> = HashMap(count)
 
         when {
             versionId < V_21W37A -> {
-                val offset = BlockPosition.of(position, dimension.minSection)
+                val positionOffset = Vec3i.of(position, dimension.minSection, Vec3i.EMPTY)
                 for (i in 0 until count) {
-                    val nbt = readNBT()?.asMutableJsonObject() ?: continue
-                    val position = BlockPosition(nbt.remove("x")?.toInt() ?: continue, nbt.remove("y")?.toInt() ?: continue, nbt.remove("z")?.toInt() ?: continue) - offset
-                    val id = nbt.remove("id")?.toResourceLocation()?.fixBlockEntity() ?: continue
-                    if (nbt.isEmpty()) continue
+                    val nbt = readNBT()?.asJsonObject() ?: continue
+                    val position = Vec3i(nbt["x"]?.toInt() ?: continue, nbt["y"]?.toInt() ?: continue, nbt["z"]?.toInt() ?: continue) - positionOffset
+                    val id = (nbt["id"]?.toResourceLocation() ?: continue).fixBlockEntity()
+                    if (nbt.size <= 4) continue // no additional data
                     val type = session.registries.blockEntityType[id] ?: continue
 
-                    entities[InChunkPosition(position.x, position.y, position.z).raw] = nbt
+                    entities[position] = nbt
                 }
             }
 
@@ -147,7 +143,7 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
                     if (nbt.isEmpty()) continue
                     if (type == null) continue
 
-                    entities[InChunkPosition(xz shr 4, y.toInt(), xz and 0x0F).raw] = nbt
+                    entities[Vec3i(xz shr 4, y, xz and 0x0F)] = nbt
                 }
             }
         }
@@ -157,7 +153,7 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
     }
 
 
-    fun PlayInByteBuffer.readBiomeArray(): Array<Biome?> {
+    fun PlayInByteBuffer.readBiomeArray(): Array<Biome> {
         val length = when {
             versionId >= ProtocolVersions.V_20W28A -> readVarInt()
             versionId >= V_19W36A -> SpatialBiomeArray.SIZE
@@ -171,12 +167,11 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
             val id: Int = if (versionId >= ProtocolVersions.V_20W28A) readVarInt() else readInt()
             biomes[index] = session.registries.biome[id]
         }
-        return biomes
+        return biomes.cast()
     }
 
     private fun ChunkReadingData.readChunkData() {
-        val chunkData = if (readingData.buffer.versionId < V_21W37A) ChunkPacketUtil.readChunkPacket(buffer, dimension, sectionBitMask!!, null, action == ChunkAction.CREATE, dimension.skyLight) else ChunkPacketUtil.readPaletteChunk(buffer, dimension, null, complete = true, skylight = false)
-        ALLOCATOR.free(data)
+        val chunkData = if (readingData.buffer.versionId < V_21W37A) ChunkUtil.readChunkPacket(buffer, dimension, sectionBitMask!!, null, action == ChunkAction.CREATE, dimension.skyLight) else ChunkUtil.readPaletteChunk(buffer, dimension, null, complete = true, skylight = false)
         if (chunkData == null) {
             action = ChunkAction.UNLOAD
         } else {
@@ -199,7 +194,7 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
             return
         }
         parse()
-        session.world.chunks.update(position, prototype, action == ChunkAction.CREATE)
+        session.world.chunks.set(position, prototype, action == ChunkAction.CREATE)
     }
 
     override fun log(reducedLog: Boolean) {
@@ -209,14 +204,9 @@ class ChunkS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
         Log.log(LogMessageType.NETWORK_IN, level = LogLevels.VERBOSE) { "Chunk (position=$position)" }
     }
 
-    private class ChunkReadingData(
-        val data: ByteArray,
+    private data class ChunkReadingData(
         val buffer: PlayInByteBuffer,
         val dimension: DimensionProperties,
         val sectionBitMask: BitSet?,
     )
-
-    companion object {
-        val ALLOCATOR = ByteAllocator()
-    }
 }

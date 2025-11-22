@@ -15,7 +15,7 @@
 
 #define FOG
 
-out lowp vec4 foutColor;
+out vec4 foutColor;
 
 #include "minosoft:tint"
 #include "minosoft:texture"

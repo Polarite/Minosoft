@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,16 +13,17 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.keyframe.instance
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.kutil.math.interpolation.FloatInterpolation.interpolateLinear
-import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.AnimationResult
+import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.keyframe.instance.KeyframeInstance.Companion.NOT_OVER
+import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.keyframe.instance.KeyframeInstance.Companion.OVER
 import de.bixilon.minosoft.gui.rendering.skeletal.instance.TransformInstance
 import de.bixilon.minosoft.gui.rendering.skeletal.model.animations.animators.AnimationLoops
-import de.bixilon.minosoft.gui.rendering.skeletal.model.animations.animators.keyframes.types.KeyframeData
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
 import it.unimi.dsi.fastutil.floats.FloatArrayList
 import org.testng.Assert.assertEquals
+import org.testng.Assert.assertFalse
 import org.testng.annotations.Test
-import kotlin.time.Duration.Companion.seconds
 
 @Test(groups = ["skeletal", "rendering"])
 class KeyframeInstanceTest {
@@ -39,14 +40,14 @@ class KeyframeInstanceTest {
             2.0f to 5.0f,
         ))
 
-        val ended = arrayOf(
+        val over = booleanArrayOf(
             instance.transform(0.0f),
             instance.transform(0.2f),
             instance.transform(0.5f),
             instance.transform(1.0f),
             instance.transform(2.0f),
         )
-        ended.assertEnded()
+        over.assertOver()
 
         assertEquals(instance.entries, FloatArrayList.of(
             0.0f,
@@ -64,14 +65,14 @@ class KeyframeInstanceTest {
             3.0f to 10.0f,
         ))
 
-        val ended = arrayOf(
+        val over = booleanArrayOf(
             instance.transform(0.0f),
             instance.transform(1.0f),
             instance.transform(2.0f),
             instance.transform(2.5f),
             instance.transform(3.0f),
         )
-        ended.assertEnded()
+        over.assertOver()
 
         assertEquals(instance.entries, FloatArrayList.of(
             0.0f,
@@ -88,14 +89,14 @@ class KeyframeInstanceTest {
             2.0f to 5.0f,
         ))
 
-        val ended = arrayOf(
+        val over = booleanArrayOf(
             instance.transform(0.0f),
             instance.transform(1.0f),
             instance.transform(2.0f),
             instance.transform(3.0f),
             instance.transform(300.0f),
         )
-        ended.assertNotOver()
+        over.assertNotOver()
 
         assertEquals(instance.entries, FloatArrayList.of(
             0.0f,
@@ -113,7 +114,7 @@ class KeyframeInstanceTest {
             3.0f to 7.0f,
         ))
 
-        val ended = arrayOf(
+        val over = booleanArrayOf(
             instance.transform(0.0f),
             instance.transform(1.0f),
             instance.transform(2.0f),
@@ -122,7 +123,7 @@ class KeyframeInstanceTest {
             instance.transform(4.0f),
             instance.transform(300.0f),
         )
-        ended.assertNotOver()
+        over.assertNotOver()
 
         assertEquals(instance.entries, FloatArrayList.of(
             0.0f,
@@ -141,7 +142,7 @@ class KeyframeInstanceTest {
             2.0f to 5.0f,
         ))
 
-        val ended = arrayOf(
+        val over = booleanArrayOf(
             instance.transform(0.0f),
             instance.transform(1.0f),
             instance.transform(2.0f),
@@ -152,7 +153,7 @@ class KeyframeInstanceTest {
             instance.transform(5.0f),
             instance.transform(5.5f),
         )
-        ended.assertNotOver()
+        over.assertNotOver()
 
         assertEquals(instance.entries, FloatArrayList.of(
             0.0f,
@@ -175,7 +176,7 @@ class KeyframeInstanceTest {
             4.0f to 0.0f,
         ))
 
-        val ended = arrayOf(
+        val over = booleanArrayOf(
             instance.transform(0.0f),
             instance.transform(1.0f),
             instance.transform(2.0f),
@@ -189,7 +190,7 @@ class KeyframeInstanceTest {
 
             instance.transform(9.0f),
         )
-        ended.assertNotOver()
+        over.assertNotOver()
 
         assertEquals(instance.entries, FloatArrayList.of(
             0.0f,
@@ -212,7 +213,7 @@ class KeyframeInstanceTest {
             12.0f to 5.0f,
         ))
 
-        val ended = arrayOf(
+        val over = booleanArrayOf(
             instance.transform(0.0f),
             instance.transform(1.0f),
             instance.transform(9.9f),
@@ -220,7 +221,7 @@ class KeyframeInstanceTest {
             instance.transform(11.0f),
             instance.transform(12.0f),
         )
-        ended.assertEnded()
+        over.assertOver()
 
         assertEquals(instance.entries, FloatArrayList.of(
             0.0f,
@@ -228,23 +229,23 @@ class KeyframeInstanceTest {
         ))
     }
 
-    private fun Array<AnimationResult>.assertNotOver() {
+    private fun BooleanArray.assertNotOver() {
         for (entry in this) {
-            assertEquals(entry, AnimationResult.CONTINUE)
+            assertFalse(entry)
         }
     }
 
-    private fun Array<AnimationResult>.assertEnded() {
+    private fun BooleanArray.assertOver() {
         if (this.isEmpty()) throw IllegalArgumentException("Empty!")
         for ((index, entry) in this.withIndex()) {
             if (index + 1 == this.size) break
-            assertEquals(entry, AnimationResult.CONTINUE, "Expected animation to not have ended yet at $index")
+            assertEquals(entry, NOT_OVER, "Expected animation to not be over yet at $index")
         }
-        assertEquals(this.last(), AnimationResult.ENDED, "Expected animation to have ended!")
+        assertEquals(this.last(), OVER, "Expected animation to be over!")
     }
 
 
-    private class Instance(loop: AnimationLoops, data: Map<Float, Float>) : KeyframeInstance<Float>(data.entries.map { KeyframeData(it.key.toDouble().seconds, it.value) }.sorted(), loop) {
+    private class Instance(loop: AnimationLoops, data: Map<Float, Float>) : KeyframeInstance<Float>(data.toSortedMap(), loop) {
         val entries = FloatArrayList()
 
         override fun apply(value: Float, transform: TransformInstance) {
@@ -255,8 +256,8 @@ class KeyframeInstanceTest {
             return interpolateLinear(delta, previous, next)
         }
 
-        fun transform(seconds: Float): AnimationResult {
-            return transform(seconds.toDouble().seconds, TransformInstance(0, Vec3f.EMPTY, emptyMap()))
+        fun transform(time: Float): Boolean {
+            return transform(time, TransformInstance(0, Vec3.EMPTY, emptyMap()))
         }
     }
 }

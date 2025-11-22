@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,21 @@
 
 package de.bixilon.minosoft.gui.rendering.events
 
-import de.bixilon.kmath.mat.mat4.f.Mat4f
+import de.bixilon.kotlinglm.mat4x4.Mat4
 import de.bixilon.minosoft.gui.rendering.RenderContext
 
 class CameraMatrixChangeEvent(
     context: RenderContext,
-    val viewMatrix: Mat4f,
-    val projectionMatrix: Mat4f,
-    val viewProjectionMatrix: Mat4f,
-) : RenderEvent(context)
+    viewMatrix: Mat4,
+    projectionMatrix: Mat4,
+    viewProjectionMatrix: Mat4,
+) : RenderEvent(context) {
+    val viewMatrix: Mat4 = viewMatrix
+        get() = Mat4(field)
+
+    val projectionMatrix: Mat4 = projectionMatrix
+        get() = Mat4(field)
+
+    val viewProjectionMatrix: Mat4 = viewProjectionMatrix
+        get() = Mat4(field)
+}

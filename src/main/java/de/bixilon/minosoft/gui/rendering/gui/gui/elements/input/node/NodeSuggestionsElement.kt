@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.elements.input.node
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.kutil.array.ArrayUtil
 import de.bixilon.minosoft.commands.suggestion.Suggestion
 import de.bixilon.minosoft.config.key.KeyCodes
@@ -24,12 +23,12 @@ import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderPropert
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.popper.Popper
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
 
-class NodeSuggestionsElement(guiRenderer: GUIRenderer, position: Vec2f, val inputElement: NodeTextInputElement) : Popper(guiRenderer, position) {
-    private var suggestionText = Array(MAX_SUGGESTIONS) { TextElement(guiRenderer, ChatComponent.EMPTY).apply { prefMaxSize = Vec2f(300.0f, TextRenderProperties.DEFAULT.lineHeight) } }
+class NodeSuggestionsElement(guiRenderer: GUIRenderer, position: Vec2, val inputElement: NodeTextInputElement) : Popper(guiRenderer, position) {
+    private var suggestionText = Array(MAX_SUGGESTIONS) { TextElement(guiRenderer, ChatComponent.EMPTY).apply { prefMaxSize = Vec2(300, TextRenderProperties.DEFAULT.lineHeight) } }
     private var textCount = 0
     private var offset = 0
     var suggestions: List<Suggestion>? = null
@@ -67,19 +66,19 @@ class NodeSuggestionsElement(guiRenderer: GUIRenderer, position: Vec2f, val inpu
         }
 
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
         for ((index, suggestion) in suggestionText.withIndex()) {
             if (index >= textCount) {
                 break
             }
 
-            suggestion.render(offset + Vec2f(0.0f, index * TextRenderProperties.DEFAULT.lineHeight), consumer, options)
+            suggestion.render(offset + Vec2(0, index * TextRenderProperties.DEFAULT.lineHeight), consumer, options)
         }
     }
 
     private fun updateSuggestions(suggestions: List<Suggestion>) {
-        val size = MVec2f()
+        val size = Vec2()
         var textCount = 0
         val offset = offset
 
@@ -104,7 +103,7 @@ class NodeSuggestionsElement(guiRenderer: GUIRenderer, position: Vec2f, val inpu
             textCount++
         }
         this.textCount = textCount
-        this._size = size.unsafe
+        this._size = size
         forceSilentApply()
     }
 

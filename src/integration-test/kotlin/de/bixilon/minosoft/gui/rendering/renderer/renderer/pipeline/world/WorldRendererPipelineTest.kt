@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.renderer.renderer.pipeline.world
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
@@ -36,10 +36,9 @@ import de.bixilon.minosoft.gui.rendering.system.base.layer.RenderLayer
 import de.bixilon.minosoft.gui.rendering.system.base.layer.TranslucentLayer
 import de.bixilon.minosoft.gui.rendering.system.base.settings.RenderSettings
 import de.bixilon.minosoft.gui.rendering.system.dummy.DummyRenderSystem
-import de.bixilon.minosoft.gui.rendering.system.dummy.buffer.DummyFramebuffer
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTexture
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTextureManager
-import de.bixilon.minosoft.test.ITUtil.allocate
+import de.bixilon.minosoft.test.IT
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
@@ -190,20 +189,13 @@ class WorldRendererPipelineTest {
     }
 
     private fun context(): RenderContext {
-        val context = RenderContext::class.java.allocate()
+        val context = IT.OBJENESIS.newInstance(RenderContext::class.java)
         context.font = FontManager(DummyFontType)
         context::system.forceSet(DummyRenderSystem(context))
         context::textures.forceSet(DummyTextureManager(context))
 
-        val framebuffer = FramebufferManager::class.java.allocate()
-        framebuffer::world.forceSet(WorldFramebuffer::class.java.allocate().apply {
-            this::polygonMode.forceSet(PolygonModes.FILL)
-            this::size.forceSet(Vec2i(1, 1)._0)
-            this::scale.forceSet(1.0f)
-            this::framebuffer.forceSet(DummyFramebuffer())
-
-            this::context.forceSet(context)
-        })
+        val framebuffer = IT.OBJENESIS.newInstance(FramebufferManager::class.java)
+        framebuffer::world.forceSet(IT.OBJENESIS.newInstance(WorldFramebuffer::class.java).apply { this::polygonMode.forceSet(PolygonModes.FILL) })
         context::framebuffer.forceSet(framebuffer)
 
         context.textures::whiteTexture.forceSet(CodeTexturePart(DummyTexture(), size = Vec2i(16, 16)))
@@ -220,6 +212,7 @@ class WorldRendererPipelineTest {
     private fun renderer() = object : WorldRenderer {
         override val context get() = Broken()
         override val framebuffer get() = null
+        override val renderSystem get() = Broken()
 
         override val layers = LayerSettings()
         override fun registerLayers() = Unit

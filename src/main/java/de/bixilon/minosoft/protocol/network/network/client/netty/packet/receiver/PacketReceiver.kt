@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,7 +15,7 @@ package de.bixilon.minosoft.protocol.network.network.client.netty.packet.receive
 
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.concurrent.pool.ThreadPool
-import de.bixilon.kutil.concurrent.pool.runnable.ThreadPoolRunnable
+import de.bixilon.kutil.concurrent.pool.runnable.ForcePooledRunnable
 import de.bixilon.kutil.exception.ExceptionUtil.ignoreAll
 import de.bixilon.minosoft.config.profile.profiles.other.OtherProfileManager
 import de.bixilon.minosoft.protocol.network.network.client.ClientNetwork
@@ -76,7 +76,7 @@ class PacketReceiver(
 
     private fun tryHandle2(type: PacketType, packet: S2CPacket) {
         if (type.handleAsync()) {
-            DefaultThreadPool += ThreadPoolRunnable(forcePool = true, priority = if (type.lowPriority) ThreadPool.Priorities.NORMAL else ThreadPool.Priorities.HIGH) { tryHandle(type, packet) }
+            DefaultThreadPool += ForcePooledRunnable(priority = if (type.lowPriority) ThreadPool.NORMAL else ThreadPool.HIGH) { tryHandle(type, packet) }
         } else {
             tryHandle(type, packet)
         }
@@ -106,7 +106,7 @@ class PacketReceiver(
 
     private fun process() {
         while (queue.isNotEmpty()) {
-            val (type, packet) = queue.removeAt(0)
+            val (type, packet) = queue.removeFirst()
             tryHandle(type, packet)
         }
     }

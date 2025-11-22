@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,17 +15,18 @@ package de.bixilon.minosoft.data.container.types.generic
 
 import de.bixilon.minosoft.data.registries.containers.ContainerFactory
 import de.bixilon.minosoft.data.registries.containers.ContainerType
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
-class Generic9x5Container(session: PlaySession, type: ContainerType, title: ChatComponent?, id: Int) : GenericContainer(5, session, type, title, id) {
+class Generic9x5Container(session: PlaySession, type: ContainerType, title: ChatComponent?) : GenericContainer(5, session, type, title) {
 
     companion object : ContainerFactory<Generic9x5Container> {
-        override val identifier = minecraft("generic_9x5")
+        override val identifier: ResourceLocation = "minecraft:generic_9x5".toResourceLocation()
 
-        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int, id: Int): Generic9x5Container {
-            return Generic9x5Container(session, type, title, id)
+        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int): Generic9x5Container {
+            return Generic9x5Container(session, type, title)
         }
     }
 }

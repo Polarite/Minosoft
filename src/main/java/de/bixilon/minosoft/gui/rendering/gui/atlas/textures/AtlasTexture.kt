@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.atlas.textures
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.RenderUtil.fixUVEnd
 import de.bixilon.minosoft.gui.rendering.RenderUtil.fixUVStart
@@ -33,7 +33,7 @@ class AtlasTexture(
 ) : Texture {
     override val transparency: TextureTransparencies = TextureTransparencies.TRANSLUCENT
     override val mipmaps: Int get() = 0
-    private val pixel = Vec2f(1.0f) / size
+    private val pixel = Vec2(1.0f) / size
 
     override lateinit var array: TextureArrayProperties
     override lateinit var renderData: TextureRenderData
@@ -48,6 +48,6 @@ class AtlasTexture(
     fun put(offset: Vec2i, source: TextureBuffer, start: Vec2i, size: Vec2i): CodeTexturePart {
         this.data.buffer.put(source, start, offset, size)
 
-        return CodeTexturePart(this, (pixel * offset).apply { unsafe.fixUVStart() }, (pixel * (offset + size)).apply { unsafe.fixUVEnd() }, size)
+        return CodeTexturePart(this, (pixel * offset).fixUVStart(), (pixel * (offset + size)).fixUVEnd(), size)
     }
 }

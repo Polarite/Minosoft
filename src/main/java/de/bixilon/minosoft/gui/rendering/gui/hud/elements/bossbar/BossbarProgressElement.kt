@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.bossbar
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.atlas.AtlasElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.util.ProgressElement
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 open class BossbarProgressElement(
     guiRenderer: GUIRenderer,
@@ -34,7 +34,7 @@ open class BossbarProgressElement(
 
     constructor(guiRenderer: GUIRenderer, progressElements: Array<AtlasElement>, notchesElements: Array<AtlasElement>?, progress: Float = 0.0f) : this(guiRenderer, progressElements[0], progressElements[1], notchesElements?.get(0), notchesElements?.get(1), progress)
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         emptyImage.render(offset, consumer, options)
         emptyNotchesImage?.render(offset, consumer, options)
         progressImage?.render(offset, consumer, options)

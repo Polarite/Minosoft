@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal.model.transforms
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.gui.rendering.models.block.element.ModelElement.Companion.BLOCK_SIZE
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalTransform
 import java.util.concurrent.atomic.AtomicInteger
 
 data class SkeletalTransform(
-    val pivot: Vec3f,
+    val pivot: Vec3,
     val children: Map<String, SkeletalTransform> = emptyMap(),
 ) {
 

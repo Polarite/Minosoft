@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -17,7 +17,6 @@ import de.bixilon.minosoft.config.profile.ProfileLock
 import de.bixilon.minosoft.config.profile.ProfileType
 import de.bixilon.minosoft.config.profile.delegate.primitive.IntDelegate
 import de.bixilon.minosoft.config.profile.profiles.Profile
-import de.bixilon.minosoft.config.profile.profiles.block.lod.LodC
 import de.bixilon.minosoft.config.profile.profiles.block.outline.OutlineC
 import de.bixilon.minosoft.config.profile.profiles.block.rendering.RenderingC
 import de.bixilon.minosoft.config.profile.storage.ProfileStorage
@@ -43,7 +42,7 @@ class BlockProfile(
      * Other profiles (like entities, ...) also have view distance, but this value is the only one that gets sent to the server.
      * The server may limit the other view distances according to this value
      */
-    var viewDistance by IntDelegate(this, 10, arrayOf(0..World.MAX_VIEW_DISTANCE))
+    var viewDistance by IntDelegate(this, 10, arrayOf(0..World.MAX_RENDER_DISTANCE))
 
     /**
      * Ticking (entity, block, particle) is just applied in this distance.
@@ -53,11 +52,10 @@ class BlockProfile(
      * For calculation see viewDistance
      * @see viewDistance
      */
-    var simulationDistance by IntDelegate(this, 8, arrayOf(0..World.MAX_VIEW_DISTANCE))
+    var simulationDistance by IntDelegate(this, 8, arrayOf(0..World.MAX_RENDER_DISTANCE))
 
     val outline = OutlineC(this)
     val rendering = RenderingC(this)
-    val lod = LodC(this)
 
 
     override fun toString(): String {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,17 +13,18 @@
 
 package de.bixilon.minosoft.data.registries.shapes.side
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import com.google.common.base.Objects
+import de.bixilon.kotlinglm.vec2.Vec2
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet
 
 data class SideQuad(
-    val min: Vec2f,
-    val max: Vec2f,
+    val min: Vec2,
+    val max: Vec2,
 ) {
-    private var hashCode = 0 // lazy
+    private val hashCode = Objects.hashCode(min.hashCode(), max.hashCode())
 
-    constructor(minX: Float, minZ: Float, maxX: Float, maxZ: Float) : this(Vec2f(minOf(minX, maxX), minOf(minZ, maxZ)), Vec2f(maxOf(minX, maxX), maxOf(minZ, maxZ)))
-    constructor(minX: Double, minZ: Double, maxX: Double, maxZ: Double) : this(Vec2f(minOf(minX, maxX).toFloat(), minOf(minZ, maxZ).toFloat()), Vec2f(maxOf(minX, maxX).toFloat(), maxOf(minZ, maxZ).toFloat()))
+    constructor(minX: Float, minZ: Float, maxX: Float, maxZ: Float) : this(Vec2(minOf(minX, maxX), minOf(minZ, maxZ)), Vec2(maxOf(minX, maxX), maxOf(minZ, maxZ)))
+    constructor(minX: Double, minZ: Double, maxX: Double, maxZ: Double) : this(Vec2(minOf(minX, maxX).toFloat(), minOf(minZ, maxZ).toFloat()), Vec2(maxOf(minX, maxX).toFloat(), maxOf(minZ, maxZ).toFloat()))
 
 
     fun touches(other: SideQuad): Boolean {
@@ -62,17 +63,7 @@ data class SideQuad(
         return VoxelSide(result)
     }
 
-    private fun _hashCode(): Int {
-        var result = 1
-        result = 31 * result + min.hashCode()
-        result = 31 * result + max.hashCode()
-        return result
-    }
-
     override fun hashCode(): Int {
-        if (hashCode == 0) {
-            hashCode = _hashCode()
-        }
         return hashCode
     }
 

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,7 +15,7 @@ package de.bixilon.minosoft.gui.rendering.entities.feature.text.name
 
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
-import de.bixilon.kutil.exception.Unreachable
+import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.minosoft.camera.target.targets.EntityTarget
 import de.bixilon.minosoft.data.entities.Poses
@@ -28,25 +28,25 @@ import de.bixilon.minosoft.data.entities.entities.player.PlayerEntity
 import de.bixilon.minosoft.data.entities.entities.player.local.LocalPlayerEntity
 import de.bixilon.minosoft.data.scoreboard.NameTagVisibilities
 import de.bixilon.minosoft.data.text.ChatComponent
+import de.bixilon.minosoft.gui.rendering.entities.feature.properties.InvisibleFeature
 import de.bixilon.minosoft.gui.rendering.entities.feature.text.BillboardTextFeature
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
-class EntityNameFeature(renderer: EntityRenderer<*>) : BillboardTextFeature(renderer, null) {
-    private var delta = Duration.ZERO
+class EntityNameFeature(renderer: EntityRenderer<*>) : BillboardTextFeature(renderer, null), InvisibleFeature {
+    private var delta = 0.0f
+    override val renderInvisible get() = true
 
     init {
-        renderer.entity::customName.observe(this) { delta = Duration.ZERO }
+        renderer.entity::customName.observe(this) { delta = 0.0f }
     }
 
-    override fun update(delta: Duration) {
+    override fun update(millis: Long, delta: Float) {
         this.delta += delta
         if (this.delta >= UPDATE_INTERVAL) {
             updateName()
-            this.delta = Duration.ZERO
+            this.delta = 0.0f
         }
-        super.update(delta)
+        super.update(millis, delta)
     }
 
     private fun updateName() {
@@ -87,7 +87,7 @@ class EntityNameFeature(renderer: EntityRenderer<*>) : BillboardTextFeature(rend
         if (!isTargeted()) return null
         val item = this.item ?: return null
 
-        return item.display.displayName
+        return item._display?._customDisplayName
     }
 
     private fun getEntityName(): ChatComponent? {
@@ -97,7 +97,7 @@ class EntityNameFeature(renderer: EntityRenderer<*>) : BillboardTextFeature(rend
         val entity = renderer.entity
 
         val distance = if (entity is LivingEntity && entity.pose == Poses.SNEAKING) SNEAKING_DISTANCE * SNEAKING_DISTANCE else RENDER_DISTANCE * RENDER_DISTANCE
-        if (renderer.distance2 >= distance) return null
+        if (renderer.distance >= distance) return null
 
         val invisible = isInvisible()
 
@@ -113,7 +113,7 @@ class EntityNameFeature(renderer: EntityRenderer<*>) : BillboardTextFeature(rend
     private fun isInvisible(): Boolean {
         val camera = renderer.renderer.session.camera.entity
         val entity = renderer.entity
-        val invisible = !entity.isVisibleTo(camera)
+        val invisible = entity.isInvisible(camera)
 
         if (entity !is PlayerEntity) return invisible
         val team = entity.additional.team ?: return invisible
@@ -132,7 +132,7 @@ class EntityNameFeature(renderer: EntityRenderer<*>) : BillboardTextFeature(rend
         return when (name) {
             NameTagVisibilities.HIDE_FOR_ENEMIES -> !sameTeam || (team.visibility.invisibleTeam && invisible)
             NameTagVisibilities.HIDE_FOR_MATES -> sameTeam || invisible
-            else -> Unreachable()
+            else -> Broken()
         }
     }
 
@@ -148,6 +148,6 @@ class EntityNameFeature(renderer: EntityRenderer<*>) : BillboardTextFeature(rend
 
     companion object {
         const val SNEAKING_DISTANCE = 32
-        val UPDATE_INTERVAL = 200.milliseconds
+        const val UPDATE_INTERVAL = 0.2f
     }
 }

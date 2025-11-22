@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,34 +16,47 @@ package de.bixilon.minosoft.test
 import de.bixilon.kutil.latch.SimpleLatch
 import de.bixilon.minosoft.assets.properties.version.PreFlattening
 import de.bixilon.minosoft.config.profile.profiles.resources.ResourcesProfile
+import de.bixilon.minosoft.data.registries.VersionRegistry
 import de.bixilon.minosoft.data.registries.registries.PixLyzerUtil
 import de.bixilon.minosoft.data.registries.registries.Registries
 import de.bixilon.minosoft.protocol.versions.Version
-import org.objenesis.ObjenesisStd
+import de.bixilon.minosoft.protocol.versions.Versions
 import org.testng.SkipException
 
 object ITUtil {
-    private val profile = ResourcesProfile()
-    val registries: MutableMap<Version, Registries> = mutableMapOf()
-    private val objenesis = ObjenesisStd()
+    private val profile = createResourcesProfile()
+    private val pixlyzer: MutableMap<Version, Registries> = mutableMapOf()
 
 
-    private fun loadPixlyzerData(version: Version): Registries {
-        val registries = Registries(false, version)
+    fun createResourcesProfile(): ResourcesProfile {
+        return ResourcesProfile()
+    }
 
-        val data = PixLyzerUtil.load(profile, version)
+    fun loadPixlyzerData(name: String): VersionRegistry {
+        val version = Versions[name]!!
+        val registries = loadPixlyzerData(version)
+        return VersionRegistry(version, registries)
+    }
 
-        registries.load(data, SimpleLatch(0))
+    fun loadPixlyzerData(version: Version): Registries {
+        pixlyzer[version]?.let { return it }
+        val registries = Registries(false)
+
+        val data = PixLyzerUtil.loadPixlyzerData(profile, version)
+
+        registries.load(version, data, SimpleLatch(0))
+        pixlyzer[version] = registries
 
         return registries
     }
 
-    private fun loadPreFlatteningData(version: Version): Registries {
+    fun loadPreFlatteningData(version: Version): Registries {
         return PreFlattening.loadRegistry(profile, version, SimpleLatch(0))
     }
 
-    fun loadRegistries(version: Version) = registries.getOrPut(version) {
-        if (version.flattened) loadPixlyzerData(version) else loadPreFlatteningData(version)
+    fun loadRegistries(version: Version): Registries {
+        if (version.flattened) return loadPixlyzerData(version)
+        return loadPreFlatteningData(version)
     }
 
     @Deprecated("Its not implemented")
@@ -52,6 +65,6 @@ object ITUtil {
     }
 
     fun <T> Class<T>.allocate(): T {
-        return objenesis.newInstance(this)
+        return IT.OBJENESIS.newInstance(this)
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.model.human
 
-import de.bixilon.minosoft.gui.rendering.entities.feature.skeletal.SkeletalFeature
+import de.bixilon.minosoft.gui.rendering.entities.feature.SkeletalFeature
 import de.bixilon.minosoft.gui.rendering.entities.model.animator.HeadAnimator
 import de.bixilon.minosoft.gui.rendering.entities.model.human.animator.ArmAnimator
 import de.bixilon.minosoft.gui.rendering.entities.model.human.animator.LegAnimator
@@ -21,7 +21,6 @@ import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
 import de.bixilon.minosoft.gui.rendering.entities.util.EntitySpeed
 import de.bixilon.minosoft.gui.rendering.entities.util.EntitySpeedAnimator
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalModel
-import kotlin.time.Duration
 
 abstract class HumanModel<R : EntityRenderer<*>>(renderer: R, model: BakedSkeletalModel) : SkeletalFeature(renderer, model) {
     val head = instance.transform.children["head"]?.let { HeadAnimator(renderer, it) }
@@ -36,10 +35,10 @@ abstract class HumanModel<R : EntityRenderer<*>>(renderer: R, model: BakedSkelet
         head?.update()
     }
 
-    override fun update(delta: Duration) {
+    override fun update(millis: Long, delta: Float) {
         speed.update(delta)
         speedAnimator.update(delta)
-        super.update(delta)
+        super.update(millis, delta)
         leg.update(delta)
         arm.update(delta)
     }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,12 +12,16 @@
  */
 package de.bixilon.minosoft.data.registries.item.items
 
+import de.bixilon.minosoft.config.StaticConfiguration
 import de.bixilon.minosoft.data.Rarities
 import de.bixilon.minosoft.data.language.LanguageUtil.translation
 import de.bixilon.minosoft.data.language.translate.Translatable
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.registry.RegistryItem
 import de.bixilon.minosoft.gui.rendering.models.item.ItemRender
+import de.bixilon.minosoft.util.logging.Log
+import de.bixilon.minosoft.util.logging.LogLevels
+import de.bixilon.minosoft.util.logging.LogMessageType
 
 abstract class Item(
     override val identifier: ResourceLocation,
@@ -25,7 +29,24 @@ abstract class Item(
     @Deprecated("interface")
     open val rarity: Rarities get() = Rarities.COMMON
 
-    override val translationKey = identifier.translation("item")
+    override val translationKey: ResourceLocation = identifier.translation("item")
 
     open var model: ItemRender? = null
+
+    override fun toString(): String {
+        return identifier.toString()
+    }
+
+    override fun hashCode(): Int {
+        return identifier.hashCode()
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (other !is Item) return false
+        if (other.identifier != identifier) return false
+        if (StaticConfiguration.REGISTRY_ITEM_COMPARE_CLASS && other::class.java != this::class.java) {
+            Log.log(LogMessageType.OTHER, LogLevels.INFO) { "Mismatching class: ${other::class.java} vs ${this::class.java}, but same identifier: $identifier" }
+        }
+        return true
+    }
 }

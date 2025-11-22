@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -23,9 +23,7 @@ import de.bixilon.minosoft.gui.rendering.entities.factory.RegisteredEntityModelF
 import de.bixilon.minosoft.gui.rendering.entities.feature.item.ItemFeature
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
 import de.bixilon.minosoft.gui.rendering.models.raw.display.DisplayPositions
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.translateYAssign
 
 class ItemEntityRenderer(renderer: EntitiesRenderer, entity: ItemEntity) : EntityRenderer<ItemEntity>(renderer, entity) {
     val item = ItemFeature(this, null, DisplayPositions.GROUND).register()
@@ -36,26 +34,25 @@ class ItemEntityRenderer(renderer: EntitiesRenderer, entity: ItemEntity) : Entit
         entity::stack.observe(this, true) { item.stack = it }
     }
 
-    override fun update(time: ValueTimeMark, delta: Duration) {
+    override fun update(millis: Long, delta: Float) {
         updateFloatingRotation(delta)
-        super.update(time, delta)
+        super.update(millis, delta)
     }
 
-    private fun updateFloatingRotation(delta: Duration) {
-        floating += (delta / 3.seconds).toFloat()
+    private fun updateFloatingRotation(delta: Float) {
+        floating += delta / 3.0f
         if (floating > 1.0f) floating %= 1.0f
 
-        rotation += (delta / CIRCLE.toDouble().seconds).toFloat()
+        rotation += delta / CIRCLE
         if (rotation > 1.0f) rotation %= 1.0f
     }
 
-    override fun updateMatrix(delta: Duration) {
+    override fun updateMatrix(delta: Float) {
         super.updateMatrix(delta)
 
-        this.matrix.apply {
-            translateYAssign(sin(floating * CIRCLE) * 0.1f + 0.1f)
-            rotateYAssign(rotation * CIRCLE)
-        }
+        this.matrix
+            .translateYAssign(sin(floating * CIRCLE) * 0.1f + 0.1f)
+            .rotateYassign(rotation * CIRCLE)
     }
 
 

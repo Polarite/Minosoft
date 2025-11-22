@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.easteregg
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
-import de.bixilon.kutil.primitive.FloatUtil.rad
+import de.bixilon.kotlinglm.func.rad
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.data.entities.entities.player.PlayerEntity
 import de.bixilon.minosoft.data.entities.entities.player.SkinParts
 
 object EntityEasterEggs {
-    val FLIP_ROTATION = Vec3f(180.0f.rad, 0.0f, 0.0f)
+    val FLIP_ROTATION = Vec3(180.0f.rad, 0.0f, 0.0f)
     const val FLIP_ENABLED = true
 
     fun Entity.isFlipped(): Boolean {

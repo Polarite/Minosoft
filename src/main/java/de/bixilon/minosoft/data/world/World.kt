@@ -12,38 +12,41 @@
  */
 package de.bixilon.minosoft.data.world
 
-import de.bixilon.kutil.concurrent.lock.LockUtil.acquired
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.concurrent.lock.RWLock
 import de.bixilon.kutil.concurrent.worker.unconditional.UnconditionalWorker
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
-import de.bixilon.minosoft.data.Tickable
+import de.bixilon.kutil.random.RandomUtil.nextInt
 import de.bixilon.minosoft.data.entities.block.BlockEntity
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.properties.rendering.RandomDisplayTickable
 import de.bixilon.minosoft.data.registries.dimension.DimensionProperties
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
 import de.bixilon.minosoft.data.world.audio.AbstractAudioPlayer
+import de.bixilon.minosoft.data.world.audio.WorldAudioPlayer
 import de.bixilon.minosoft.data.world.biome.WorldBiomes
 import de.bixilon.minosoft.data.world.border.WorldBorder
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
-import de.bixilon.minosoft.data.world.chunk.light.section.ChunkLightUtil.hasSkyLight
-import de.bixilon.minosoft.data.world.chunk.light.types.LightLevel
+import de.bixilon.minosoft.data.world.chunk.light.ChunkLightUtil.hasSkyLight
+import de.bixilon.minosoft.data.world.chunk.light.SectionLight
 import de.bixilon.minosoft.data.world.chunk.manager.ChunkManager
-import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkLightUpdate
 import de.bixilon.minosoft.data.world.difficulty.WorldDifficulty
 import de.bixilon.minosoft.data.world.entities.WorldEntities
 import de.bixilon.minosoft.data.world.iterator.WorldIterator
 import de.bixilon.minosoft.data.world.particle.AbstractParticleRenderer
 import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.chunkPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.inChunkPosition
 import de.bixilon.minosoft.data.world.time.WorldTime
 import de.bixilon.minosoft.data.world.view.WorldView
 import de.bixilon.minosoft.data.world.weather.WorldWeather
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.util.Backports.nextIntPort
 import java.util.*
 
 /**
@@ -51,11 +54,11 @@ import java.util.*
  */
 class World(
     val session: PlaySession,
-) : Tickable {
+) : WorldAudioPlayer {
     val lock = RWLock.rwlock()
     val random = Random()
     val biomes = WorldBiomes(this)
-    val chunks = ChunkManager(this, 1000)
+    val chunks = ChunkManager(this, 1000, 100)
     val entities = WorldEntities()
     var hardcore by observed(false)
     var dimension: DimensionProperties by observed(DimensionProperties())
@@ -68,11 +71,15 @@ class World(
     var name: ResourceLocation? by observed(null)
 
 
-    var audio: AbstractAudioPlayer? = null
+    override var audio: AbstractAudioPlayer? = null
     var particle: AbstractParticleRenderer? = null
 
     var occlusion by observed(0)
 
+
+    operator fun get(x: Int, y: Int, z: Int): BlockState? {
+        return chunks[Vec2i(x shr 4, z shr 4)]?.get(x and 0x0F, y, z and 0x0F)
+    }
 
     operator fun get(position: BlockPosition): BlockState? {
         return chunks[position.chunkPosition]?.get(position.inChunkPosition)
@@ -92,10 +99,13 @@ class World(
         lock.unlock()
     }
 
-    operator fun set(x: Int, y: Int, z: Int, state: BlockState?) = set(BlockPosition(x, y, z), state)
+    operator fun set(x: Int, y: Int, z: Int, state: BlockState?) {
+        if (!isValidPosition(x, y, z)) return
+        val chunk = chunks[x shr 4, z shr 4] ?: return
+        chunk[x and 0x0F, y, z and 0x0F] = state
+    }
 
     operator fun set(position: BlockPosition, state: BlockState?) {
-        if (!isValidPosition(position)) return
         val chunk = chunks[position.chunkPosition] ?: return
         chunk[position.inChunkPosition] = state
     }
@@ -107,42 +117,68 @@ class World(
         return isValidPosition(blockPosition)
     }
 
-    fun isValidPosition(position: BlockPosition): Boolean {
+    fun isValidPosition(x: Int, y: Int, z: Int): Boolean {
+        if (x > MAX_SIZE || z > MAX_SIZE) return false
         val dimension = session.world.dimension
-        if (position.y < dimension.minY || position.y > dimension.maxY) return false
+        if (y < dimension.minY || y > dimension.maxY) return false
         return true
+    }
+
+    fun isValidPosition(position: BlockPosition) = isValidPosition(position.x, position.y, position.z)
+    fun isValidPosition(position: ChunkPosition): Boolean {
+        return true // TODO
     }
 
     fun getBlockEntity(position: BlockPosition): BlockEntity? {
         return chunks[position.chunkPosition]?.getBlockEntity(position.inChunkPosition)
     }
 
-    override fun tick() {
+    fun getOrPutBlockEntity(blockPosition: BlockPosition): BlockEntity? {
+        return chunks[blockPosition.chunkPosition]?.getOrPutBlockEntity(blockPosition.inChunkPosition)
+    }
+
+    operator fun set(position: BlockPosition, entity: BlockEntity) {
+        this.set(position, entity as BlockEntity?)
+    }
+
+    @JvmName("set2")
+    fun set(position: BlockPosition, entity: BlockEntity?) {
+        chunks[position.chunkPosition]?.set(position.inChunkPosition, entity) // TODO: fire event if needed
+    }
+
+    fun tick() {
         val simulationDistance = view.simulationDistance
         val cameraPosition = session.player.physics.positionInfo.chunkPosition
-        lock.acquired { chunks.tick(simulationDistance, cameraPosition) }
+        lock.acquire()
+        chunks.tick(simulationDistance, cameraPosition)
+        lock.release()
         border.tick()
     }
 
     fun randomDisplayTick() {
-        val origin = session.player.physics.positionInfo.position
+        val origin = session.player.physics.positionInfo.blockPosition
         val chunk = this.chunks[origin.chunkPosition] ?: return
 
+        val position = Vec3i.EMPTY
+        val chunkDelta = Vec2i.EMPTY
+
         for (i in 0 until 667) {
-            randomDisplayTick(16, origin, chunk)
-            randomDisplayTick(32, origin, chunk)
+            randomDisplayTick(16, origin, position, chunkDelta, chunk)
+            randomDisplayTick(32, origin, position, chunkDelta, chunk)
         }
     }
 
-    private fun randomDisplayTick(radius: Int, origin: BlockPosition, chunk: Chunk) {
-        val position = BlockPosition(
-            x = origin.x + random.nextIntPort(-radius, radius),
-            y = origin.y + random.nextIntPort(-radius, radius),
-            z = origin.z + random.nextIntPort(-radius, radius),
-        )
+    private fun randomDisplayTick(radius: Int, origin: BlockPosition, position: BlockPosition, chunkDelta: Vec2i, chunk: Chunk) {
+        position.x = origin.x + random.nextInt(-radius, radius)
+        position.y = origin.x + random.nextInt(-radius, radius)
+        position.z = origin.x + random.nextInt(-radius, radius)
 
-        val state = chunk.neighbours.traceBlock(position) ?: return
-        if (BlockStateFlags.RANDOM_TICKS !in state.flags || state.block !is RandomDisplayTickable) return
+        chunkDelta.x = (origin.x - position.x) shr 4
+        chunkDelta.y = (origin.z - position.z) shr 4
+
+        val state = chunk.neighbours.traceBlock(position.x and 0x0F, position.y, position.z and 0x0F, chunkDelta) ?: return
+        if (state.block !is RandomDisplayTickable) return
+        if (!state.block.hasRandomTicks(session, state, position)) return
 
         state.block.randomDisplayTick(session, state, position, random)
     }
@@ -160,17 +196,17 @@ class World(
         return !iterator.hasCollisions(entity, aabb, fluids)
     }
 
-    fun getLight(position: BlockPosition): LightLevel {
-        return chunks[position.chunkPosition]?.light?.get(position.inChunkPosition) ?: LightLevel.EMPTY
+    fun getLight(position: BlockPosition): Int {
+        return chunks[position.chunkPosition]?.light?.get(position.inChunkPosition) ?: 0x00
     }
 
     fun getBrightness(position: BlockPosition): Float {
-        val level = getLight(position)
-        var max = level.block
+        val light = getLight(position)
+        var level = light and SectionLight.BLOCK_LIGHT_MASK
         if (dimension.hasSkyLight()) {
-            max = maxOf(max, level.sky)
+            level = maxOf(level, light and SectionLight.SKY_LIGHT_MASK shr 4)
         }
-        return dimension.ambientLight[max]
+        return dimension.ambientLight[level]
     }
 
     fun recalculateLight(heightmap: Boolean = false) {
@@ -183,7 +219,7 @@ class World(
                 if (heightmap) {
                     chunk.light.heightmap.recalculate()
                 }
-                chunk.light.calculate(true, ChunkLightUpdate.Causes.RECALCULATE)
+                chunk.light.calculate()
             }
         }
         lock.release()
@@ -192,11 +228,10 @@ class World(
     }
 
     companion object {
-        const val MAX_SIZE = BlockPosition.MAX_X
+        const val MAX_SIZE = 30_000_000
         const val MAX_SIZEf = MAX_SIZE.toFloat()
         const val MAX_SIZEd = MAX_SIZE.toDouble()
-        const val MAX_VIEW_DISTANCE = 64
-        const val MAX_VERTICAL_VIEW_DISTANCE = 12
-        const val MAX_CHUNKS_SIZE = MAX_VIEW_DISTANCE * 2 + 1
+        const val MAX_RENDER_DISTANCE = 64
+        const val MAX_CHUNKS_SIZE = MAX_RENDER_DISTANCE * 2 + 1
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,12 +12,13 @@
  */
 package de.bixilon.minosoft.protocol.protocol.buffers
 
-import de.bixilon.kmath.vec.vec2.d.Vec2d
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kmath.vec.vec3.f.Vec3f
-import de.bixilon.kmath.vec.vec4.f.Vec4f
-import de.bixilon.kutil.buffer.arbitrary.ArbitraryByteArray
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2d
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kotlinglm.vec4.Vec4
 import de.bixilon.kutil.compression.zlib.GzipUtil.decompress
 import de.bixilon.kutil.enums.ValuesEnum
 import de.bixilon.minosoft.config.DebugOptions
@@ -27,8 +28,6 @@ import de.bixilon.minosoft.data.entities.Poses
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TextComponent
-import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.data.world.positions.ChunkPosition
 import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import de.bixilon.minosoft.util.json.Jackson
 import de.bixilon.minosoft.util.logging.Log
@@ -40,8 +39,9 @@ import java.nio.charset.StandardCharsets
 
 open class InByteBuffer : de.bixilon.kutil.buffer.bytes.`in`.InByteBuffer {
 
-    constructor(data: ArbitraryByteArray) : super(data)
-    constructor(data: ByteArray) : super(data)
+    constructor(bytes: ByteArray) : super(bytes)
+    constructor(buffer: InByteBuffer) : super(buffer)
+
 
     fun readFixedPointNumberInt(): Double {
         return readInt() / 32.0
@@ -85,45 +85,45 @@ open class InByteBuffer : de.bixilon.kutil.buffer.bytes.`in`.InByteBuffer {
         return EntityRotation(readAngle(), readAngle())
     }
 
-    fun readVec2f(): Vec2f {
-        return Vec2f(readFloat(), readFloat())
+    fun readVec2f(): Vec2 {
+        return Vec2(readFloat(), readFloat())
     }
 
     fun readVec2d(): Vec2d {
         return Vec2d(readDouble(), readDouble())
     }
 
-    fun readVec3f(): Vec3f {
-        return Vec3f(readFloat(), readFloat(), readFloat())
+    fun readVec3f(): Vec3 {
+        return Vec3(readFloat(), readFloat(), readFloat())
     }
 
     open fun readVec3d(): Vec3d {
         return Vec3d(readDouble(), readDouble(), readDouble())
     }
 
-    fun readVec4f(): Vec4f {
-        return Vec4f(readFloat(), readFloat(), readFloat(), readFloat())
+    fun readVec4f(): Vec4 {
+        return Vec4(readFloat(), readFloat(), readFloat(), readFloat())
     }
 
 
-    fun readByteBlockPosition(): BlockPosition {
-        return BlockPosition(readInt(), readUnsignedByte(), readInt())
+    fun readByteBlockPosition(): Vec3i {
+        return Vec3i(readInt(), readByte(), readInt())
     }
 
-    fun readShortBlockPosition(): BlockPosition {
-        return BlockPosition(readInt(), readShort().toInt(), readInt())
+    fun readShortBlockPosition(): Vec3i {
+        return Vec3i(readInt(), readShort(), readInt())
     }
 
-    fun readIntBlockPosition(): BlockPosition {
-        return BlockPosition(readInt(), readInt(), readInt())
+    fun readIntBlockPosition(): Vec3i {
+        return Vec3i(readInt(), readInt(), readInt())
     }
 
     fun readResourceLocation(): ResourceLocation {
         return ResourceLocation.of(readString())
     }
 
-    fun readChunkPosition(): ChunkPosition {
-        return ChunkPosition(readInt(), readInt())
+    fun readChunkPosition(): Vec2i {
+        return Vec2i(readInt(), readInt())
     }
 
     fun readUnsignedShortsLE(length: Int): IntArray {

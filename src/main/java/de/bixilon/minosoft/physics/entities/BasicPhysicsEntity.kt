@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,13 @@
 
 package de.bixilon.minosoft.physics.entities
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 
 abstract class BasicPhysicsEntity {
     var position = Vec3d.EMPTY
         protected set
-    val velocity = MVec3d.EMPTY
+    open var velocity = Vec3d.EMPTY
 
     open fun preTick() {}
     open fun tick() {}

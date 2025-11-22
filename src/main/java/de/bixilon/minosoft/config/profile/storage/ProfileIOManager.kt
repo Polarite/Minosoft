@@ -18,15 +18,13 @@ import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.concurrent.lock.Lock
 import de.bixilon.kutil.exception.ExceptionUtil.ignoreAll
 import de.bixilon.kutil.latch.SimpleLatch
-import de.bixilon.kutil.time.TimeUtil.sleep
-import de.bixilon.minosoft.config.profile.ProfileOptions
 import de.bixilon.minosoft.config.profile.profiles.Profile
+import de.bixilon.minosoft.terminal.RunConfiguration
 import de.bixilon.minosoft.util.json.Jackson
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
 import java.io.FileInputStream
-import kotlin.time.Duration.Companion.milliseconds
 
 object ProfileIOManager {
     private val lock = Lock.lock()
@@ -53,7 +51,7 @@ object ProfileIOManager {
         lock.unlock()
         while (notify.count == 0) {
             notify.awaitOrChange()
-            sleep(50.milliseconds) // sometimes changes happen very quickly, we don't want to save 10 times while in change
+            Thread.sleep(50L) // sometimes changes happen very quickly, we don't want to save 10 times while in change
         }
     }
 
@@ -111,7 +109,7 @@ object ProfileIOManager {
 
 
     fun save(storage: FileStorage) {
-        if (!ProfileOptions.saving) return
+        if (!RunConfiguration.PROFILES_SAVING) return
         lock.lock()
         save += storage
         lock.unlock()

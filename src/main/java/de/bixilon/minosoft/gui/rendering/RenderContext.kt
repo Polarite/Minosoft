@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -17,7 +17,6 @@ import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.concurrent.queue.Queue
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
-import de.bixilon.kutil.profiler.stack.StackedProfiler
 import de.bixilon.minosoft.gui.rendering.camera.Camera
 import de.bixilon.minosoft.gui.rendering.font.manager.FontManager
 import de.bixilon.minosoft.gui.rendering.framebuffer.FramebufferManager
@@ -41,6 +40,7 @@ class RenderContext(
     val rendering: Rendering,
 ) {
     val profile = session.profiles.rendering
+    val preferQuads = profile.advanced.preferQuads
 
     val window = WindowFactory.factory?.create(this) ?: throw IllegalStateException("Expected a window factory, but none is set.")
     val system = RenderSystemFactory.factory?.create(this) ?: throw IllegalStateException("Expected a rendering api factory, but none is set.")
@@ -62,7 +62,7 @@ class RenderContext(
 
     val skeletal = SkeletalManager(this)
 
-    var renderStats: AbstractRenderStats = RenderStats()
+    lateinit var renderStats: AbstractRenderStats
         private set
 
     var font: FontManager = unsafeNull()
@@ -71,8 +71,6 @@ class RenderContext(
     val thread: Thread = unsafeNull()
 
     var state by observed(RenderingStates.LOADING)
-
-    var profiler: StackedProfiler? = null
 
     init {
         profile.experimental::fps.observe(this, true) { renderStats = if (it) ExperimentalRenderStats() else RenderStats() }

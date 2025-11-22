@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,46 +13,32 @@
 
 package de.bixilon.minosoft.data.registries.blocks
 
-import de.bixilon.kutil.cast.CastUtil.unsafeCast
+import de.bixilon.kutil.cast.CastUtil.unsafeNull
+import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
 import de.bixilon.minosoft.data.registries.blocks.types.Block
-import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.test.IT
+import de.bixilon.minosoft.test.IT.reference
 import org.testng.Assert
 import org.testng.Assert.assertEquals
-import org.testng.annotations.Test
 
 abstract class BlockTest<T : Block> {
-    private var _block: T? = null
-    private var _state: BlockState? = null
-    val block: T by lazy { setup(); _block!! }
-    val state: BlockState by lazy { setup(); _state!! }
+    val block: T = unsafeNull()
+    val state: BlockState = unsafeNull()
 
-
-    abstract val type: Any
-
-    protected fun setup() {
-        if (_block != null) return
-
-        val identifier = when (val type = this.type) {
-            is ResourceLocation -> type
-            is Identified -> type.identifier
-            else -> throw IllegalArgumentException("Unknown type: $type")
-        }
-        val block = IT.REGISTRIES.block[identifier]
-        Assert.assertNotNull(block)
-        block!!
-        assertEquals(block.identifier, identifier)
-
-        _block = block.unsafeCast()
-        _state = block.states.default
+    init {
+        reference()
     }
 
-    @Test(groups = ["block"], priority = -1)
-    open fun `retrieve block`() {
-        setup()
+    fun retrieveBlock(name: ResourceLocation) {
+        val block = IT.REGISTRIES.block[name]
+        Assert.assertNotNull(block)
+        block!!
+        assertEquals(block.identifier, name)
+        this::block.forceSet(block)
+        this::state.forceSet(block.states.default)
     }
 
     fun BlockState.testLightProperties(
@@ -64,9 +50,9 @@ abstract class BlockTest<T : Block> {
     ) {
         assertEquals(this.luminance, luminance)
         val light = this.block.getLightProperties(this)
-        assertEquals(light.propagatesLight, propagatesLight, "Mismatching: propagates")
-        assertEquals(light.skylightEnters, skylightEnters, "Mismatching: enters")
-        assertEquals(light.filtersSkylight, filtersSkylight, "Mismatching: filters")
+        assertEquals(light.propagatesLight, propagatesLight)
+        assertEquals(light.skylightEnters, skylightEnters)
+        assertEquals(light.filtersSkylight, filtersSkylight)
 
         for (direction in Directions.VALUES) {
             assertEquals(light.propagatesLight(direction), propagates[direction.ordinal], "$direction failed")

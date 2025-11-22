@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,25 +13,24 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.popper
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.latch.SimpleLatch
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.config.key.KeyCodes
-import de.bixilon.minosoft.gui.rendering.RenderUtil.runAsync
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.input.InputHandler
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import de.bixilon.minosoft.util.Initializable
 
 class PopperManager(
     private val guiRenderer: GUIRenderer,
 ) : Initializable, InputHandler, AsyncDrawable, Drawable {
     private val poppers: MutableList<PopperGUIElement> = mutableListOf()
-    private var lastTickTime = TimeUtil.NULL
+    private var lastTickTime: Long = -1L
 
 
     fun onScreenChange() {
@@ -42,8 +41,8 @@ class PopperManager(
 
     override fun drawAsync() {
         val toRemove: MutableSet<PopperGUIElement> = mutableSetOf()
-        val time = now()
-        val tick = time - lastTickTime > TickUtil.INTERVAL
+        val time = millis()
+        val tick = time - lastTickTime > ProtocolDefinition.TICK_TIME
         if (tick) {
             lastTickTime = time
         }
@@ -59,12 +58,12 @@ class PopperManager(
                 popper.tick()
             }
 
-            if (!popper.skip) {
+            if (!popper.skipDraw) {
                 popper.drawAsync()
             }
             latch.inc()
             popper.prepare()
-            guiRenderer.context.runAsync { popper.prepareAsync(); latch.dec() }
+            DefaultThreadPool += { popper.prepareAsync(); latch.dec() }
         }
         latch.dec()
         latch.await()
@@ -74,16 +73,16 @@ class PopperManager(
 
     override fun draw() {
         for (popper in poppers) {
-            if (!popper.skip) {
+            if (!popper.skipDraw) {
                 popper.draw()
             }
             popper.postPrepare()
 
             guiRenderer.setup()
-            if (!popper.enabled) {
+            if (!popper.enabled || popper.mesh.data.isEmpty) {
                 continue
             }
-            popper.mesh?.draw()
+            popper.mesh.draw()
         }
     }
 
@@ -99,7 +98,7 @@ class PopperManager(
         return false
     }
 
-    override fun onMouseMove(position: Vec2f): Boolean {
+    override fun onMouseMove(position: Vec2): Boolean {
         for ((index, element) in poppers.toList().withIndex()) {
             if (index != 0 && !element.activeWhenHidden) {
                 continue
@@ -123,7 +122,7 @@ class PopperManager(
         return false
     }
 
-    override fun onScroll(scrollOffset: Vec2f): Boolean {
+    override fun onScroll(scrollOffset: Vec2): Boolean {
         for ((index, element) in poppers.toList().withIndex()) {
             if (index != 0 && !element.activeWhenHidden) {
                 continue

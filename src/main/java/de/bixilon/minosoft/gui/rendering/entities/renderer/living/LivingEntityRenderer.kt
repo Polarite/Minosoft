@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,41 +13,38 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.renderer.living
 
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.kutil.math.interpolation.Interpolator
-import de.bixilon.kutil.primitive.FloatUtil.rad
 import de.bixilon.minosoft.data.entities.Poses
 import de.bixilon.minosoft.data.entities.entities.LivingEntity
 import de.bixilon.minosoft.data.entities.event.events.damage.DamageEvent
 import de.bixilon.minosoft.data.entities.event.events.damage.DamageListener
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.ColorInterpolation
+import de.bixilon.minosoft.data.text.formatting.color.ColorUtil
 import de.bixilon.minosoft.gui.rendering.entities.EntitiesRenderer
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.rotateDegreesAssign
 
 abstract class LivingEntityRenderer<E : LivingEntity>(renderer: EntitiesRenderer, entity: E) : EntityRenderer<E>(renderer, entity), DamageListener {
-    val damage = Interpolator(ChatColors.WHITE.rgb(), ColorInterpolation::interpolateRGB) // TODO delta^2 or no interpolation at all?
+    val damage = Interpolator(ChatColors.WHITE, ColorUtil::interpolateRGB) // TODO delta^2 or no interpolation at all?
 
-
-    override fun updateMatrix(delta: Duration) {
+    override fun updateMatrix(delta: Float) {
         super.updateMatrix(delta)
         when (entity.pose) {
-            Poses.SLEEPING -> matrix.apply { rotateXAssign(90.0f.rad) } // TODO
+            Poses.SLEEPING -> matrix.rotateDegreesAssign(Vec3(90, 0, 0)) // TODO
             else -> Unit
         }
     }
 
-    override fun update(time: ValueTimeMark, delta: Duration) {
+    override fun update(millis: Long, delta: Float) {
         if (damage.delta >= 1.0f) {
-            damage.push(ChatColors.WHITE.rgb())
+            damage.push(ChatColors.WHITE)
         }
-        damage.add((delta / 1.seconds).toFloat(), 0.1f) // TODO: 1 second?
-        super.update(time, delta)
+        damage.add(delta, 0.1f)
+        super.update(millis, delta)
     }
 
     override fun onDamage(type: DamageEvent) {
-        damage.push(ChatColors.RED.rgb())
+        damage.push(ChatColors.RED)
     }
 }
