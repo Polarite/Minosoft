@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,19 +13,20 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal.model
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalModel
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalTransform
-import de.bixilon.minosoft.gui.rendering.skeletal.baked.SkeletalBakeContext
-import de.bixilon.minosoft.gui.rendering.skeletal.mesh.AbstractSkeletalMeshBuilder
+import de.bixilon.minosoft.gui.rendering.skeletal.mesh.AbstractSkeletalMesh
 import de.bixilon.minosoft.gui.rendering.skeletal.model.animations.SkeletalAnimation
 import de.bixilon.minosoft.gui.rendering.skeletal.model.elements.SkeletalElement
-import de.bixilon.minosoft.gui.rendering.skeletal.model.textures.*
+import de.bixilon.minosoft.gui.rendering.skeletal.model.textures.SkeletalTexture
+import de.bixilon.minosoft.gui.rendering.skeletal.model.textures.SkeletalTextureInstance
 import de.bixilon.minosoft.gui.rendering.skeletal.model.transforms.SkeletalTransform
+import de.bixilon.minosoft.gui.rendering.system.base.texture.shader.ShaderTexture
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.texture
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
 import java.util.concurrent.atomic.AtomicInteger
 
 data class SkeletalModel(
@@ -34,23 +35,20 @@ data class SkeletalModel(
     val animations: Map<String, SkeletalAnimation> = emptyMap(),
     val transforms: Map<String, SkeletalTransform> = emptyMap(),
 ) {
-    @JsonIgnore
-    val loadedTextures: MutableSkeletalInstanceTextureMap = mutableMapOf()
+    val loadedTextures: MutableMap<ResourceLocation, SkeletalTextureInstance> = mutableMapOf()
 
     fun load(context: RenderContext, skip: Set<ResourceLocation>) {
         for ((name, properties) in this.textures) {
             if (name in skip) continue
-
             val file = name.texture()
             if (file in skip) continue
-
             val texture = context.textures.static.create(file)
             this.loadedTextures[name] = SkeletalTextureInstance(properties, texture)
         }
     }
 
-    private fun buildTextures(override: SkeletalTextureMap): SkeletalInstanceTextureMap {
-        val textures: MutableSkeletalInstanceTextureMap = this.loadedTextures.toMutableMap()
+    private fun buildTextures(override: Map<ResourceLocation, ShaderTexture>): Map<ResourceLocation, SkeletalTextureInstance> {
+        val textures: MutableMap<ResourceLocation, SkeletalTextureInstance> = this.loadedTextures.toMutableMap()
 
         for ((name, texture) in override) {
             val instance = textures[name]
@@ -72,24 +70,22 @@ data class SkeletalModel(
         for ((name, transform) in this.transforms) {
             transforms[name] = transform.bake(transformId)
         }
-        val baseTransform = BakedSkeletalTransform(0, Vec3f.EMPTY, transforms)
+        val baseTransform = BakedSkeletalTransform(0, Vec3.EMPTY, transforms)
 
         return Pair(baseTransform, transformId.get())
     }
 
-    private fun buildElements(consumer: AbstractSkeletalMeshBuilder, textures: SkeletalInstanceTextureMap, transform: BakedSkeletalTransform) {
-        val context = SkeletalBakeContext(transform = transform, textures = textures, consumer = consumer)
-
+    private fun buildElements(consumer: AbstractSkeletalMesh, textures: Map<ResourceLocation, SkeletalTextureInstance>, transform: BakedSkeletalTransform) {
         for ((name, element) in elements) {
-            element.bake(context, name)
+            element.bake(consumer, textures, transform, name)
         }
     }
 
-    fun bake(override: SkeletalTextureMap, mesh: AbstractSkeletalMeshBuilder): BakedSkeletalModel {
+    fun bake(context: RenderContext, override: Map<ResourceLocation, ShaderTexture>, mesh: AbstractSkeletalMesh): BakedSkeletalModel {
         val textures = buildTextures(override)
         val (transform, count) = buildTransforms()
         buildElements(mesh, textures, transform)
 
-        return BakedSkeletalModel(mesh.bake(), transform, count, animations)
+        return BakedSkeletalModel(mesh, transform, count, animations)
     }
 }

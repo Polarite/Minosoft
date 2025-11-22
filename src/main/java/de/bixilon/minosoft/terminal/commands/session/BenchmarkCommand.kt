@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,13 @@
 
 package de.bixilon.minosoft.terminal.commands.session
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kutil.math.MathConstants.PIf
+import de.bixilon.kotlinglm.GLM.PIf
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.math.Trigonometry.sin
+import de.bixilon.kutil.random.RandomUtil.nextDouble
+import de.bixilon.kutil.random.RandomUtil.nextFloat
+import de.bixilon.kutil.random.RandomUtil.nextInt
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.commands.nodes.ArgumentNode
 import de.bixilon.minosoft.commands.nodes.LiteralNode
 import de.bixilon.minosoft.commands.parser.brigadier._int.IntParser
@@ -27,9 +31,6 @@ import de.bixilon.minosoft.data.entities.entities.item.PrimedTNT
 import de.bixilon.minosoft.data.entities.entities.player.RemotePlayerEntity
 import de.bixilon.minosoft.data.entities.entities.player.additional.PlayerAdditional
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.util.Backports.nextDoublePort
-import de.bixilon.minosoft.util.Backports.nextFloatPort
-import de.bixilon.minosoft.util.Backports.nextIntPort
 import de.bixilon.minosoft.util.KUtil.startInit
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import java.util.*
@@ -49,24 +50,24 @@ object BenchmarkCommand : SessionCommand {
         val entities: MutableList<Entity> = ArrayList(count)
         val spread = maxOf(cbrt(count.toDouble()), 5.0)
         for (id in 0 until count) {
-            val position = offset + Vec3d(random.nextDoublePort(-spread, spread), random.nextDoublePort(-spread, spread), random.nextDoublePort(-spread, spread))
-            val rotation = EntityRotation(random.nextFloatPort(-179.0f, 179.0f), random.nextFloatPort(-89.0f, 89.0f))
+            val position = offset + Vec3d(random.nextDouble(-spread, spread), random.nextDouble(-spread, spread), random.nextDouble(-spread, spread))
+            val rotation = EntityRotation(random.nextFloat(-179.0f, 179.0f), random.nextFloat(-89.0f, 89.0f))
             val entity = factory.invoke(position, rotation, id)
             entity.startInit()
             entity.data[Entity.NO_GRAVITY_DATA] = true
             entities += entity
-            session.world.entities.add(random.nextIntPort(100000, 200000), null, entity)
+            session.world.entities.add(random.nextInt(100000, 200000), null, entity)
             // TODO: make them move randomly?
         }
 
         var progress = 0.0f
         session.ticker += {
-            val time = (System.currentTimeMillis() % 1000L) / 1000.0f
+            val time = (millis() % 1000L) / 1000.0f
             progress += time
             if (progress > (PIf * 2)) {
                 progress %= (PIf * 2)
             }
-            val sin = sin(progress).toDouble()
+            val sin = sin(progress)
             val delta = Vec3d(sin, if (sin > 0) 0.1 else -0.1, -sin)
 
             for (entity in entities) {

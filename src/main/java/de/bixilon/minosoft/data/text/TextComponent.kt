@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -20,15 +20,13 @@ import de.bixilon.minosoft.data.text.events.hover.HoverEvent
 import de.bixilon.minosoft.data.text.formatting.FormattingCodes
 import de.bixilon.minosoft.data.text.formatting.TextStyle
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 
-// TODO: make this one immutable
 open class TextComponent(
     message: Any? = "",
-    override var color: RGBAColor? = null,
+    override var color: RGBColor? = null,
     override val formatting: BitEnumSet<FormattingCodes> = FormattingCodes.set(),
     var font: ResourceLocation? = null,
     var clickEvent: ClickEvent? = null,
@@ -66,8 +64,7 @@ open class TextComponent(
         return this
     }
 
-    fun color(color: RGBColor) = this.color(color.rgba())
-    fun color(color: RGBAColor): TextComponent {
+    fun color(color: RGBColor): TextComponent {
         this.color = color
         return this
     }
@@ -76,7 +73,7 @@ open class TextComponent(
         return legacy
     }
 
-    override fun setFallbackColor(color: RGBAColor): TextComponent {
+    override fun setFallbackColor(color: RGBColor): TextComponent {
         if (this.color == null) {
             this.color = color
         }
@@ -111,7 +108,7 @@ open class TextComponent(
             return builder.toString()
         }
 
-    override fun toJson(): Any {
+    override fun getJson(): Any {
         if (message.isEmpty()) {
             return emptyMap<String, Any>()
         }
@@ -130,13 +127,15 @@ open class TextComponent(
         return json
     }
 
-    fun copy(message: Any? = this.message, color: RGBAColor? = this.color, formatting: BitEnumSet<FormattingCodes> = this.formatting, clickEvent: ClickEvent? = this.clickEvent, hoverEvent: HoverEvent? = this.hoverEvent) = TextComponent(
-        message = message,
-        color = color,
-        formatting = formatting,
-        clickEvent = clickEvent,
-        hoverEvent = hoverEvent,
-    )
+    fun copy(message: Any? = this.message, color: RGBColor? = this.color, formatting: BitEnumSet<FormattingCodes> = this.formatting, clickEvent: ClickEvent? = this.clickEvent, hoverEvent: HoverEvent? = this.hoverEvent): TextComponent {
+        return TextComponent(
+            message = message,
+            color = color,
+            formatting = formatting,
+            clickEvent = clickEvent,
+            hoverEvent = hoverEvent,
+        )
+    }
 
     override val length: Int
         get() = message.length

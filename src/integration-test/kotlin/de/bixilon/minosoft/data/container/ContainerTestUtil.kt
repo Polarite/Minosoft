@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -20,10 +20,12 @@ import de.bixilon.minosoft.data.container.types.processing.smelting.FurnaceConta
 import de.bixilon.minosoft.data.registries.containers.ContainerFactory
 import de.bixilon.minosoft.data.registries.containers.ContainerType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
 import de.bixilon.minosoft.test.IT
+import de.bixilon.minosoft.test.IT.reference
 
 
 object ContainerTestUtil {
@@ -32,6 +34,10 @@ object ContainerTestUtil {
     private val furnace = IT.REGISTRIES.containerType[FurnaceContainer]!!
 
 
+    init {
+        reference()
+    }
+
     fun createInventory(session: PlaySession = createSession()): Container {
         val inventory = PlayerInventory(session.player.items, session)
         session.player.items.containers[0] = inventory
@@ -39,28 +45,28 @@ object ContainerTestUtil {
     }
 
     fun createContainer(session: PlaySession = createSession()): Container {
-        val container = UnknownContainer(session, this.container, id = 9)
+        val container = UnknownContainer(session, this.container)
         session.player.items.containers[9] = container
         return container
     }
 
     fun createChest(session: PlaySession = createSession()): Generic9x3Container {
-        val container = Generic9x3Container(session, this.chest, null, id = 9)
+        val container = Generic9x3Container(session, this.chest, null)
         session.player.items.containers[9] = container
         return container
     }
 
     fun createFurnace(session: PlaySession = createSession()): FurnaceContainer {
-        val container = FurnaceContainer(session, this.furnace, null, id = 9)
+        val container = FurnaceContainer(session, this.furnace, null)
         session.player.items.containers[9] = container
         return container
     }
 
     private object GenericContainerFactory : ContainerFactory<Container> {
-        override val identifier = minosoft("test")
+        override val identifier: ResourceLocation = minosoft("test")
 
-        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int, id: Int): Container {
-            return UnknownContainer(session, type, title, id)
+        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int): Container {
+            return UnknownContainer(session, type, title)
         }
     }
 }

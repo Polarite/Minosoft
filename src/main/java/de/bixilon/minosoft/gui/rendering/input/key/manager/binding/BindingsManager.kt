@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -23,7 +23,6 @@ import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.input.InputHandler
 import de.bixilon.minosoft.gui.rendering.input.key.manager.InputManager
 import de.bixilon.minosoft.gui.rendering.input.key.manager.binding.actions.KeyActionFilter.Companion.filter
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class BindingsManager(
     val input: InputManager,
@@ -71,7 +70,7 @@ class BindingsManager(
         }
     }
 
-    private fun onKey(name: ResourceLocation, state: KeyBindingState, pressed: Boolean, code: KeyCodes, time: ValueTimeMark) {
+    private fun onKey(name: ResourceLocation, state: KeyBindingState, pressed: Boolean, code: KeyCodes, millis: Long) {
         val filterState = KeyBindingFilterState(pressed)
 
         val binding = state.binding
@@ -80,7 +79,7 @@ class BindingsManager(
 
         for ((action, keys) in binding.action) {
             val filter = action.filter()
-            filter.check(filterState, keys, input, name, state, code, pressed, time)
+            filter.check(filterState, keys, input, name, state, code, pressed, millis)
         }
         if (!filterState.satisfied) return
 
@@ -91,7 +90,7 @@ class BindingsManager(
             callback(filterState.result)
         }
 
-        state.lastChange = time
+        state.lastChange = millis
 
         if (!filterState.store) return
 
@@ -102,12 +101,12 @@ class BindingsManager(
         }
     }
 
-    fun onKey(code: KeyCodes, pressed: Boolean, handler: InputHandler?, time: ValueTimeMark) {
+    fun onKey(code: KeyCodes, pressed: Boolean, handler: InputHandler?, millis: Long) {
         for ((name, state) in bindings) {
             if (handler != null && !state.binding.ignoreConsumer) {
                 continue
             }
-            onKey(name, state, pressed, code, time)
+            onKey(name, state, pressed, code, millis)
         }
     }
 

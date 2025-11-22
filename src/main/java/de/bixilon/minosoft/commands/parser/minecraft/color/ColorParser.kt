@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -19,26 +19,26 @@ import de.bixilon.minosoft.commands.suggestion.Suggestion
 import de.bixilon.minosoft.commands.suggestion.util.SuggestionUtil
 import de.bixilon.minosoft.commands.util.CommandReader
 import de.bixilon.minosoft.commands.util.ReadResult
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.formatting.TextFormattable
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor.Companion.rgba
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asColor
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class ColorParser(
     val allowRGB: Boolean = true,
-) : ArgumentParser<RGBAColor> {
+) : ArgumentParser<RGBColor> {
     private val suggestions = ChatColors.NAME_MAP.map { ColorSuggestion(it.key, it.value) }
     override val examples: List<Any> = listOf("red", "yellow", "#FFFFFF")
 
-    override fun parse(reader: CommandReader): RGBAColor {
+    override fun parse(reader: CommandReader): RGBColor {
         reader.readResult { reader.readColor() }.let { return it.result ?: throw ColorParseError(reader, it) }
     }
 
-    fun CommandReader.readColor(): RGBAColor? {
+    fun CommandReader.readColor(): RGBColor? {
         val peek = peek() ?: return null
         if (peek == '#'.code) {
             if (!allowRGB) {
@@ -47,7 +47,7 @@ class ColorParser(
             read()
             val colorString = readWord(false) ?: return null
             return try {
-                colorString.rgba()
+                colorString.asColor()
             } catch (ignored: NumberFormatException) {
                 null
             }
@@ -68,7 +68,7 @@ class ColorParser(
             val pointer = reader.pointer
             val hex = reader.readWord(false) ?: return emptyList()
             try {
-                hex.rgb()
+                hex.asColor()
             } catch (exception: NumberFormatException) {
                 throw ColorParseError(reader, ReadResult(pointer, reader.pointer, hex, null))
             }
@@ -79,7 +79,7 @@ class ColorParser(
         return SuggestionUtil.suggest(suggestions, pointer, string, false) ?: throw ColorParseError(reader, ReadResult(pointer, reader.pointer, string ?: "", null))
     }
 
-    data class ColorSuggestion(val name: String, val color: RGBAColor) : TextFormattable {
+    data class ColorSuggestion(val name: String, val color: RGBColor) : TextFormattable {
         override fun toText(): TextComponent {
             return TextComponent(name).color(color)
         }
@@ -91,7 +91,7 @@ class ColorParser(
 
 
     companion object : ArgumentParserFactory<ColorParser> {
-        override val identifier = minecraft("color")
+        override val identifier: ResourceLocation = "minecraft:color".toResourceLocation()
 
         override fun read(buffer: PlayInByteBuffer): ColorParser {
             return ColorParser(buffer.session.version.supportsRGBChat)

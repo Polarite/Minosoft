@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,9 @@
 
 package de.bixilon.minosoft.gui.rendering.models.util
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.gui.rendering.models.block.element.face.FaceUV
 import org.testng.Assert.assertEquals
@@ -24,11 +24,11 @@ import org.testng.annotations.Test
 @Test(groups = ["rendering", "models"])
 class CuboidUtilTest {
 
-    private fun uv(u1: Int, v1: Int, u2: Int, v2: Int) = FaceUV(Vec2f(u1, v1), Vec2f(u2, v2))
+    private fun uv(u1: Int, v1: Int, u2: Int, v2: Int) = FaceUV(Vec2(u1, v1), Vec2(u2, v2))
 
     fun `simple uv`() {
-        val from = Vec3f(-7, 0, -7)
-        val to = Vec3f(7, 10, 7)
+        val from = Vec3(-7, 0, -7)
+        val to = Vec3(7, 10, 7)
         val offset = Vec2i(0, 19)
 
         assertEquals(CuboidUtil.cubeUV(offset, from, to, Directions.DOWN), uv(28, 33, 42, 19))
@@ -40,8 +40,8 @@ class CuboidUtilTest {
     }
 
     fun `not same size uv`() {
-        val from = Vec3f(-1, 0, 0)
-        val to = Vec3f(1, 4, 1)
+        val from = Vec3(-1, 0, 0)
+        val to = Vec3(1, 4, 1)
         val offset = Vec2i(0, 0)
 
         assertEquals(CuboidUtil.cubeUV(offset, from, to, Directions.DOWN), uv(3, 1, 5, 0))
@@ -53,8 +53,8 @@ class CuboidUtilTest {
     }
 
     fun `pig head`() {
-        val from = Vec3f(-4, 8, 6)
-        val to = Vec3f(4, 16, 14)
+        val from = Vec3(-4, 8, 6)
+        val to = Vec3(4, 16, 14)
         val offset = Vec2i(0, 0)
 
         assertEquals(CuboidUtil.cubeUV(offset, from, to, Directions.DOWN), uv(16, 8, 24, 0))

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,22 @@
 
 package de.bixilon.minosoft.data.entities.block
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.primitive.IntUtil.toInt
 import de.bixilon.minosoft.data.registries.blocks.properties.BlockProperties
 import de.bixilon.minosoft.data.registries.blocks.properties.Instruments
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.registries.blocks.state.PropertyBlockState
+import de.bixilon.minosoft.data.registries.identified.AliasedIdentified
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.NoteParticle
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.toVec3d
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import java.util.*
 
-// TODO: is this needed in > 1.12?
-class NoteBlockBlockEntity(session: PlaySession, position: BlockPosition, state: BlockState) : BlockEntity(session, position, state), BlockActionEntity {
+class NoteBlockBlockEntity(session: PlaySession) : BlockEntity(session), BlockActionEntity {
     private val noteParticleType = session.registries.particleType[NoteParticle]
     var instrument: Instruments? = null
         private set
@@ -33,11 +37,12 @@ class NoteBlockBlockEntity(session: PlaySession, position: BlockPosition, state:
     private var showParticleNextTick = false
 
     private fun BlockState.getNote(): Int {
+        if (this !is PropertyBlockState) throw IllegalArgumentException("Block has not states!")
         return properties[BlockProperties.NOTE]?.toInt() ?: 0
     }
 
     override fun setBlockActionData(type: Int, data: Int) {
-        instrument = when (type) {
+        instrument = when (type.toInt()) {
             0 -> Instruments.HARP
             1 -> Instruments.BASS
             2 -> Instruments.SNARE
@@ -46,13 +51,13 @@ class NoteBlockBlockEntity(session: PlaySession, position: BlockPosition, state:
             else -> null
         }
 
-        pitch = data
+        pitch = data.toInt()
 
         showParticleNextTick = true
         // ToDo: Play sound?
     }
 
-    override fun tick() {
+    override fun tick(session: PlaySession, state: BlockState, position: Vec3i, random: Random) {
         if (!showParticleNextTick) {
             return
         }
@@ -61,14 +66,18 @@ class NoteBlockBlockEntity(session: PlaySession, position: BlockPosition, state:
 
 
         noteParticleType?.let {
-            particle += NoteParticle(session, Vec3d(position) + Vec3d(0.5, 1.2, 0.5), state.getNote() / 24.0f, it.default())
+            particle += NoteParticle(session, position.toVec3d + Vec3d(0.5, 1.2, 0.5), state.getNote() / 24.0f, it.default())
         }
     }
 
-    companion object : BlockEntityFactory<NoteBlockBlockEntity> {
-        override val identifier = minecraft("note_block")
+    companion object : BlockEntityFactory<NoteBlockBlockEntity>, AliasedIdentified {
+        override val identifier: ResourceLocation = minecraft("note_block")
 
-        override fun build(session: PlaySession, position: BlockPosition, state: BlockState) = NoteBlockBlockEntity(session, position, state)
+        override val identifiers: Set<ResourceLocation> = setOf(minecraft("noteblock"))
+
+        override fun build(session: PlaySession): NoteBlockBlockEntity {
+            return NoteBlockBlockEntity(session)
+        }
     }
 
 }

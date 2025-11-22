@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.container
 
-import de.bixilon.kutil.concurrent.lock.LockUtil.locked
+import de.bixilon.minosoft.data.container.IncompleteContainer
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.s2c.PlayS2CPacket
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions.V_1_17_1_PRE1
@@ -23,21 +23,35 @@ import de.bixilon.minosoft.util.logging.LogMessageType
 
 class ContainerItemS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
     val containerId = buffer.readUnsignedByte()
-    val revision: Int = if (buffer.versionId >= V_1_17_1_PRE1) buffer.readVarInt() else -1
+    val revision: Int = if (buffer.versionId >= V_1_17_1_PRE1) {
+        buffer.readVarInt()
+    } else {
+        -1
+    }
     val slot = buffer.readShort().toInt()
     val stack = buffer.readItemStack()
 
     override fun handle(session: PlaySession) {
-        val container = session.player.items.containers[containerId] ?: return
+        val container = session.player.items.containers[containerId]
 
-        container.lock.locked {
+        if (container == null) {
+            val incomplete = session.player.items.incomplete.synchronizedGetOrPut(containerId) { IncompleteContainer() }
             if (slot < 0) {
-                container.floating = stack
+                incomplete.floating = stack
+            } else if (stack == null) {
+                incomplete.slots -= slot
             } else {
-                container.items[slot] = stack
+                incomplete.slots[slot] = stack
             }
-            container.serverRevision = revision
+
+            return
         }
+        if (slot < 0) {
+            container.floatingItem = stack
+        } else {
+            container[slot] = stack
+        }
+        container.serverRevision = revision
     }
 
     override fun log(reducedLog: Boolean) {

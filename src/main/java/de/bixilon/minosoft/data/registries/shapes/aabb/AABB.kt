@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,41 +13,36 @@
 
 package de.bixilon.minosoft.data.registries.shapes.aabb
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kmath.vec.vec3.d._Vec3d
-import de.bixilon.kmath.vec.vec3.f.Vec3f
-import de.bixilon.kmath.vec.vec3.f._Vec3f
-import de.bixilon.kmath.vec.vec3.i.Vec3i
-import de.bixilon.kmath.vec.vec3.i._Vec3i
-import de.bixilon.kutil.collections.iterator.SingleIterator
+import de.bixilon.kotlinglm.func.common.clamp
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kotlinglm.vec3.Vec3t
 import de.bixilon.kutil.math.simple.DoubleMath.ceil
-import de.bixilon.kutil.math.simple.DoubleMath.clamp
 import de.bixilon.kutil.math.simple.DoubleMath.floor
 import de.bixilon.minosoft.data.Axes
 import de.bixilon.minosoft.data.direction.Directions
-import de.bixilon.minosoft.data.registries.shapes.shape.AABBRaycastHit
-import de.bixilon.minosoft.data.registries.shapes.shape.Shape
-import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.data.world.positions.BlockPosition.Companion.clampX
-import de.bixilon.minosoft.data.world.positions.BlockPosition.Companion.clampY
-import de.bixilon.minosoft.data.world.positions.BlockPosition.Companion.clampZ
-import de.bixilon.minosoft.data.world.positions.InChunkPosition
-import de.bixilon.minosoft.data.world.positions.InSectionPosition
+import de.bixilon.minosoft.data.registries.shapes.voxel.AABBRaycastHit
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.ONE
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.toVec3
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.get
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.max
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.min
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.toVec3d
 import kotlin.math.abs
 
 
-class AABB : Shape {
+class AABB {
     val min: Vec3d
     val max: Vec3d
 
-    constructor(jsonData: Map<String, Any>) : this(jsonData["from"]!!.toVec3d(Vec3d.EMPTY), jsonData["to"]!!.toVec3d(Vec3d.ONE))
+    constructor(jsonData: Map<String, Any>) : this(jsonData["from"]!!.toVec3(Vec3.EMPTY), jsonData["to"]!!.toVec3(Vec3.ONE))
 
     constructor(aabb: AABB) : this(aabb.min, aabb.max)
 
+    constructor(min: Vec3, max: Vec3) : this(Vec3d(min), Vec3d(max))
+
+    constructor(minX: Float, minY: Float, minZ: Float, maxX: Float, maxY: Float, maxZ: Float) : this(Vec3d(minX, minY, minZ), Vec3d(maxX, maxY, maxZ))
     constructor(minX: Double, minY: Double, minZ: Double, maxX: Double, maxY: Double, maxZ: Double) : this(Vec3d(minX, minY, minZ), Vec3d(maxX, maxY, maxZ))
 
     constructor(min: Vec3d, max: Vec3d) {
@@ -55,37 +50,26 @@ class AABB : Shape {
         this.max = max(max, min)
     }
 
-    constructor(unsafe: Boolean, min: Vec3d, max: Vec3d) {
+    private constructor(unsafe: Boolean, min: Vec3d, max: Vec3d) {
         this.min = min
         this.max = max
     }
 
-    override fun intersects(other: AABB): Boolean {
+    fun intersect(other: AABB): Boolean {
         return (min.x < other.max.x && max.x > other.min.x) && (min.y < other.max.y && max.y > other.min.y) && (min.z < other.max.z && max.z > other.min.z)
     }
 
-    override fun intersects(other: AABB, offset: BlockPosition): Boolean {
-        return (min.x < (other.max.x + offset.x) && max.x > (other.min.x + offset.x)) && (min.y < (other.max.y + offset.y) && max.y > (other.min.y + offset.y)) && (min.z < (other.max.z + offset.z) && max.z > (other.min.z + offset.z))
-    }
+    operator fun plus(other: Vec3t<out Number>): AABB = offset(other)
+    fun offset(other: Vec3t<out Number>) = AABB(true, min + other, max + other)
 
-    override operator fun plus(offset: Vec3d): AABB = this.offset(offset)
-    inline fun offset(offset: _Vec3d): AABB = AABB(true, min + offset, max + offset)
+    operator fun plus(other: Vec3d): AABB = offset(other)
+    fun offset(other: Vec3d) = AABB(true, min + other, max + other)
 
-    override operator fun plus(offset: Vec3f): AABB = this.offset(offset)
-    inline fun offset(other: _Vec3f) = AABB(true, min + other, max + other)
+    operator fun plus(other: Vec3): AABB = offset(other)
+    fun offset(other: Vec3) = AABB(true, min + other, max + other)
 
-    override operator fun plus(offset: Vec3i): AABB = this.offset(offset)
-    fun offset(other: _Vec3i) = AABB(true, min + other, max + other)
-
-    override operator fun plus(offset: BlockPosition): AABB = offset(offset)
-    inline fun offset(other: BlockPosition) = AABB(true, min + other, max + other)
-
-    override operator fun plus(offset: InChunkPosition): AABB = offset(offset)
-    inline fun offset(other: InChunkPosition) = AABB(true, min + other, max + other)
-
-    override operator fun plus(offset: InSectionPosition): AABB = offset(offset)
-    inline fun offset(other: InSectionPosition) = AABB(true, min + other, max + other)
-
+    operator fun plus(other: Vec3i): AABB = offset(other)
+    fun offset(other: Vec3i) = AABB(true, min + other, max + other)
 
     operator fun plus(other: AABB): AABB {
         val newMin = Vec3d(minOf(min.x, other.min.x), minOf(min.y, other.min.y), minOf(min.z, other.min.z))
@@ -93,30 +77,13 @@ class AABB : Shape {
         return AABB(true, newMin, newMax)
     }
 
-    fun positions(order: AABBIterator.IterationOrder = AABBIterator.IterationOrder.OPTIMIZED): AABBIterator {
-        val min = BlockPosition(min.x.floor.clampX(), min.y.floor.clampY(), min.z.floor.clampZ())
-        val max = BlockPosition((max.x.ceil - 1).clampX(), (max.y.ceil - 1).clampY(), (max.z.ceil - 1).clampZ())
-        return AABBIterator(min, max, order)
-    }
-
-    fun innerPositions(order: AABBIterator.IterationOrder = AABBIterator.IterationOrder.OPTIMIZED): AABBIterator {
-        val minX = (min.x + 1.0E-7).floor
-        val minY = (min.y + 1.0E-7).floor
-        val minZ = (min.z + 1.0E-7).floor
-
-        val maxX = (max.x - 1.0E-7).ceil - 1
-        val maxY = (max.y - 1.0E-7).ceil - 1
-        val maxZ = (max.z - 1.0E-7).ceil - 1
-
-        val min = BlockPosition(minX.clampX(), minY.clampY(), minZ.clampZ())
-        val max = BlockPosition(maxX.clampX(), maxY.clampY(), maxZ.clampZ())
-
-        return AABBIterator(min, max, order)
+    fun positions(): AABBIterator {
+        return AABBIterator(this)
     }
 
     fun extend(vec3: Vec3d): AABB {
-        val newMin = MVec3d(min)
-        val newMax = MVec3d(max)
+        val newMin = Vec3d(min)
+        val newMax = Vec3d(max)
 
         if (vec3.x < 0) {
             newMin.x += vec3.x
@@ -136,15 +103,20 @@ class AABB : Shape {
             newMax.z += vec3.z
         }
 
-        return AABB(true, newMin.unsafe, newMax.unsafe)
+        return AABB(true, newMin, newMax)
+    }
+
+    fun extend(vec3i: Vec3i): AABB {
+        return this.extend(Vec3d(vec3i))
     }
 
     fun extend(direction: Directions): AABB {
         return this.extend(direction.vectord)
     }
 
+
     fun grow(size: Double = 1.0E-7): AABB {
-        return AABB(true, min - size, max + size)
+        return AABB(min - size, max + size)
     }
 
     fun grow(size: Float): AABB {
@@ -155,50 +127,51 @@ class AABB : Shape {
         return this > min && this < max
     }
 
-    private fun intersects(axis: Axes, other: AABB, offset: BlockPosition): Boolean {
+    private fun intersects(axis: Axes, other: AABB): Boolean {
         val min = min[axis]
         val max = max[axis]
 
-        val otherMin = other.min[axis] + offset[axis]
-        val otherMax = other.max[axis] + offset[axis]
+        val otherMin = other.min[axis]
+        val otherMax = other.max[axis]
 
         return min.isIn(otherMin, otherMax)
-            || max.isIn(otherMin, otherMax)
-            || otherMin.isIn(min, max)
-            || otherMax.isIn(min, max)
-            || (min == otherMin && max == otherMax)
+                || max.isIn(otherMin, otherMax)
+                || otherMin.isIn(min, max)
+                || otherMax.isIn(min, max)
+                || (min == otherMin && max == otherMax)
     }
 
-    override fun calculateMaxDistance(other: AABB, maxDistance: Double, axis: Axes) = calculateMaxDistance(other, BlockPosition(), maxDistance, axis)
-    override fun calculateMaxDistance(other: AABB, offset: BlockPosition, maxDistance: Double, axis: Axes): Double {
-        if (!intersects(axis.next(), other, offset) || !intersects(axis.previous(), other, offset)) {
-            return maxDistance
+    fun calculateMaxOffset(other: AABB, offset: Double, axis: Axes): Double {
+        if (!intersects(axis.next(), other) || !intersects(axis.previous(), other)) {
+            return offset
         }
         val min = min[axis]
         val max = max[axis]
-        val otherMin = other.min[axis] + offset[axis]
-        val otherMax = other.max[axis] + offset[axis]
+        val otherMin = other.min[axis]
+        val otherMax = other.max[axis]
 
-        if (maxDistance > 0 && otherMax <= min && otherMax + maxDistance > min) {
-            return (min - otherMax).clamp(0.0, maxDistance)
+        if (offset > 0 && otherMax <= min && otherMax + offset > min) {
+            return (min - otherMax).clamp(0.0, offset)
         }
-        if (maxDistance < 0 && max <= otherMin && otherMin + maxDistance < max) {
-            return (max - otherMin).clamp(maxDistance, 0.0)
+        if (offset < 0 && max <= otherMin && otherMin + offset < max) {
+            return (max - otherMin).clamp(offset, 0.0)
         }
 
-        return maxDistance
+        return offset
     }
 
     @Deprecated("mutable")
     fun unsafePlus(axis: Axes, value: Double) {
-        min.unsafe[axis] += value
-        max.unsafe[axis] += value
+        min.array[axis.ordinal] += value
+        max.array[axis.ordinal] += value
     }
 
-    fun offset(axis: Axes, offset: Double) = when (axis) {
-        Axes.X -> this + Vec3d(-offset, 0.0, 0.0)
-        Axes.Y -> this + Vec3d(0.0, -offset, 0.0)
-        Axes.Z -> this + Vec3d(0.0, 0.0, -offset)
+    fun offset(axis: Axes, offset: Double): AABB {
+        return when (axis) {
+            Axes.X -> this + Vec3d(-offset, 0.0, 0.0)
+            Axes.Y -> this + Vec3d(0.0, -offset, 0.0)
+            Axes.Z -> this + Vec3d(0.0, 0.0, -offset)
+        }
     }
 
     /**
@@ -206,20 +179,20 @@ class AABB : Shape {
      * If the origin is inside the AABB, it returns the direction where it exists it.
      */
     // this was a test, but credit is needed where credit belongs: https://chat.openai.com/chat (but heavily refactored and improved :D)
-    override fun raycast(position: Vec3d, direction: Vec3d): AABBRaycastHit? {
+    fun raycast(origin: Vec3d, front: Vec3d): AABBRaycastHit? {
         var minAxis = -1
         var min = Double.NEGATIVE_INFINITY
         var max = Double.POSITIVE_INFINITY
 
-        for (axis in Axes.VALUES) {
-            if (abs(direction[axis]) < 0.00001) {
-                if (position[axis] < this.min[axis] || position[axis] > this.max[axis]) {
+        for (axis in Axes.VALUES.indices) {
+            if (abs(front[axis]) < 0.00001) {
+                if (origin[axis] < this.min[axis] || origin[axis] > this.max[axis]) {
                     return null
                 }
                 continue
             }
-            var minDistance = (this.min[axis] - position[axis]) / direction[axis]
-            var maxDistance = (this.max[axis] - position[axis]) / direction[axis]
+            var minDistance = (this.min[axis] - origin[axis]) / front[axis]
+            var maxDistance = (this.max[axis] - origin[axis]) / front[axis]
 
             if (minDistance > maxDistance) {
                 // swamp values
@@ -229,13 +202,13 @@ class AABB : Shape {
             }
 
             if (minDistance > min) {
-                minAxis = axis.ordinal
+                minAxis = axis
                 min = minDistance
             }
             if (maxDistance < max) max = maxDistance
         }
 
-        val inside = position in this
+        val inside = origin in this
 
         if (inside) {
             min = abs(min)
@@ -245,10 +218,10 @@ class AABB : Shape {
 
         // calculate direction ordinal from axis, depending on positive or negative
         var ordinal = minAxis * 2
-        if (direction[Axes[minAxis]] <= 0) ordinal++
+        if (front[minAxis] <= 0) ordinal++
 
-        val target = Directions.XYZ[ordinal]
-        return AABBRaycastHit(min, if (inside) target.inverted else target, inside)
+        val direction = Directions.XYZ[ordinal]
+        return AABBRaycastHit(min, if (inside) direction.inverted else direction, inside)
     }
 
     operator fun contains(position: Vec3d): Boolean {
@@ -256,10 +229,6 @@ class AABB : Shape {
     }
 
     operator fun contains(position: Vec3i): Boolean {
-        return position.x in getRange(min.x, max.x) && position.y in getRange(min.y, max.y) && position.z in getRange(min.z, max.z)
-    }
-
-    operator fun contains(position: BlockPosition): Boolean {
         return position.x in getRange(min.x, max.x) && position.y in getRange(min.y, max.y) && position.z in getRange(min.z, max.z)
     }
 
@@ -284,13 +253,16 @@ class AABB : Shape {
         return min.hashCode() + max.hashCode()
     }
 
-    override fun iterator() = SingleIterator(this)
-
     override fun equals(other: Any?): Boolean {
-        if (other == null) return false
-        if (this === other) return true
-        if (other !is AABB) return false
-
+        if (this === other) {
+            return true
+        }
+        if (this.hashCode() != other?.hashCode()) {
+            return false
+        }
+        if (other !is AABB) {
+            return false
+        }
         return min == other.min && max == other.max
     }
 
@@ -298,19 +270,19 @@ class AABB : Shape {
 
         fun checkSide(x: Double): Boolean {
             return (this.min == Vec3d(x, min.y, min.z) && this.max == Vec3d(x, max.y, min.z))
-                || (this.min == Vec3d(x, min.y, min.z) && this.max == Vec3d(x, min.y, max.z))
-                || (this.min == Vec3d(x, max.y, min.z) && this.max == Vec3d(x, max.y, max.z))
-                || (this.min == Vec3d(x, min.y, max.z) && this.max == Vec3d(x, max.y, max.z))
+                    || (this.min == Vec3d(x, min.y, min.z) && this.max == Vec3d(x, min.y, max.z))
+                    || (this.min == Vec3d(x, max.y, min.z) && this.max == Vec3d(x, max.y, max.z))
+                    || (this.min == Vec3d(x, min.y, max.z) && this.max == Vec3d(x, max.y, max.z))
         }
 
 
         return checkSide(min.x) // left quad
-            || checkSide(max.x) // right quad
-            // connections between 2 quads
-            || (this.min == min && this.max == Vec3d(max.x, min.y, min.z))
-            || (this.min == Vec3d(min.x, max.y, min.z) && this.max == Vec3d(max.x, max.y, min.z))
-            || (this.min == Vec3d(min.x, max.y, max.z) && this.max == max)
-            || (this.min == Vec3d(min.x, min.y, max.z) && this.max == Vec3d(max.x, min.y, max.z))
+                || checkSide(max.x) // right quad
+                // connections between 2 quads
+                || (this.min == min && this.max == Vec3d(max.x, min.y, min.z))
+                || (this.min == Vec3d(min.x, max.y, min.z) && this.max == Vec3d(max.x, max.y, min.z))
+                || (this.min == Vec3d(min.x, max.y, max.z) && this.max == max)
+                || (this.min == Vec3d(min.x, min.y, max.z) && this.max == Vec3d(max.x, min.y, max.z))
     }
 
     override fun toString(): String {
@@ -318,8 +290,8 @@ class AABB : Shape {
     }
 
     companion object {
-        val BLOCK = AABB(Vec3d.EMPTY, Vec3d.ONE)
-        val INVALID = AABB(Vec3d.EMPTY, Vec3d.EMPTY)
+        val BLOCK: AABB = AABB(Vec3.EMPTY, Vec3.ONE)
+        val EMPTY: AABB = AABB(Vec3.EMPTY, Vec3.EMPTY)
 
         inline fun getRange(min: Double, max: Double): IntRange {
             return min.floor until max.ceil

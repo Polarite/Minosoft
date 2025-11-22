@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,16 +13,41 @@
 
 package de.bixilon.minosoft.gui.rendering.util.vec.vec3
 
-import de.bixilon.kmath.vec.vec3.i.Vec3i
-import de.bixilon.kmath.vec.vec3.i._Vec3i
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.primitive.IntUtil.toInt
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.Axes
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.sectionHeight
 
 object Vec3iUtil {
 
-    @Deprecated("chunk data types")
-    inline val _Vec3i.blockPosition get() = BlockPosition(x, y, z)
+    val Vec3i.Companion.MIN: Vec3i
+        get() = Vec3i(Int.MIN_VALUE, Int.MIN_VALUE, Int.MIN_VALUE)
 
+    val Vec3i.Companion.EMPTY: Vec3i
+        get() = Vec3i(0, 0, 0)
+
+    val Vec3i.Companion.MAX: Vec3i
+        get() = Vec3i(Int.MAX_VALUE, Int.MAX_VALUE, Int.MAX_VALUE)
+
+    @Deprecated("chunk data types")
+    val Vec3i.sectionHeight: Int
+        get() = y.sectionHeight
+
+    @Deprecated("chunk data types")
+    val Vec3i.chunkPosition: Vec2i
+        get() = Vec2i(x shr 4, z shr 4)
+
+    @Deprecated("chunk data types")
+    val Vec3i.inChunkPosition: Vec3i
+        get() = Vec3i(x and 0x0F, y, this.z and 0x0F)
+
+
+    fun Vec3i.toVec3(): Vec3 {
+        val array = array
+        return Vec3(floatArrayOf(array[0].toFloat(), array[1].toFloat(), array[2].toFloat()))
+    }
 
     fun Any?.toVec3i(default: Vec3i? = null): Vec3i {
         return toVec3iN() ?: default ?: throw IllegalArgumentException("Not a Vec3i: $this")
@@ -42,11 +67,29 @@ object Vec3iUtil {
         return Vec3i(maxOf(value, x), maxOf(value, y), maxOf(value, z))
     }
 
-
-    inline fun distance2(a: _Vec3i, b: _Vec3i): Int {
-        val x = a.x - b.x
-        val y = a.y - b.y
-        val z = a.z - b.z
+    fun Vec3i.length2(): Int {
         return x * x + y * y + z * z
+    }
+
+    operator fun Vec3i.get(axis: Axes): Int {
+        return when (axis) {
+            Axes.X -> x
+            Axes.Y -> y
+            Axes.Z -> z
+        }
+    }
+
+    operator fun Vec3i.set(axis: Axes, value: Int) {
+        when (axis) {
+            Axes.X -> x = value
+            Axes.Y -> y = value
+            Axes.Z -> z = value
+        }
+    }
+
+    fun Vec3i.assignPlus(a: Vec3i, b: Vec3i) {
+        this.x = a.x + b.x
+        this.y = a.y + b.y
+        this.z = a.z + b.z
     }
 }

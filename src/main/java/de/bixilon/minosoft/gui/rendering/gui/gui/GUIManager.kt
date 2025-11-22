@@ -13,17 +13,15 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.concurrent.lock.locks.reentrant.ReentrantRWLock
+import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.latch.SimpleLatch
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.config.key.KeyActions
 import de.bixilon.minosoft.config.key.KeyBinding
 import de.bixilon.minosoft.config.key.KeyCodes
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
-import de.bixilon.minosoft.gui.rendering.RenderUtil.runAsync
 import de.bixilon.minosoft.gui.rendering.gui.GUIElement
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -43,8 +41,9 @@ import de.bixilon.minosoft.gui.rendering.input.InputHandler
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import de.bixilon.minosoft.util.Initializable
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class GUIManager(
     private val guiRenderer: GUIRenderer,
@@ -53,7 +52,7 @@ class GUIManager(
     private var orderLock = ReentrantRWLock()
     var elementOrder: MutableList<GUIElement> = mutableListOf()
     private val context = guiRenderer.context
-    private var lastTickTime = TimeUtil.NULL
+    private var lastTickTime: Long = -1L
 
     private var order: Collection<GUIElement> = emptyList()
 
@@ -75,7 +74,7 @@ class GUIManager(
 
     override fun postInit() {
         context.input.bindings.register(
-            minosoft("back"),
+            "minosoft:back".toResourceLocation(),
             KeyBinding(
                 KeyActions.RELEASE to setOf(KeyCodes.KEY_ESCAPE),
                 ignoreConsumer = true,
@@ -85,6 +84,9 @@ class GUIManager(
 
         for (element in elementCache.values) {
             element.postInit()
+            if (element is LayoutedGUIElement<*>) {
+                element.initMesh()
+            }
         }
     }
 
@@ -111,8 +113,8 @@ class GUIManager(
         this.order = elementOrder.reversed()
         orderLock.release()
 
-        val time = now()
-        val tick = time - lastTickTime > TickUtil.INTERVAL
+        val time = millis()
+        val tick = time - lastTickTime > ProtocolDefinition.TICK_TIME
         if (tick) {
             lastTickTime = time
         }
@@ -135,13 +137,13 @@ class GUIManager(
                 lastTickTime = time
             }
 
-            if (element is AsyncDrawable && !element.skip) {
+            if (element is AsyncDrawable && !element.skipDraw) {
                 element.drawAsync()
             }
             if (element is LayoutedGUIElement<*>) {
                 element.prepare()
                 latch.inc()
-                context.runAsync { element.prepareAsync(); latch.dec() }
+                DefaultThreadPool += { element.prepareAsync(); latch.dec() }
             }
         }
         latch.dec()
@@ -156,7 +158,7 @@ class GUIManager(
             if (index != order.size - 1 && !element.activeWhenHidden) {
                 continue
             }
-            if (element is Drawable && !element.skip) {
+            if (element is Drawable && !element.skipDraw) {
                 element.draw()
             }
             if (element is LayoutedGUIElement<*>) {
@@ -164,10 +166,10 @@ class GUIManager(
             }
 
             guiRenderer.setup()
-            if (element !is LayoutedGUIElement<*> || !element.enabled) {
+            if (element !is LayoutedGUIElement<*> || !element.enabled || element.mesh.data.isEmpty) {
                 continue
             }
-            element.mesh?.draw()
+            element.mesh.draw()
         }
     }
 
@@ -197,7 +199,7 @@ class GUIManager(
         return runForEach { it.onCharPress(char) }
     }
 
-    override fun onMouseMove(position: Vec2f): Boolean {
+    override fun onMouseMove(position: Vec2): Boolean {
         return runForEach { it.onMouseMove(position) }
     }
 
@@ -205,7 +207,7 @@ class GUIManager(
         return runForEach { it.onKey(code, change) }
     }
 
-    override fun onScroll(scrollOffset: Vec2f): Boolean {
+    override fun onScroll(scrollOffset: Vec2): Boolean {
         return runForEach { it.onScroll(scrollOffset) }
     }
 
@@ -223,7 +225,7 @@ class GUIManager(
         return null
     }
 
-    override fun onDragMove(position: Vec2f, dragged: Dragged): Element? {
+    override fun onDragMove(position: Vec2, dragged: Dragged): Element? {
         return runForEachDrag { it.onDragMove(position, dragged) }
     }
 
@@ -231,7 +233,7 @@ class GUIManager(
         return runForEachDrag { it.onDragKey(type, key, dragged) }
     }
 
-    override fun onDragScroll(scrollOffset: Vec2f, dragged: Dragged): Element? {
+    override fun onDragScroll(scrollOffset: Vec2, dragged: Dragged): Element? {
         return runForEachDrag { it.onDragScroll(scrollOffset, dragged) }
     }
 
@@ -357,18 +359,6 @@ class GUIManager(
         guiRenderer.popper.clear()
         guiRenderer.dragged.element = null
         context.input.handler.handler = null
-    }
-
-    fun unload() {
-        clear()
-        orderLock.lock()
-        val iterator = elementCache.entries.iterator()
-
-        while (iterator.hasNext()) {
-            val (_, element) = iterator.next()
-            iterator.remove()
-            element.unload()
-        }
     }
 
     operator fun <T : GUIElement> get(builder: GUIBuilder<T>): T {

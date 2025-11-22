@@ -13,20 +13,20 @@
 
 package de.bixilon.minosoft.gui.rendering.models.block.state.render
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.array.ArrayUtil.cast
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.block.BlockEntity
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.text.formatting.color.RGBArray
 import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.world.positions.BlockPositionUtil.positionHash
 import de.bixilon.minosoft.gui.rendering.chunk.mesh.BlockVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.BakedModel
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.cull.side.SideProperties
 import de.bixilon.minosoft.gui.rendering.models.raw.display.DisplayPositions
@@ -48,7 +48,7 @@ class WeightedBlockRender(
 
     private fun getModel(random: Random?, position: BlockPosition): BlockRender {
         if (random == null) return models.first().model
-        random.setSeed(position.hash)
+        random.setSeed(position.positionHash)
 
         var weightLeft = abs(random.nextLong().toInt() % totalWeight)
 
@@ -66,24 +66,24 @@ class WeightedBlockRender(
         Broken("Could not find a model: This should never happen!")
     }
 
-    override fun getParticleTexture(random: Random?, position: BlockPosition): Texture? {
+    override fun getParticleTexture(random: Random?, position: Vec3i): Texture? {
         return getModel(random, position).getParticleTexture(random, position)
     }
 
-    override fun render(props: WorldRenderProps, position: BlockPosition, state: BlockState, entity: BlockEntity?, tints: RGBArray?): Boolean {
-        return getModel(props.random, position).render(props, position, state, entity, tints)
+    override fun render(position: BlockPosition, offset: FloatArray, mesh: BlockVertexConsumer, random: Random?, state: BlockState, neighbours: Array<BlockState?>, light: ByteArray, tints: IntArray?, entity: BlockEntity?): Boolean {
+        return getModel(random, position).render(position, offset, mesh, random, state, neighbours, light, tints, entity)
     }
 
-    override fun render(gui: GUIRenderer, offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?, size: Vec2f, stack: ItemStack, tints: RGBArray?) {
+    override fun render(gui: GUIRenderer, offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?, size: Vec2, stack: ItemStack, tints: IntArray?) {
         models.first().model.render(gui, offset, consumer, options, size, stack, tints)
     }
 
-    override fun render(consumer: BlockVertexConsumer, state: BlockState, tints: RGBArray?) {
-        models.first().model.render(consumer, state, tints)
+    override fun render(mesh: BlockVertexConsumer, state: BlockState, tints: IntArray?) {
+        models.first().model.render(mesh, state, tints)
     }
 
-    override fun render(offset: Vec3f, consumer: BlockVertexConsumer, stack: ItemStack, tints: RGBArray?) {
-        models.first().model.render(offset, consumer, stack, tints)
+    override fun render(mesh: BlockVertexConsumer, stack: ItemStack, tints: IntArray?) {
+        models.first().model.render(mesh, stack, tints)
     }
 
     override fun getDisplay(position: DisplayPositions): ModelDisplay? {
@@ -98,11 +98,11 @@ class WeightedBlockRender(
 
     private fun Array<WeightedEntry>.getProperties(): Array<SideProperties?> {
         val sizes: Array<SideProperties?> = arrayOfNulls(Directions.SIZE)
-        val mismatch = BooleanArray(Directions.SIZE)
+        val skip = BooleanArray(Directions.SIZE)
 
         for ((_, model) in this) {
             for (direction in Directions) {
-                if (mismatch[direction.ordinal]) continue
+                if (skip[direction.ordinal]) continue
 
                 val current = sizes[direction.ordinal]
                 val size = model.getProperties(direction)
@@ -111,13 +111,13 @@ class WeightedBlockRender(
                     continue
                 }
                 if (current != size) {
-                    mismatch[direction.ordinal] = true
+                    skip[direction.ordinal] = true
                     continue
                 }
             }
         }
 
-        for ((index, skip) in mismatch.withIndex()) {
+        for ((index, skip) in skip.withIndex()) {
             if (!skip) continue
             sizes[index] = null
         }

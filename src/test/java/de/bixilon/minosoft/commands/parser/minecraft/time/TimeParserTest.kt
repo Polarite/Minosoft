@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,11 +16,10 @@ package de.bixilon.minosoft.commands.parser.minecraft.time
 import de.bixilon.minosoft.commands.parser.brigadier._float.FloatParseError
 import de.bixilon.minosoft.commands.util.CommandReader
 import de.bixilon.minosoft.data.world.time.WorldTime
-import de.bixilon.minosoft.protocol.network.session.play.tick.Ticks.Companion.ticks
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.seconds
 
 
 internal class TimeParserTest {
@@ -28,25 +27,25 @@ internal class TimeParserTest {
     @Test
     fun testNoUnit() {
         val reader = CommandReader("1235")
-        assertEquals(TimeParser().parse(reader), 1235.ticks.duration)
+        assertEquals(TimeParser().parse(reader), 1235)
     }
 
     @Test
     fun testTickUnit() {
         val reader = CommandReader("7382t")
-        assertEquals(TimeParser().parse(reader), 7382.ticks.duration)
+        assertEquals(TimeParser().parse(reader), 7382)
     }
 
     @Test
     fun testSecondsUnit() {
         val reader = CommandReader("64s")
-        assertEquals(TimeParser().parse(reader), 64.seconds)
+        assertEquals(TimeParser().parse(reader), 64 * ProtocolDefinition.TICKS_PER_SECOND)
     }
 
     @Test
     fun testDaysUnit() {
         val reader = CommandReader("89d")
-        assertEquals(TimeParser().parse(reader), (89.ticks * WorldTime.TICKS_PER_DAY).duration)
+        assertEquals(TimeParser().parse(reader), 89 * WorldTime.TICKS_PER_DAY)
     }
 
     @Test

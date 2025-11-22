@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,25 +12,25 @@
  */
 package de.bixilon.minosoft.data.entities
 
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.data.Tickable
 import de.bixilon.minosoft.data.registries.effects.StatusEffectType
-import de.bixilon.minosoft.protocol.network.session.play.tick.Ticks
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 data class StatusEffectInstance(
     val type: StatusEffectType,
     val amplifier: Int,
-    val duration: Ticks,
+    val duration: Int,
 ) : Tickable {
-    val start = now()
-    val end = start + duration.duration
-    var remaining = duration
+    val start = millis()
+    val end = start + duration * ProtocolDefinition.TICK_TIME
+    var remaining: Int = duration
         private set
 
     val expired: Boolean
-        get() = remaining.ticks <= 0
+        get() = remaining <= 0
     val progress: Float
-        get() = ((end - now()) / duration.duration).toFloat()
+        get() = (end - millis()) / (duration * ProtocolDefinition.TICK_TIME).toFloat()
 
 
     override fun tick() {

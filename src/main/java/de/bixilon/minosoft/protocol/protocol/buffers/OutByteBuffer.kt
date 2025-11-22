@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,12 +12,12 @@
  */
 package de.bixilon.minosoft.protocol.protocol.buffers
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.minosoft.data.registries.identified.Namespaces
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
-import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.protocol.ProtocolUtil.encodeNetwork
 import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import de.bixilon.minosoft.util.json.Jackson
@@ -34,7 +34,7 @@ open class OutByteBuffer : de.bixilon.kutil.buffer.bytes.out.OutByteBuffer {
     }
 
     fun writeChatComponent(chatComponent: ChatComponent) {
-        writeJson(chatComponent.toJson())
+        writeJson(chatComponent.getJson())
     }
 
 
@@ -142,25 +142,25 @@ open class OutByteBuffer : de.bixilon.kutil.buffer.bytes.out.OutByteBuffer {
         }
     }
 
-    fun writeByteBlockPosition(position: BlockPosition?) {
-        writeInt(position?.x ?: 0)
-        writeByte(position?.y ?: 0)
-        writeInt(position?.z ?: 0)
+    fun writeByteBlockPosition(blockPosition: Vec3i?) {
+        writeInt(blockPosition?.x ?: 0)
+        writeByte(blockPosition?.y ?: 0)
+        writeInt(blockPosition?.z ?: 0)
     }
 
-    fun writeLegacyResourceLocation(identifier: ResourceLocation) {
-        if (identifier.namespace == Namespaces.DEFAULT) {
-            writeString(identifier.path)
+    fun writeLegacyResourceLocation(resourceLocation: ResourceLocation) {
+        if (resourceLocation.namespace == Namespaces.DEFAULT) {
+            writeString(resourceLocation.path)
             return
         }
-        writeResourceLocation(identifier)
+        writeResourceLocation(resourceLocation)
     }
 
-    fun writeResourceLocation(identifier: ResourceLocation) {
-        writeString(identifier.toString())
+    fun writeResourceLocation(resourceLocation: ResourceLocation) {
+        writeString(resourceLocation.toString())
     }
 
-    fun writeVec3d(vec3: Vec3f) {
+    fun writeVec3d(vec3: Vec3) {
         writeVec3d(Vec3d(vec3))
     }
 
@@ -170,7 +170,7 @@ open class OutByteBuffer : de.bixilon.kutil.buffer.bytes.out.OutByteBuffer {
         writeDouble(vec3.z)
     }
 
-    fun writeVec3f(vec3: Vec3f) {
+    fun writeVec3f(vec3: Vec3) {
         writeFloat(vec3.x)
         writeFloat(vec3.y)
         writeFloat(vec3.z)

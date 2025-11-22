@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,15 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.container
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.data.container.Container
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.atlas.AtlasArea
 import de.bixilon.minosoft.gui.rendering.gui.atlas.AtlasElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isSmaller
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
@@ -35,14 +35,14 @@ abstract class BackgroundedContainerScreen<C : Container>(
     protected val containerBackground = AtlasImageElement(guiRenderer, atlasElement)
     override val customRenderer: Boolean get() = true
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         val centerOffset = offset + (size - containerBackground.size) / 2
         super.forceRender(centerOffset, consumer, options)
         containerBackground.render(centerOffset, consumer, options)
         forceRenderContainerScreen(centerOffset, consumer, options)
     }
 
-    override fun getAt(position: Vec2f): Pair<Element, Vec2f>? {
+    override fun getAt(position: Vec2): Pair<Element, Vec2>? {
         val centerOffset = (size - containerBackground.size) / 2
         if (position isSmaller centerOffset) {
             return null
@@ -52,5 +52,5 @@ abstract class BackgroundedContainerScreen<C : Container>(
         return getContainerAt(start) ?: super.getAt(position - centerOffset)
     }
 
-    protected open fun getContainerAt(position: Vec2f): Pair<Element, Vec2f>? = null
+    protected open fun getContainerAt(position: Vec2): Pair<Element, Vec2>? = null
 }

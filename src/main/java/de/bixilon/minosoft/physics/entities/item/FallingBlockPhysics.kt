@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,6 +13,7 @@
 
 package de.bixilon.minosoft.physics.entities.item
 
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.entities.entities.item.FallingBlockEntity
 import de.bixilon.minosoft.physics.PhysicsConstants
 import de.bixilon.minosoft.physics.entities.EntityPhysics
@@ -23,12 +24,12 @@ class FallingBlockPhysics(entity: FallingBlockEntity) : EntityPhysics<FallingBlo
 
     private fun move() {
         if (entity.hasGravity) {
-            this.velocity.y += GRAVITY
+            this.velocity = this.velocity + GRAVITY
         }
 
-        this.move(this.velocity.unsafe)
+        this.move(this.velocity)
 
-        this.velocity *= PhysicsConstants.AIR_RESISTANCE
+        this.velocity = this.velocity * PhysicsConstants.AIR_RESISTANCE
     }
 
     override fun tick() {
@@ -38,6 +39,6 @@ class FallingBlockPhysics(entity: FallingBlockEntity) : EntityPhysics<FallingBlo
     }
 
     companion object {
-        const val GRAVITY = -0.04
+        val GRAVITY = Vec3d(0.0, -0.04, 0.0)
     }
 }

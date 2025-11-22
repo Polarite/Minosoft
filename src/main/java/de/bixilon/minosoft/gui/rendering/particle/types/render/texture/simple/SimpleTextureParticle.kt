@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.minosoft.data.registries.particle.data.ParticleData
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.TextureParticle
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.file.FileTexture
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
-abstract class SimpleTextureParticle(session: PlaySession, position: Vec3d, velocity: MVec3d, data: ParticleData? = null) : TextureParticle(session, position, velocity, data) {
+abstract class SimpleTextureParticle(session: PlaySession, position: Vec3d, velocity: Vec3d, data: ParticleData? = null) : TextureParticle(session, position, velocity, data) {
     override var texture = this.data.type.loadedTextures.getOrNull(0)
     var spriteDisabled = false
 

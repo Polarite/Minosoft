@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,12 @@
 
 package de.bixilon.minosoft.gui.rendering.util
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.concurrent.pool.ThreadPool
-import de.bixilon.kutil.concurrent.pool.io.DefaultIOPool
-import de.bixilon.kutil.concurrent.pool.runnable.ThreadPoolRunnable
-import de.bixilon.kutil.file.PathUtil.div
-import de.bixilon.kutil.time.TimeUtil.format1
+import de.bixilon.kutil.concurrent.pool.runnable.ForcePooledRunnable
+import de.bixilon.kutil.file.FileUtil.slashPath
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.assets.util.AssetsOptions
 import de.bixilon.minosoft.data.text.BaseComponent
 import de.bixilon.minosoft.data.text.ChatComponent
@@ -32,30 +32,30 @@ import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.menu.confirmation.DeleteScreenshotDialog
 import de.bixilon.minosoft.gui.rendering.system.base.texture.data.buffer.TextureBuffer
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY_INSTANCE
 import de.bixilon.minosoft.terminal.RunConfiguration
 import java.io.File
 import java.nio.file.Path
 import java.text.SimpleDateFormat
-import java.time.Instant
 
 
 class ScreenshotTaker(
     private val context: RenderContext,
 ) {
 
-    private fun getDestinationFolder(base: Path, time: Instant): File {
-        val timestamp = DATE_FORMATTER.format1(time)
+    private fun getDestinationFolder(base: Path, time: Long): File {
+        val timestamp = DATE_FORMATTER.format(time)
         var filename = "$timestamp.png"
         var i = 1
 
-        while ((base / filename).toFile().exists()) {
+        while (base.resolve(filename).toFile().exists()) {
             filename = "${timestamp}_${i++}.png"
             if (i > AssetsOptions.MAX_FILE_CHECKING) {
                 throw StackOverflowError("There are already > ${AssetsOptions.MAX_FILE_CHECKING} screenshots with this date! Please try again later!")
             }
         }
 
-        return (base / filename).toFile()
+        return base.resolve(filename).toFile()
     }
 
     private fun createMessage(file: File): ChatComponent {
@@ -66,7 +66,7 @@ class ScreenshotTaker(
         component += TextComponent(file.name).apply {
             color = ChatColors.WHITE
             underline()
-            clickEvent = OpenFileClickEvent(file)
+            clickEvent = OpenFileClickEvent(file.slashPath)
             hoverEvent = TextHoverEvent("Click to open")
         }
         component += " "
@@ -90,7 +90,7 @@ class ScreenshotTaker(
         return component
     }
 
-    private fun store(buffer: TextureBuffer, base: Path, time: Instant) {
+    private fun store(buffer: TextureBuffer, base: Path, time: Long) {
         try {
             val file = getDestinationFolder(base, time)
             TextureUtil.dump(file, buffer, false, true)
@@ -104,12 +104,12 @@ class ScreenshotTaker(
 
     fun takeScreenshot() {
         try {
-            val size = context.window.size
-            val buffer = context.system.readPixels(Vec2i.EMPTY, size)
+            val size = Vec2i(context.window.size)
+            val buffer = context.system.readPixels(Vec2i.EMPTY_INSTANCE, size)
 
-            val path = RunConfiguration.home / "screenshots" / context.session.connection.identifier
-            val time = Instant.now()
-            DefaultIOPool += ThreadPoolRunnable(forcePool = true, priority = ThreadPool.Priorities.HIGHER) { store(buffer, path, time) }
+            val path = RunConfiguration.HOME_DIRECTORY.resolve("screenshots").resolve(context.session.connection.identifier)
+            val time = millis()
+            DefaultThreadPool += ForcePooledRunnable(priority = ThreadPool.HIGHER) { store(buffer, path, time) }
         } catch (exception: Exception) {
             exception.fail()
         }

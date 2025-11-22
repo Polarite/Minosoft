@@ -13,16 +13,13 @@
 
 package de.bixilon.minosoft.protocol.network.network.client.netty.pipeline.encoding
 
-import de.bixilon.kutil.buffer.arbitrary.ArbitraryByteArray
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.minosoft.protocol.network.network.client.netty.NettyClient
-import de.bixilon.minosoft.protocol.network.network.client.netty.NetworkAllocator
 import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.NetworkException
 import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.PacketReadException
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.type.PacketNotImplementedException
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.type.UnknownPacketIdException
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.ciritical.UnknownPacketIdException
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.implementation.PacketNotImplementedException
 import de.bixilon.minosoft.protocol.network.network.client.netty.packet.receiver.QueuedS2CP
-import de.bixilon.minosoft.protocol.packets.registry.PacketType
 import de.bixilon.minosoft.protocol.packets.s2c.S2CPacket
 import de.bixilon.minosoft.protocol.protocol.DefaultPacketMapping
 import de.bixilon.minosoft.protocol.protocol.buffers.InByteBuffer
@@ -33,51 +30,41 @@ import java.lang.reflect.InvocationTargetException
 
 class PacketDecoder(
     private val client: NettyClient,
-) : MessageToMessageDecoder<ArbitraryByteArray>() {
+) : MessageToMessageDecoder<ByteArray>() {
     private val version: Version? = client.session.version
 
-    override fun decode(context: ChannelHandlerContext, array: ArbitraryByteArray, out: MutableList<Any>) {
-        out += decode(array) ?: return
-    }
-
-    fun decode(data: ArbitraryByteArray): QueuedS2CP<S2CPacket>? {
-        val buffer = InByteBuffer(data)
+    override fun decode(context: ChannelHandlerContext, array: ByteArray, out: MutableList<Any>) {
+        val buffer = InByteBuffer(array)
         val packetId = buffer.readVarInt()
+        val data = buffer.readRemaining()
 
-        val state = client.connection.state ?: return null
+        val state = client.connection.state ?: throw IllegalStateException("Not connected!")
+
+
         val type = version?.s2c?.get(state, packetId) ?: DefaultPacketMapping.S2C_PACKET_MAPPING[state, packetId] ?: throw UnknownPacketIdException(packetId, state, version)
 
-        val length = data.size - (buffer.offset - data.offset)
-        try {
-            return decode(type, ArbitraryByteArray(buffer.offset, length, data.array))
-        } finally {
-            NetworkAllocator.free(data.array)
-        }
-    }
-
-    private fun decode(type: PacketType, buffer: ArbitraryByteArray): QueuedS2CP<S2CPacket>? {
         if (type.extra != null && type.extra.skip(client.session)) {
-            return null
+            return
         }
 
         val packet = try {
-            type.create(buffer, client.session).unsafeCast<S2CPacket>()
+            type.create(data, client.session).unsafeCast<S2CPacket>()
         } catch (error: PacketNotImplementedException) {
             error.printStackTrace()
-            return null
+            return
         } catch (exception: NetworkException) {
             type.extra?.onError(exception, client.session)
             throw exception
         } catch (error: Throwable) {
-            var real = error
+            var realError = error
             if (error is InvocationTargetException) {
-                error.cause?.let { real = it }
+                error.cause?.let { realError = it }
             }
-            type.extra?.onError(real, client.session)
-            throw PacketReadException(real)
+            type.extra?.onError(realError, client.session)
+            throw PacketReadException(realError)
         }
 
-        return QueuedS2CP(type, packet)
+        out += QueuedS2CP(type, packet)
     }
 
 

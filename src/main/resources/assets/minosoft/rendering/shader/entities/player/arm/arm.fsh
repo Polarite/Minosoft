@@ -16,7 +16,7 @@
 #define FOG
 #define DISABLE_ALPHA_DISCARD
 
-out lowp vec4 foutColor;
+out vec4 foutColor;
 
 
 #include "minosoft:tint"

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,16 +14,21 @@
 package de.bixilon.minosoft.gui.rendering.chunk.entities
 
 import de.bixilon.minosoft.data.entities.block.BlockEntity
-import de.bixilon.minosoft.data.world.chunk.light.types.LightLevel
-import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
+import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.gui.rendering.RenderContext
 
-interface BlockEntityRenderer : Drawable {
-    val entity: BlockEntity
+interface BlockEntityRenderer<E : BlockEntity> {
+    var state: BlockState
+    var light: Int
 
-    fun load()
-    fun unload()
+    fun draw(context: RenderContext) = Unit
 
-    fun drop()
+    fun unload() = Unit
+    fun load() = Unit
 
-    fun update(light: LightLevel) = Unit
+    fun update(position: BlockPosition, state: BlockState, light: Int) {
+        this.state = state
+        this.light = light
+    }
 }

@@ -82,7 +82,6 @@ class EntityData(
                     when (K::class) {
                         Byte::class -> return data.toByte() as K
                         Int::class -> return data.toInt() as K
-                        Boolean::class -> return (data.toInt() == 1) as K
                     }
                 }
                 Log.log(LogMessageType.OTHER, LogLevels.VERBOSE) { "Entity data $data can not be casted to ${K::class}" }
@@ -118,7 +117,7 @@ class EntityData(
     fun <K> observe(field: EntityDataField, watcher: (value: K?) -> Unit) {
         val index = session.registries.getEntityDataIndex(field) ?: return // field not available
         observersLock.lock()
-        this.observers.getOrPut(index) { HashSet(8) }.add(watcher.unsafeCast()) // TODO: use weakref?
+        this.observers.getOrPut(index) { mutableSetOf() }.add(watcher.unsafeCast()) // TODO: use weakref?
         observersLock.unlock()
     }
 

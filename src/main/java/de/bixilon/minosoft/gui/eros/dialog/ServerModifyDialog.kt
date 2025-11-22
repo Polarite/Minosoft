@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,9 +15,9 @@ package de.bixilon.minosoft.gui.eros.dialog
 
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
+import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.minosoft.config.profile.profiles.eros.ErosProfileManager
 import de.bixilon.minosoft.config.profile.profiles.eros.server.entries.ErosServer
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.TranslatableComponents
 import de.bixilon.minosoft.gui.eros.controller.DialogController
@@ -27,11 +27,11 @@ import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.ctext
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.placeholder
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.text
 import de.bixilon.minosoft.gui.eros.util.cell.VersionListCell
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import de.bixilon.minosoft.protocol.versions.Version
 import de.bixilon.minosoft.protocol.versions.VersionTypes
 import de.bixilon.minosoft.protocol.versions.Versions
 import de.bixilon.minosoft.util.DNSUtil
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import javafx.fxml.FXML
 import javafx.scene.control.Button
 import javafx.scene.control.CheckBox
@@ -72,7 +72,7 @@ class ServerModifyDialog(
 
     public override fun show() {
         JavaFXUtil.runLater {
-            JavaFXUtil.openModal(if (server == null) ADD_TITLE else EDIT_TITLE, LAYOUT, this)
+            JavaFXUtil.openModal((server == null).decide(ADD_TITLE, EDIT_TITLE), LAYOUT, this)
             super.show()
         }
     }
@@ -165,7 +165,7 @@ class ServerModifyDialog(
         }
 
         serverAddressFX.textProperty().addListener { _, _, new ->
-            serverAddressFX.text = DNSUtil.fixAddress(new.replace(ProtocolDefinition.TEXT_COMPONENT_FORMATTING_PREFIX.toString(), ""))
+            serverAddressFX.text = DNSUtil.fixAddress(new)
 
             modifyServerButtonFX.isDisable = serverAddressFX.text.isBlank()
         }
@@ -176,8 +176,8 @@ class ServerModifyDialog(
         if (modifyServerButtonFX.isDisable) {
             return
         }
-        val forcedVersion = forcedVersionFX.selectionModel.selectedItem.takeIf { forcedVersionFX.selectionModel.selectedItem != Versions.AUTOMATIC }
-        DefaultThreadPool += { onUpdate(if (serverNameFX.text.isBlank()) serverAddressFX.text.toString() else serverNameFX.text.trim(), serverAddressFX.text, forcedVersion, profiles, optionQueryVersionFX.isSelected) }
+        val forcedVersion = (forcedVersionFX.selectionModel.selectedItem == Versions.AUTOMATIC).decide(null) { forcedVersionFX.selectionModel.selectedItem }
+        DefaultThreadPool += { onUpdate(serverNameFX.text.isBlank().decide({ serverAddressFX.text.toString() }, { serverNameFX.text.trim() }), serverAddressFX.text, forcedVersion, profiles, optionQueryVersionFX.isSelected) }
         stage.close()
     }
 
@@ -209,26 +209,26 @@ class ServerModifyDialog(
 
 
     companion object {
-        private val LAYOUT = minosoft("eros/dialog/modify_server.fxml")
+        private val LAYOUT = "minosoft:eros/dialog/modify_server.fxml".toResourceLocation()
 
-        private val SERVER_NAME_LABEL = minosoft("modify_server.name.label")
-        private val SERVER_NAME_PLACEHOLDER = minosoft("modify_server.name.placeholder")
-        private val SERVER_ADDRESS_LABEL = minosoft("modify_server.address.label")
-        private val SERVER_ADDRESS_PLACEHOLDER = minosoft("modify_server.address.placeholder")
-        private val FORCED_VERSION_LABEL = minosoft("modify_server.forced_version.label")
-        private val SHOW_RELEASES = minosoft("modify_server.forced_version.releases")
-        private val SHOW_SNAPSHOTS = minosoft("modify_server.forced_version.snapshots")
-        private val PROFILES_LABEL = minosoft("modify_server.profiles.label")
-        private val PROFILES_OPEN_PROFILE_SELECT = minosoft("modify_server.profiles.open_select_dialog")
-        private val OPTION_QUERY_VERSION = minosoft("modify_server.profiles.option_query_version")
+        private val SERVER_NAME_LABEL = "minosoft:modify_server.name.label".toResourceLocation()
+        private val SERVER_NAME_PLACEHOLDER = "minosoft:modify_server.name.placeholder".toResourceLocation()
+        private val SERVER_ADDRESS_LABEL = "minosoft:modify_server.address.label".toResourceLocation()
+        private val SERVER_ADDRESS_PLACEHOLDER = "minosoft:modify_server.address.placeholder".toResourceLocation()
+        private val FORCED_VERSION_LABEL = "minosoft:modify_server.forced_version.label".toResourceLocation()
+        private val SHOW_RELEASES = "minosoft:modify_server.forced_version.releases".toResourceLocation()
+        private val SHOW_SNAPSHOTS = "minosoft:modify_server.forced_version.snapshots".toResourceLocation()
+        private val PROFILES_LABEL = "minosoft:modify_server.profiles.label".toResourceLocation()
+        private val PROFILES_OPEN_PROFILE_SELECT = "minosoft:modify_server.profiles.open_select_dialog".toResourceLocation()
+        private val OPTION_QUERY_VERSION = "minosoft:modify_server.profiles.option_query_version".toResourceLocation()
 
-        private val ADD_TITLE = minosoft("modify_server.add.title")
-        private val ADD_DESCRIPTION = minosoft("modify_server.add.description")
-        private val ADD_UPDATE_BUTTON = minosoft("modify_server.add.update_button")
+        private val ADD_TITLE = "minosoft:modify_server.add.title".toResourceLocation()
+        private val ADD_DESCRIPTION = "minosoft:modify_server.add.description".toResourceLocation()
+        private val ADD_UPDATE_BUTTON = "minosoft:modify_server.add.update_button".toResourceLocation()
 
 
-        private val EDIT_TITLE = minosoft("modify_server.edit.title")
-        private val EDIT_DESCRIPTION = minosoft("modify_server.edit.description")
-        private val EDIT_UPDATE_BUTTON = minosoft("modify_server.edit.update_button")
+        private val EDIT_TITLE = "minosoft:modify_server.edit.title".toResourceLocation()
+        private val EDIT_DESCRIPTION = "minosoft:modify_server.edit.description".toResourceLocation()
+        private val EDIT_UPDATE_BUTTON = "minosoft:modify_server.edit.update_button".toResourceLocation()
     }
 }

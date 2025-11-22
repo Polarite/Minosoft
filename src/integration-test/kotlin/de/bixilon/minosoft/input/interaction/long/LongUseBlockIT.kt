@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.input.interaction.long
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.minosoft.camera.target.targets.BlockTarget
@@ -21,8 +22,11 @@ import de.bixilon.minosoft.data.container.equipment.EquipmentSlots
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.entities.player.Hands
+import de.bixilon.minosoft.data.registries.blocks.DirtTest0
+import de.bixilon.minosoft.data.registries.blocks.types.stone.StoneTest0
 import de.bixilon.minosoft.data.registries.item.items.weapon.defend.ShieldItem
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.EMPTY
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil.assertUseItem
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil.tick
@@ -33,7 +37,6 @@ import de.bixilon.minosoft.protocol.network.session.play.PacketTestUtil.assertPa
 import de.bixilon.minosoft.protocol.packets.c2s.play.block.BlockInteractC2SP
 import de.bixilon.minosoft.protocol.packets.c2s.play.entity.move.PositionRotationC2SP
 import de.bixilon.minosoft.protocol.packets.c2s.play.entity.player.SwingArmC2SP
-import de.bixilon.minosoft.test.IT
 import de.bixilon.minosoft.test.ITUtil.todo
 import org.testng.Assert.assertEquals
 import org.testng.Assert.assertNull
@@ -46,7 +49,7 @@ class LongUseBlockIT {
     fun shieldOnDirt() {
         val session = InteractionTestUtil.createSession()
         session.player.items.inventory[EquipmentSlots.MAIN_HAND] = ItemStack(ShieldItem())
-        session.camera.target::target.forceSet(DataObserver(BlockTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, IT.BLOCK_2, null, BlockPosition.EMPTY)))
+        session.camera.target::target.forceSet(DataObserver(BlockTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, DirtTest0.state, null, Vec3i.EMPTY)))
         val use = session.camera.interactions.use
 
 
@@ -65,7 +68,7 @@ class LongUseBlockIT {
     fun offHandShieldOnDirt() {
         val session = InteractionTestUtil.createSession()
         session.player.items.inventory[EquipmentSlots.OFF_HAND] = ItemStack(ShieldItem())
-        session.camera.target::target.forceSet(DataObserver(BlockTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, IT.BLOCK_2, null, BlockPosition.EMPTY)))
+        session.camera.target::target.forceSet(DataObserver(BlockTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, DirtTest0.state, null, Vec3i.EMPTY)))
         val use = session.camera.interactions.use
 
 
@@ -86,7 +89,7 @@ class LongUseBlockIT {
         todo()
         val session = InteractionTestUtil.createSession()
         session.player.items.inventory[EquipmentSlots.MAIN_HAND] = ItemStack(ShieldItem())
-        session.camera.target::target.forceSet(DataObserver(BlockTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, IT.BLOCK_1, null, BlockPosition.EMPTY)))
+        session.camera.target::target.forceSet(DataObserver(BlockTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, StoneTest0.state, null, Vec3i.EMPTY)))
         val use = session.camera.interactions.use
 
 

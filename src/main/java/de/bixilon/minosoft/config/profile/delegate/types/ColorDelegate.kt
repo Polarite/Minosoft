@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,12 +15,12 @@ package de.bixilon.minosoft.config.profile.delegate.types
 
 import de.bixilon.minosoft.config.profile.delegate.SimpleDelegate
 import de.bixilon.minosoft.config.profile.profiles.Profile
-import de.bixilon.minosoft.data.text.formatting.color.Color
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 
 open class ColorDelegate(
     override val profile: Profile,
-    default: Color,
-) : SimpleDelegate<Color>(profile, default) {
+    default: RGBColor,
+) : SimpleDelegate<RGBColor>(profile, default) {
 
-    override fun validate(value: Color) = Unit
+    override fun validate(value: RGBColor) = Unit
 }

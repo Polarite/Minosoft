@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,29 +13,30 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kutil.collections.primitive.floats.AbstractFloatList
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.gui.rendering.shader.Shader
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.Framebuffer
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.depth.DepthModes
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.stencil.StencilModes
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.texture.TextureModes
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.uniform.FloatUniformBuffer
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.uniform.IntUniformBuffer
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.FloatVertexBuffer
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.PrimitiveTypes
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.VertexBuffer
 import de.bixilon.minosoft.gui.rendering.system.base.settings.RenderSettings
-import de.bixilon.minosoft.gui.rendering.system.base.shader.ShaderManagement
+import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureManager
 import de.bixilon.minosoft.gui.rendering.system.base.texture.data.buffer.TextureBuffer
-import de.bixilon.minosoft.gui.rendering.util.mesh.struct.MeshStruct
+import de.bixilon.minosoft.gui.rendering.util.mesh.MeshStruct
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
+import de.bixilon.minosoft.util.collections.floats.DirectArrayFloatList
 import java.nio.FloatBuffer
-import java.nio.IntBuffer
 
 interface RenderSystem {
-    val shader: ShaderManagement
+    val shaders: MutableSet<Shader>
     val vendor: GPUVendor
+    var shader: NativeShader?
     var framebuffer: Framebuffer?
-    val primitives: Set<PrimitiveTypes>
 
     val active: Boolean
 
@@ -55,7 +56,7 @@ interface RenderSystem {
         sourceAlpha: BlendingFunctions = RenderSettings.DEFAULT.sourceAlpha,
         destinationAlpha: BlendingFunctions = RenderSettings.DEFAULT.destinationAlpha,
         depth: DepthFunctions = RenderSettings.DEFAULT.depth,
-        clearColor: RGBAColor = RenderSettings.DEFAULT.clearColor,
+        clearColor: RGBColor = RenderSettings.DEFAULT.clearColor,
         polygonOffsetFactor: Float = RenderSettings.DEFAULT.polygonOffsetFactor,
         polygonOffsetUnit: Float = RenderSettings.DEFAULT.polygonOffsetUnit,
     ) {
@@ -107,24 +108,46 @@ interface RenderSystem {
     val version: String
     val gpuType: String
 
-    var clearColor: RGBAColor
+    var clearColor: RGBColor
 
-    var viewport: Vec2i
+    var quadType: PrimitiveTypes
 
-    fun readPixels(start: Vec2i, size: Vec2i): TextureBuffer
+    var quadOrder: RenderOrder
+    @Deprecated("legacy") var legacyQuadOrder: RenderOrder
+
+    fun readPixels(start: Vec2i, end: Vec2i): TextureBuffer
 
 
-    fun createVertexBuffer(struct: MeshStruct, data: FloatBuffer, primitive: PrimitiveTypes, index: IntBuffer? = null, reused: Boolean = false): VertexBuffer
+    fun createNativeShader(resourceLocation: ResourceLocation): NativeShader {
+        return createNativeShader(
+            vertex = "$resourceLocation.vsh".toResourceLocation(),
+            geometry = "$resourceLocation.gsh".toResourceLocation(),
+            fragment = "$resourceLocation.fsh".toResourceLocation(),
+        )
+    }
 
-    fun createIntUniformBuffer(data: IntBuffer): IntUniformBuffer
+    fun <T : Shader> createShader(resourceLocation: ResourceLocation, creator: (native: NativeShader) -> T): T {
+        return creator(createNativeShader(resourceLocation))
+    }
+
+    fun createNativeShader(vertex: ResourceLocation, geometry: ResourceLocation? = null, fragment: ResourceLocation): NativeShader
+
+    fun createVertexBuffer(struct: MeshStruct, data: FloatBuffer, primitiveType: PrimitiveTypes = quadType): FloatVertexBuffer
+    fun createVertexBuffer(struct: MeshStruct, data: AbstractFloatList, primitiveType: PrimitiveTypes = quadType): FloatVertexBuffer {
+        if (data is DirectArrayFloatList) {
+            return createVertexBuffer(struct, data.toBuffer(), primitiveType)
+        }
+        return createVertexBuffer(struct, FloatBuffer.wrap(data.toArray()), primitiveType)
+    }
+
+    fun createIntUniformBuffer(data: IntArray = IntArray(0)): IntUniformBuffer
     fun createFloatUniformBuffer(data: FloatBuffer): FloatUniformBuffer
-    fun createFramebuffer(size: Vec2i, scale: Float, texture: TextureModes? = null, depth: DepthModes? = null, stencil: StencilModes? = null): Framebuffer
+    fun createFramebuffer(color: Boolean, depth: Boolean, scale: Float = 1.0f): Framebuffer
 
     fun createTextureManager(): TextureManager
 
     fun clear(vararg buffers: IntegratedBufferTypes)
 
-    @Deprecated("There should not be any errors, or they should directly crash the render system")
     fun getErrors(): List<RenderSystemError>
 
 
@@ -133,5 +156,20 @@ interface RenderSystem {
     fun resetBlending() {
         disable(RenderingCapabilities.BLENDING)
         setBlendFunction(BlendingFunctions.ONE, BlendingFunctions.ONE_MINUS_SOURCE_ALPHA, BlendingFunctions.ONE, BlendingFunctions.ZERO)
+    }
+
+    fun reloadShaders() {
+        val copy = shaders.toMutableSet()
+        for (shader in copy) {
+            shader.reload()
+        }
+    }
+
+    var viewport: Vec2i
+
+    fun reportErrors() {
+        val errors = getErrors()
+        if (errors.isEmpty()) return
+        throw Exception(errors.first().toString())
     }
 }

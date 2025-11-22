@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,15 @@
 
 package de.bixilon.minosoft.data.abilities
 
-import de.bixilon.minosoft.protocol.network.session.play.tick.Ticks
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
+import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 data class ItemCooldown(
-    val start: ValueTimeMark,
-    val ticks: Ticks,
+    val start: Long,
+    val time: Int,
 ) {
-    val end = start + ticks.duration
+    val end: Long = start + (time * ProtocolDefinition.TICK_TIME)
 
     val ended: Boolean
-        get() = end.hasPassedNow()
+        get() = millis() >= end
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,6 @@
 
 package de.bixilon.minosoft.gui.rendering.tint
 
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.Shades
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -22,31 +21,31 @@ class TintUtilTest {
 
     @Test
     fun `calculate white up`() {
-        val color = TintUtil.calculateTint(0xFFFFFF.rgb(), Shades.UP)
-        assertEquals(color, 0xFFFFFF.rgb())
+        val color = TintUtil.calculateTint(0xFFFFFF, Shades.UP)
+        assertEquals(color, 0xFFFFFF)
     }
 
     @Test
     fun `calculate random color up`() {
-        val color = TintUtil.calculateTint(0x123456.rgb(), Shades.UP)
-        assertEquals(color, 0x123456.rgb())
+        val color = TintUtil.calculateTint(0x123456, Shades.UP)
+        assertEquals(color, 0x123456)
     }
 
     @Test
     fun `calculate white down`() {
-        val color = TintUtil.calculateTint(0xFFFFFF.rgb(), Shades.DOWN)
-        assertEquals(color, 0x7F7F7F.rgb())
+        val color = TintUtil.calculateTint(0xFFFFFF, Shades.DOWN)
+        assertEquals(color, 0x7F7F7F)
     }
 
     @Test
     fun `calculate white x`() {
-        val color = TintUtil.calculateTint(0xFFFFFF.rgb(), Shades.X)
-        assertEquals(color, 0x999999.rgb())
+        val color = TintUtil.calculateTint(0xFFFFFF, Shades.X)
+        assertEquals(color, 0x999999)
     }
 
     @Test
     fun `calculate white z`() {
-        val color = TintUtil.calculateTint(0xFFFFFF.rgb(), Shades.Z)
-        assertEquals(color, 0xCCCCCC.rgb())
+        val color = TintUtil.calculateTint(0xFFFFFF, Shades.Z)
+        assertEquals(color, 0xCCCCCC)
     }
 }

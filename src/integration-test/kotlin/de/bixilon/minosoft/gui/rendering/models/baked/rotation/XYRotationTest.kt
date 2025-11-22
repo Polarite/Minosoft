@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.models.baked.rotation
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.gui.rendering.models.ModelTestUtil.bake
@@ -31,8 +31,8 @@ import org.testng.annotations.Test
 class XYRotationTest {
 
     fun `x=90_y=90`() {
-        val from = Vec3f(6, 0, 6) / ModelElement.BLOCK_SIZE
-        val to = Vec3f(10, 16, 16) / ModelElement.BLOCK_SIZE
+        val from = Vec3(6, 0, 6) / ModelElement.BLOCK_SIZE
+        val to = Vec3(10, 16, 16) / ModelElement.BLOCK_SIZE
 
         val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces())), textures = mapOf("test" to minecraft("block/test").texture())), x = 1, y = 1)
 
@@ -46,8 +46,8 @@ class XYRotationTest {
     }
 
     fun `x=90_y=270`() {
-        val from = Vec3f(6, 0, 6) / ModelElement.BLOCK_SIZE
-        val to = Vec3f(10, 16, 16) / ModelElement.BLOCK_SIZE
+        val from = Vec3(6, 0, 6) / ModelElement.BLOCK_SIZE
+        val to = Vec3(10, 16, 16) / ModelElement.BLOCK_SIZE
 
         val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces())), textures = mapOf("test" to minecraft("block/test").texture())), x = 1, y = 3)
 

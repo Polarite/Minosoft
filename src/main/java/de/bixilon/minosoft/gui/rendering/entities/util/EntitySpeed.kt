@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.util
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.math.interpolation.FloatInterpolation
 import de.bixilon.kutil.math.interpolation.Interpolator
 import de.bixilon.minosoft.data.entities.entities.Entity
-import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import kotlin.math.sqrt
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 class EntitySpeed(val entity: Entity) {
     private val interpolator = Interpolator(0.0f, FloatInterpolation::interpolateLinear)
@@ -53,7 +52,7 @@ class EntitySpeed(val entity: Entity) {
         if (length2 < 0.003f) {
             return this.interpolator.push(0.0f)
         }
-        val speed = sqrt(length2) * (step / (TickUtil.TIME_PER_TICK / 1.seconds).toFloat())
+        val speed = sqrt(length2) * (step / (ProtocolDefinition.TICK_TIMEf / 1000.0f))
 
         var value = (1.0f - (1.0f / (speed + 1.0f))) * 1.1f
         if (value > 1.0f) value = 1.0f
@@ -61,14 +60,14 @@ class EntitySpeed(val entity: Entity) {
         this.interpolator.push(value)
     }
 
-    fun update(delta: Duration) {
+    fun update(delta: Float) {
         val age = entity.age
         if (age == this.age) return
         this.age = age
 
         val previous = this.length2
         updateLength2()
-        if (age < 0 || delta <= Duration.ZERO) {
+        if (age < 0 || delta <= 0.0f) {
             length2 = 0.0f // don't move when initializing
         }
 
@@ -81,7 +80,7 @@ class EntitySpeed(val entity: Entity) {
         if (rapid || this.interpolator.delta >= 1.0f) {
             push(step)
         }
-        this.interpolator.add((delta / 1.seconds).toFloat(), step) // TODO: 1 second?
+        this.interpolator.add(delta, step)
     }
 
     private companion object {

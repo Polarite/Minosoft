@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -19,21 +19,20 @@ import de.bixilon.minosoft.commands.parser.brigadier._float.FloatParser.Companio
 import de.bixilon.minosoft.commands.parser.factory.ArgumentParserFactory
 import de.bixilon.minosoft.commands.suggestion.Suggestion
 import de.bixilon.minosoft.commands.util.CommandReader
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.protocol.network.session.play.tick.Ticks.Companion.ticks
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions.V_23W03A
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
-import kotlin.time.Duration
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 // TODO: respect minimum
-class TimeParser(val minimum: Duration = Duration.ZERO) : ArgumentParser<Duration> {
+class TimeParser(val minimum: Int = 0) : ArgumentParser<Int> {
     override val examples: List<Any> = listOf(2400, "3d", "10s")
 
-    override fun parse(reader: CommandReader): Duration {
+    override fun parse(reader: CommandReader): Int {
         reader.readResult { reader.readTime() }.let { return it.result }
     }
 
-    fun CommandReader.readTime(): Duration {
+    fun CommandReader.readTime(): Int {
         val time = FloatParser.DEFAULT.parse(this)
 
         val unit: TimeUnit
@@ -44,7 +43,7 @@ class TimeParser(val minimum: Duration = Duration.ZERO) : ArgumentParser<Duratio
         } catch (error: IllegalArgumentException) {
             throw InvalidTimeUnitError(this, this.pointer, peek)
         }
-        return unit.convert(time)
+        return (time * unit.multiplier).toInt()
     }
 
     override fun getSuggestions(reader: CommandReader): List<Suggestion> {
@@ -61,13 +60,13 @@ class TimeParser(val minimum: Duration = Duration.ZERO) : ArgumentParser<Duratio
 
 
     companion object : ArgumentParserFactory<TimeParser> {
-        override val identifier = minecraft("time")
+        override val identifier: ResourceLocation = "minecraft:time".toResourceLocation()
 
         override fun read(buffer: PlayInByteBuffer): TimeParser {
             if (buffer.versionId < V_23W03A) {
                 return TimeParser()
             }
-            return TimeParser(buffer.readInt().ticks.duration)
+            return TimeParser(buffer.readInt())
         }
     }
 }

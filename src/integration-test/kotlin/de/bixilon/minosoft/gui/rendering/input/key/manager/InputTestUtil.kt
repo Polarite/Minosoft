@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -28,9 +28,8 @@ import de.bixilon.minosoft.gui.rendering.input.key.manager.binding.actions.bindi
 import de.bixilon.minosoft.gui.rendering.input.key.manager.binding.actions.keysPressed
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
 import de.bixilon.minosoft.gui.rendering.system.window.dummy.DummyWindow
-import de.bixilon.minosoft.test.ITUtil.allocate
-import java.util.*
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
+import de.bixilon.minosoft.test.IT
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap
 
 object InputTestUtil {
     private val profile = BindingsManager::class.java.getFieldOrNull("profile")!!
@@ -41,12 +40,12 @@ object InputTestUtil {
 
 
     fun create(): InputManager {
-        val manager = InputManager::class.java.allocate()
-        val context = RenderContext::class.java.allocate()
+        val manager = IT.OBJENESIS.newInstance(InputManager::class.java)
+        val context = IT.OBJENESIS.newInstance(RenderContext::class.java)
         context::window.forceSet(DummyWindow())
         manager::context.forceSet(context)
 
-        val bindings = BindingsManager::class.java.allocate()
+        val bindings = IT.OBJENESIS.newInstance(BindingsManager::class.java)
         bindings::input.forceSet(manager)
         bindingsPressed[bindings] = mutableSetOf<ResourceLocation>()
         profile[bindings] = ControlsProfile()
@@ -57,7 +56,7 @@ object InputTestUtil {
 
         manager::bindings.forceSet(bindings)
         manager::handler.forceSet(handler)
-        this.times.forceSet(manager, EnumMap<KeyCodes, ValueTimeMark>(KeyCodes::class.java))
+        this.times.forceSet(manager, Object2LongOpenHashMap<KeyCodes>().apply { defaultReturnValue(-1L) })
         keysPressed[manager] = KeyCodes.set()
 
         return manager

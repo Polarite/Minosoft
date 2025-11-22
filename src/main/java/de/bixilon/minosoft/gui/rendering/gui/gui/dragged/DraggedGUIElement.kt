@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.dragged
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.gui.gui.GUIMeshElement
 
 class DraggedGUIElement<T : Dragged>(element: T) : GUIMeshElement<T>(element) {
@@ -22,7 +22,7 @@ class DraggedGUIElement<T : Dragged>(element: T) : GUIMeshElement<T>(element) {
         prepareAsync(guiRenderer.currentMousePosition - (element.size / 2))
     }
 
-    override fun onMouseMove(position: Vec2f): Boolean {
+    override fun onMouseMove(position: Vec2): Boolean {
         val element = guiRenderer.gui.onDragMove(position, element)
         this.element.onDragMove(position, element)
         return element != null

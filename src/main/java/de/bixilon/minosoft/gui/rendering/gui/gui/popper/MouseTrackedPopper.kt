@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.popper
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 
 
 abstract class MouseTrackedPopper(
     guiRenderer: GUIRenderer,
-    position: Vec2f,
+    position: Vec2,
     background: Boolean = true,
     trackMouse: Boolean = true,
 ) : Popper(guiRenderer, position, background) {
@@ -31,7 +31,7 @@ abstract class MouseTrackedPopper(
             }
         }
 
-    override fun onMouseMove(position: Vec2f, absolute: Vec2f): Boolean {
+    override fun onMouseMove(position: Vec2, absolute: Vec2): Boolean {
         if (trackMouse) {
             this.position = position
         }

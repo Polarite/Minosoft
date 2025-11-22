@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.monster
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
 import de.bixilon.minosoft.data.entities.data.EntityDataField
@@ -20,8 +20,8 @@ import de.bixilon.minosoft.data.entities.entities.PathfinderMob
 import de.bixilon.minosoft.data.entities.entities.SynchronizedEntityData
 import de.bixilon.minosoft.data.registries.entities.EntityFactory
 import de.bixilon.minosoft.data.registries.entities.EntityType
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class Allay(session: PlaySession, entityType: EntityType, data: EntityData, position: Vec3d, rotation: EntityRotation) : PathfinderMob(session, entityType, data, position, rotation) {
 
@@ -34,7 +34,7 @@ class Allay(session: PlaySession, entityType: EntityType, data: EntityData, posi
         get() = data.getBoolean(CAN_DUPLICATE_DATA, true)
 
     companion object : EntityFactory<Allay> {
-        override val identifier = minecraft("allay")
+        override val identifier = "minecraft:allay".toResourceLocation()
         private val IS_DANCING_DATA = EntityDataField("IS_DANCING")
         private val CAN_DUPLICATE_DATA = EntityDataField("CAN_DUPLICATE")
 

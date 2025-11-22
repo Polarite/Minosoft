@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,26 +13,27 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.cloud
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.particle.data.ParticleData
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asGray
 import de.bixilon.minosoft.data.world.entities.WorldEntities
 import de.bixilon.minosoft.gui.rendering.particle.ParticleFactory
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.SimpleTextureParticle
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import java.lang.Float.max
 
-open class CloudParticle(session: PlaySession, position: Vec3d, velocity: MVec3d, data: ParticleData? = null) : SimpleTextureParticle(session, position, MVec3d(), data) {
+open class CloudParticle(session: PlaySession, position: Vec3d, velocity: Vec3d, data: ParticleData? = null) : SimpleTextureParticle(session, position, Vec3d.EMPTY, data) {
 
     init {
         friction = 0.96f
         this.velocity *= 0.1
         this.velocity += velocity
 
-        this.color = (1.0f - random.nextFloat() * 0.3).asGray().rgba()
+        this.color = (1.0f - random.nextFloat() * 0.3).asGray()
 
         super.scale *= 1.875f
 
@@ -52,18 +53,16 @@ open class CloudParticle(session: PlaySession, position: Vec3d, velocity: MVec3d
             if (this.position.y <= y) {
                 return@let
             }
-            val next = this.position.mutable()
-            next.y += (y - this.position.y) * 0.2
-            this.position = next.unsafe
+            this.position.y += (y - this.position.y) * 0.2
             this.velocity.y += (it.physics.velocity.y - this.velocity.y) * 0.2
         }
     }
 
 
     companion object : ParticleFactory<CloudParticle> {
-        override val identifier = minecraft("cloud")
+        override val identifier: ResourceLocation = "minecraft:cloud".toResourceLocation()
 
-        override fun build(session: PlaySession, position: Vec3d, velocity: MVec3d, data: ParticleData): CloudParticle {
+        override fun build(session: PlaySession, position: Vec3d, velocity: Vec3d, data: ParticleData): CloudParticle {
             return CloudParticle(session, position, velocity, data)
         }
     }

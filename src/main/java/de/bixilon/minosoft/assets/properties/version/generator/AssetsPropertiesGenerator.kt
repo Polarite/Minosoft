@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -19,7 +19,6 @@ import de.bixilon.minosoft.assets.minecraft.JarAssetsManager
 import de.bixilon.minosoft.config.profile.profiles.resources.ResourcesProfile
 import de.bixilon.minosoft.protocol.versions.Version
 import de.bixilon.minosoft.util.logging.Log
-import de.bixilon.minosoft.util.logging.LogOptions
 import org.objenesis.ObjenesisStd
 import kotlin.system.exitProcess
 
@@ -30,7 +29,7 @@ object AssetsPropertiesGenerator {
         val stream = System.out
         System.setOut(System.err)
         Log::class.java.forceInit()
-        LogOptions.async = false
+        Log.ASYNC_LOGGING = false
         if (args.size != 1) {
             throw IllegalArgumentException("Usage: application <client jar hash>")
         }
@@ -43,7 +42,7 @@ object AssetsPropertiesGenerator {
         try {
             assetsManager.load()
         } catch (exception: InvalidAssetException) {
-            // this exception is thrown, because our initial hash is invalid
+            // this exception is thrown, because our initial hash is "dummy"
             stream.print(exception.hash + ":" + exception.tarBytes)
             exitProcess(0)
         }

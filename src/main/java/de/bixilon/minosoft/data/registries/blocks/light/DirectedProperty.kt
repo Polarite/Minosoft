@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,8 +15,8 @@ package de.bixilon.minosoft.data.registries.blocks.light
 
 import de.bixilon.minosoft.data.Axes
 import de.bixilon.minosoft.data.direction.Directions
-import de.bixilon.minosoft.data.registries.shapes.shape.Shape
 import de.bixilon.minosoft.data.registries.shapes.side.SideQuad
+import de.bixilon.minosoft.data.registries.shapes.voxel.AbstractVoxelShape
 
 class DirectedProperty(
     private val directions: BooleanArray,
@@ -27,14 +27,6 @@ class DirectedProperty(
 
     override fun propagatesLight(direction: Directions): Boolean {
         return directions[direction.ordinal]
-    }
-
-    override fun toString() = "Directed{directions=${directions.contentToString()}, enters=$skylightEnters, filters=$filtersSkylight}"
-
-    override fun hashCode() = directions.contentHashCode()
-    override fun equals(other: Any?) = when (other) {
-        is DirectedProperty -> directions.contentEquals(other.directions) && skylightEnters == other.skylightEnters && filtersSkylight == other.filtersSkylight
-        else -> false
     }
 
     companion object {
@@ -58,7 +50,7 @@ class DirectedProperty(
                 return value
             }
 
-        fun of(shape: Shape, skylightEnters: Boolean = true, filtersLight: Boolean = false): LightProperties {
+        fun of(shape: AbstractVoxelShape, skylightEnters: Boolean = true, filtersLight: Boolean = false): LightProperties {
             val directions = BooleanArray(Directions.SIZE)
 
             for ((index, direction) in Directions.VALUES.withIndex()) {
@@ -75,10 +67,13 @@ class DirectedProperty(
             return if (simple) TransparentProperty else OpaqueProperty
         }
 
-        private fun Shape.getSideArea(direction: Directions, target: SideQuad): Float {
+        private fun AbstractVoxelShape.getSideArea(direction: Directions, target: SideQuad): Float {
             // overlapping is broken, see https://stackoverflow.com/questions/7342935/algorithm-to-compute-total-area-covered-by-a-set-of-overlapping-segments
             // ToDo: This whole calculation is technically wrong, it could be that 2 different sides of 2 blocks are "free". That means that light can still not pass the blocks, but
             // this algorithm does not cover it. Let's see it as performance hack
+
+            if (this.aabbs == 0) return 0.0f
+
             var area = 0.0f
 
 
@@ -119,7 +114,7 @@ class DirectedProperty(
             return area
         }
 
-        fun Shape.isSideCovered(direction: Directions): Boolean {
+        fun AbstractVoxelShape.isSideCovered(direction: Directions): Boolean {
             // this should be improved: https://stackoverflow.com/questions/76373725/check-if-a-quad-is-fully-covered-by-a-set-of-others
             val surface = getSideArea(direction, FULL_SIDE)
 

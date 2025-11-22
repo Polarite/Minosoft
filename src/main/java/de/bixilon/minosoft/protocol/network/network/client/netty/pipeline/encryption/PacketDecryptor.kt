@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,6 @@
 
 package de.bixilon.minosoft.protocol.network.network.client.netty.pipeline.encryption
 
-import de.bixilon.minosoft.protocol.network.network.client.netty.NetworkAllocator
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
@@ -23,19 +22,12 @@ class PacketDecryptor(
     private val cipher: Cipher,
 ) : ByteToMessageDecoder() {
 
-    // TODO: tests
-
     override fun decode(context: ChannelHandlerContext, data: ByteBuf, out: MutableList<Any>) {
-        val length = data.readableBytes()
-        val encrypted = NetworkAllocator.allocate(length) // TODO: Limit to buffer size (we can do that in small chunks to not allocate to much at once)
-        data.readBytes(encrypted, 0, length)
+        val bytes = ByteArray(data.readableBytes())
+        data.readBytes(bytes)
 
-        val decrypted = NetworkAllocator.allocate(length) // TODO: Don't double allocate
-        cipher.update(encrypted, 0, length, decrypted)
-        NetworkAllocator.free(encrypted)
-
-        out += context.alloc().buffer(length).apply { writeBytes(decrypted, 0, length) }
-        NetworkAllocator.free(decrypted)
+        val decrypted = cipher.update(bytes)
+        out += context.alloc().buffer(decrypted.size).apply { writeBytes(decrypted) }
     }
 
     companion object {

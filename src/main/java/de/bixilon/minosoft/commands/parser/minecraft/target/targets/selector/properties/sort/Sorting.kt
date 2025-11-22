@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,10 @@
 
 package de.bixilon.minosoft.commands.parser.minecraft.target.targets.selector.properties.sort
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.enums.EnumUtil
 import de.bixilon.kutil.enums.ValuesEnum
 import de.bixilon.minosoft.data.entities.entities.Entity
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil
 
 enum class Sorting {
     NEAREST,
@@ -29,8 +28,8 @@ enum class Sorting {
 
     fun sort(center: Vec3d, selected: MutableList<Entity>) {
         when (this) {
-            NEAREST -> selected.sortBy { Vec3dUtil.distance2(center, it.physics.position) }
-            FURTHEST -> selected.sortBy { -Vec3dUtil.distance2(center, it.physics.position) }
+            NEAREST -> selected.sortBy { (center - it.physics.position).length2() }
+            FURTHEST -> selected.sortBy { -(center - it.physics.position).length2() }
             RANDOM -> selected.shuffle()
             ARBITRARY -> selected.sortBy { it.id ?: 0 }
         }

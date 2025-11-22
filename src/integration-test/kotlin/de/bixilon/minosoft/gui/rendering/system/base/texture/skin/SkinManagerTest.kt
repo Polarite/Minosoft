@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base.texture.skin
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.kutil.stream.InputStreamUtil.readAll
 import de.bixilon.kutil.unsafe.UnsafeUtil.setUnsafeAccessible
@@ -26,7 +26,6 @@ import de.bixilon.minosoft.data.entities.entities.player.properties.textures.Pla
 import de.bixilon.minosoft.data.entities.entities.player.properties.textures.SkinPlayerTexture
 import de.bixilon.minosoft.data.entities.entities.player.properties.textures.metadata.SkinMetadata
 import de.bixilon.minosoft.data.entities.entities.player.properties.textures.metadata.SkinModel
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor.Companion.rgba
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.system.base.texture.data.buffer.TextureBuffer
 import de.bixilon.minosoft.gui.rendering.system.base.texture.dynamic.DynamicTextureState
@@ -35,6 +34,7 @@ import de.bixilon.minosoft.gui.rendering.system.dummy.DummyRenderSystem
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTextureManager
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.readTexture
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
+import de.bixilon.minosoft.test.IT
 import de.bixilon.minosoft.test.ITUtil.allocate
 import org.testng.Assert.*
 import org.testng.annotations.Test
@@ -43,7 +43,7 @@ import kotlin.reflect.full.companionObject
 
 @Test(groups = ["rendering", "textures"]) // TODO: flip skin correctly
 class SkinManagerTest {
-    val skin = SkinManager::class.java.allocate()
+    val skin = IT.OBJENESIS.newInstance(SkinManager::class.java)
     val readSkin = SkinManager::class.java.getDeclaredMethod("readSkin", ByteArray::class.java).apply { setUnsafeAccessible() }
     val isReallyWide = SkinManager::class.companionObject!!.java.getDeclaredMethod("isReallyWide", TextureBuffer::class.java).apply { setUnsafeAccessible() }
 
@@ -98,6 +98,6 @@ class SkinManagerTest {
         assertEquals(skin?.texture?.state, DynamicTextureState.LOADED)
         val buffer = skin?.texture?.data?.buffer!!
         // assertEquals(buffer.getRGBA(9, 0), 0x0F00FA_FF)
-        assertEquals(buffer.getRGBA(9, 0), 0x0D00FA_FF.rgba()) // TODO: wrong? should be the value above
+        assertEquals(buffer.getRGBA(9, 0), 0x0D00FA_FF) // TODO: wrong? should be the value above
     }
 }

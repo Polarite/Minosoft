@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -17,18 +17,16 @@ import de.bixilon.minosoft.data.registries.blocks.factory.BlockFactory
 import de.bixilon.minosoft.data.registries.blocks.settings.BlockSettings
 import de.bixilon.minosoft.data.registries.blocks.types.building.SlabBlock
 import de.bixilon.minosoft.data.registries.blocks.types.building.door.DoorBlock
-import de.bixilon.minosoft.data.registries.blocks.types.building.fence.FenceBlock
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.Registries
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
 import de.bixilon.minosoft.gui.rendering.tint.TintManager
 import de.bixilon.minosoft.gui.rendering.tint.tints.StaticTintProvider
 
 interface Birch {
 
     class Leaves(identifier: ResourceLocation = this.identifier, settings: BlockSettings) : LeavesBlock(identifier, settings), Birch {
-        override val tintProvider = StaticTintProvider(0x80A755.rgb())
+        override val tintProvider = StaticTintProvider(0x80A755)
 
         override fun initTint(manager: TintManager) = Unit
 
@@ -63,14 +61,6 @@ interface Birch {
             override val identifier = minecraft("birch_planks")
 
             override fun build(registries: Registries, settings: BlockSettings) = Planks(settings = settings)
-        }
-    }
-    class Fence(identifier: ResourceLocation = this.identifier, settings: BlockSettings) : FenceBlock(identifier, settings), Birch {
-
-        companion object : BlockFactory<Fence> {
-            override val identifier = minecraft("birch_fence")
-
-            override fun build(registries: Registries, settings: BlockSettings) = Fence(settings = settings)
         }
     }
 }

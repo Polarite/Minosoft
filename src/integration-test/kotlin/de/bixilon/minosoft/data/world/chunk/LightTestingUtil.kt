@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.data.world.chunk
 
-import de.bixilon.kutil.concurrent.lock.locks.reentrant.ReentrantRWLock
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kutil.concurrent.lock.RWLock
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.kutil.reflection.ReflectionUtil.jvmField
@@ -22,15 +23,13 @@ import de.bixilon.minosoft.data.registries.dimension.DimensionProperties
 import de.bixilon.minosoft.data.world.World
 import de.bixilon.minosoft.data.world.biome.WorldBiomes
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
-import de.bixilon.minosoft.data.world.chunk.chunk.ChunkSectionManagement
-import de.bixilon.minosoft.data.world.chunk.light.section.ChunkLight
+import de.bixilon.minosoft.data.world.chunk.light.ChunkLight
 import de.bixilon.minosoft.data.world.chunk.neighbours.ChunkNeighbours
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
-import de.bixilon.minosoft.data.world.positions.InSectionPosition
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
 import de.bixilon.minosoft.modding.event.master.EventMaster
 import de.bixilon.minosoft.protocol.network.session.Session
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.test.ITUtil.allocate
 import org.objenesis.ObjenesisStd
 
 const val SECTIONS = 16
@@ -47,7 +46,7 @@ object LightTestingUtil {
 
     fun createWorld(): World {
         val objenesis = ObjenesisStd()
-        val world = World::class.java.allocate()
+        val world = objenesis.newInstance(World::class.java)
         world::dimension.forceSet(DataObserver(DimensionProperties(skyLight = true)))
         world::session.forceSet(createSession())
         world::biomes.forceSet(WorldBiomes(world))
@@ -56,26 +55,29 @@ object LightTestingUtil {
     }
 
     fun createEmptyChunk(position: ChunkPosition): Chunk {
-        val chunk = Chunk::class.java.allocate()
-        chunk::lock.forceSet(ReentrantRWLock())
-        chunk::position.forceSet(position.raw)
+        val objenesis = ObjenesisStd()
+        val chunk = objenesis.newInstance(Chunk::class.java)
+        chunk::lock.forceSet(RWLock.rwlock())
+        chunk::chunkPosition.forceSet(position)
         chunk::world.forceSet(world)
+        chunk::maxSection.forceSet(chunk.world.dimension.maxSection)
+        chunk::session.forceSet(chunk.world.session)
         chunk::light.forceSet(ChunkLight(chunk))
         chunk::neighbours.forceSet(ChunkNeighbours(chunk))
-        chunk::sections.forceSet(ChunkSectionManagement(chunk))
+        chunk.sections = arrayOfNulls(SECTIONS)
 
         return chunk
     }
 
     fun createChunkWithNeighbours(): Chunk {
-        val chunk = createEmptyChunk(ChunkPosition.EMPTY)
+        val chunk = createEmptyChunk(Vec2i.EMPTY)
+        var index = 0
         for (x in -1..1) {
             for (z in -1..1) {
-                val position = ChunkPosition(x, z)
-                if (position == ChunkPosition.EMPTY) {
+                if (x == 0 && z == 0) {
                     continue
                 }
-                chunk.neighbours[position] = createEmptyChunk(ChunkPosition(x, z))
+                chunk.neighbours[index++] = createEmptyChunk(Vec2i(x, z))
             }
         }
 
@@ -84,7 +86,7 @@ object LightTestingUtil {
 
     fun ChunkSection.fill(state: BlockState) {
         for (index in 0 until 4096) {
-            blocks.unsafeSet(InSectionPosition(index), state)
+            blocks.unsafeSet(index, state)
         }
     }
 }

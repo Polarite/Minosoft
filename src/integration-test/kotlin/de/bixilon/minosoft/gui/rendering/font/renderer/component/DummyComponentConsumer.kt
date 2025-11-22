@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,38 +13,35 @@
 
 package de.bixilon.minosoft.gui.rendering.font.renderer.component
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.kutil.exception.Broken
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.font.renderer.code.CodePointRenderer
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.font.types.FontType
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMeshCache
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.CharVertexConsumer
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
+import de.bixilon.minosoft.gui.rendering.system.base.RenderOrder
 import de.bixilon.minosoft.gui.rendering.system.base.texture.shader.ShaderTexture
-import de.bixilon.minosoft.gui.rendering.util.mesh.uv.array.PackedUVArray
 import org.testng.Assert.assertEquals
 
-class DummyComponentConsumer : GuiVertexConsumer {
-    val chars: MutableList<RenderedCodePoint> = mutableListOf()
-    val quads: MutableList<RenderedQuad> = mutableListOf()
+class DummyComponentConsumer : GUIVertexConsumer {
+    val chars: MutableList<RendererdCodePoint> = mutableListOf()
+    val quads: MutableList<RendererdQuad> = mutableListOf()
 
-    override fun ensureSize(primitives: Int) = Unit
-    override fun addQuad(positions: FloatArray, uv: PackedUVArray, texture: ShaderTexture, tint: RGBAColor, options: GUIVertexOptions?) = Broken()
+    override val order: RenderOrder get() = RenderOrder(IntArray(0))
+    override fun addVertex(x: Float, y: Float, texture: ShaderTexture?, u: Float, v: Float, tint: RGBColor, options: GUIVertexOptions?) = Broken()
+    override fun addVertex(x: Float, y: Float, textureId: Float, u: Float, v: Float, tint: Int, options: GUIVertexOptions?) = Broken()
+    override fun addCache(cache: GUIMeshCache) = Broken()
+    override fun ensureSize(size: Int) = Unit
 
-    override fun addQuad(startX: Float, startY: Float, endX: Float, endY: Float, texture: ShaderTexture, uvStartX: Float, uvStartY: Float, uvEndX: Float, uvEndY: Float, tint: RGBAColor, options: GUIVertexOptions?) {
-        quads += RenderedQuad(Vec2f(startX, startY), Vec2f(endX, endY))
+    override fun addQuad(start: Vec2, end: Vec2, texture: ShaderTexture?, uvStart: Vec2, uvEnd: Vec2, tint: RGBColor, options: GUIVertexOptions?) {
+        quads += RendererdQuad(Vec2(start), Vec2(end))
     }
 
-    override fun addQuad(start: Vec2f, end: Vec2f, tint: RGBAColor, options: GUIVertexOptions?) {
-        quads += RenderedQuad(Vec2f(start.unsafe), Vec2f(end.unsafe))
-    }
-
-    override fun addChar(start: Vec2f, end: Vec2f, texture: ShaderTexture, uvStart: Vec2f, uvEnd: Vec2f, italic: Boolean, tint: RGBAColor, options: GUIVertexOptions?) = Broken() // dummy code point renderer (below)
-
-    data class RenderedCodePoint(val start: Vec2f)
-    data class RenderedQuad(val start: Vec2f, val end: Vec2f)
+    data class RendererdCodePoint(val start: Vec2)
+    data class RendererdQuad(val start: Vec2, val end: Vec2)
 
 
     inner class ConsumerCodePointRenderer(val width: Float) : CodePointRenderer {
@@ -52,8 +49,8 @@ class DummyComponentConsumer : GuiVertexConsumer {
             return width * scale
         }
 
-        override fun render(position: Vec2f, properties: TextRenderProperties, color: RGBAColor, shadow: Boolean, bold: Boolean, italic: Boolean, scale: Float, consumer: CharVertexConsumer, options: GUIVertexOptions?) {
-            chars += RenderedCodePoint(Vec2f(position.x, position.y)) // copy because unsafe
+        override fun render(position: Vec2, properties: TextRenderProperties, color: RGBColor, shadow: Boolean, bold: Boolean, italic: Boolean, scale: Float, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+            chars += RendererdCodePoint(Vec2(position))
         }
     }
 
@@ -81,11 +78,11 @@ class DummyComponentConsumer : GuiVertexConsumer {
         }
     }
 
-    fun assert(vararg chars: RenderedCodePoint) {
+    fun assert(vararg chars: RendererdCodePoint) {
         assertEquals(this.chars, chars.toList())
     }
 
-    fun assert(vararg chars: RenderedQuad) {
+    fun assert(vararg chars: RendererdQuad) {
         assertEquals(this.quads, chars.toList())
     }
 }

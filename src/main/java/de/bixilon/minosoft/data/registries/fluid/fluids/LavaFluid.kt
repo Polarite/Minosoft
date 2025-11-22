@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.data.registries.fluid.fluids
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.random.RandomUtil.chance
 import de.bixilon.minosoft.data.direction.Directions
@@ -28,11 +29,13 @@ import de.bixilon.minosoft.data.registries.particle.ParticleType
 import de.bixilon.minosoft.data.registries.registries.Registries
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.data.world.World
-import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.camera.fog.FogOptions
 import de.bixilon.minosoft.gui.rendering.camera.fog.FoggedFluid
 import de.bixilon.minosoft.gui.rendering.models.fluid.fluids.LavaFluidModel
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.lava.LavaParticle
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.horizontal
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.toVec3d
 import de.bixilon.minosoft.physics.EntityPositionInfo
 import de.bixilon.minosoft.physics.entities.EntityPhysics
 import de.bixilon.minosoft.physics.entities.living.LivingEntityPhysics
@@ -57,17 +60,17 @@ open class LavaFluid(identifier: ResourceLocation = Companion.identifier) : Flui
         val y = physics.position.y
 
         physics.applyMovementInput(input, 0.02f)
-        physics.move(physics.velocity.unsafe)
+        physics.move(physics.velocity)
 
         if (physics.submersion[LavaFluid] > physics.swimHeight) {
             physics.applyFriction(FRICTION, FRICTION)
         } else {
             physics.applyFriction(FRICTION)
-            physics.applyFluidMovingSpeed(gravity, falling, physics.velocity.unsafe)
+            physics.applyFluidMovingSpeed(gravity, falling, physics.velocity)
         }
 
         if (physics.entity.hasGravity) {
-            physics.velocity.y += -gravity / 4.0
+            physics.velocity = physics.velocity + Vec3d(0.0, -gravity / 4.0, 0.0)
         }
 
         physics.applyBouncing(y)
@@ -77,7 +80,7 @@ open class LavaFluid(identifier: ResourceLocation = Companion.identifier) : Flui
         return other is LavaFluid
     }
 
-    override fun randomTick(session: PlaySession, blockState: BlockState, blockPosition: BlockPosition, random: Random) {
+    override fun randomTick(session: PlaySession, blockState: BlockState, blockPosition: Vec3i, random: Random) {
         super.randomTick(session, blockState, blockPosition, random)
         val particle = session.world.particle ?: return
         val above = session.world[blockPosition + Directions.UP]
@@ -86,10 +89,9 @@ open class LavaFluid(identifier: ResourceLocation = Companion.identifier) : Flui
             return
         }
         if (lavaParticleType != null && random.chance(1)) {
-            val position = Vec3d(
-                blockPosition.x + random.nextDouble(),
-                blockPosition.y + 1.0,
-                blockPosition.z + random.nextDouble(),
+            val position = blockPosition.toVec3d + Vec3d.horizontal(
+                { random.nextDouble() },
+                1.0
             )
 
             particle += LavaParticle(session, position, lavaParticleType.default())
@@ -113,6 +115,6 @@ open class LavaFluid(identifier: ResourceLocation = Companion.identifier) : Flui
         private val FOG_OPTIONS = FogOptions(start = 0.2f, end = 1.0f, color = RGBColor(0.6f, 0.1f, 0.0f))
         const val FRICTION = 0.5
 
-        override fun build(identifier: ResourceLocation, registries: Registries) = LavaFluid()
+        override fun build(resourceLocation: ResourceLocation, registries: Registries) = LavaFluid()
     }
 }

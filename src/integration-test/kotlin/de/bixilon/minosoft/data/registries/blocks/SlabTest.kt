@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -29,14 +29,10 @@ class SlabTest : BlockTest<Block>() {
         SlabTest0 = this
     }
 
-    override val type get() = MinecraftBlocks.OAK_SLAB
-
-
-    override fun `retrieve block`() {
-        super.`retrieve block`()
+    fun getSlabs() {
+        super.retrieveBlock(MinecraftBlocks.OAK_SLAB)
         top = block.states.withProperties(BlockProperties.SLAB_TYPE to Halves.UPPER)
     }
 }
 
-@Deprecated("")
 var SlabTest0: SlabTest = unsafeNull()

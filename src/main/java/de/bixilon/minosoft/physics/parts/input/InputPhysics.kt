@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,6 +13,7 @@
 
 package de.bixilon.minosoft.physics.parts.input
 
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.FrictionBlock
 import de.bixilon.minosoft.data.registries.effects.movement.MovementEffect
@@ -27,7 +28,7 @@ object InputPhysics {
     const val FRICTION_MULTIPLIER = 0.91f
 
     fun LivingEntityPhysics<*>.applyMovementInput(input: MovementInput, speed: Float) {
-        this.velocity += input.getVelocity(speed, rotation.yaw)
+        this.velocity = this.velocity + input.getVelocity(speed, rotation.yaw)
     }
 
 
@@ -44,7 +45,7 @@ object InputPhysics {
     }
 
     private fun LivingEntityPhysics<*>.travelGround(input: MovementInput): Float {
-        val friction = positionInfo.velocityState?.block?.nullCast<FrictionBlock>()?.friction ?: FrictionBlock.DEFAULT_FRICTION
+        val friction = positionInfo.velocityBlock?.block?.nullCast<FrictionBlock>()?.friction ?: FrictionBlock.DEFAULT_FRICTION
         val speed = movementSpeed * (FRICTION_WEIGHT / (friction * friction * friction))
 
         applyMovementInput(input, speed)
@@ -62,13 +63,11 @@ object InputPhysics {
         val slowdown: Float = if (onGround) travelGround(input) else travelAir(input)
 
         limitClimbingSpeed()
-        move()
+        move(this.velocity)
         applyClimbingSpeed()
 
         val velocity = this.velocity
 
-        this.velocity.x *= slowdown
-        this.velocity.y = applyLevitation(velocity.y, gravity) * PhysicsConstants.AIR_RESISTANCEf
-        this.velocity.z *= slowdown
+        this.velocity = Vec3d(velocity.x * slowdown, applyLevitation(velocity.y, gravity) * PhysicsConstants.AIR_RESISTANCEf, velocity.z * slowdown)
     }
 }

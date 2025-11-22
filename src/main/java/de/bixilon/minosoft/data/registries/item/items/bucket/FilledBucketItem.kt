@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,8 +14,8 @@
 package de.bixilon.minosoft.data.registries.item.items.bucket
 
 import de.bixilon.kutil.cast.CastUtil
-import de.bixilon.kutil.json.JsonObject
 import de.bixilon.minosoft.data.registries.fluid.Fluid
+import de.bixilon.kutil.json.JsonObject
 import de.bixilon.minosoft.data.registries.fluid.FluidFactory
 import de.bixilon.minosoft.data.registries.fluid.fluids.LavaFluid
 import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid
@@ -26,30 +26,30 @@ import de.bixilon.minosoft.data.registries.item.items.fluid.FluidItem
 import de.bixilon.minosoft.data.registries.registries.Registries
 
 open class FilledBucketItem<T : Fluid>(
-    identifier: ResourceLocation,
+    resourceLocation: ResourceLocation,
     factory: FluidFactory<T>,
-) : BucketItem(identifier), FluidItem {
+) : BucketItem(resourceLocation), FluidItem {
     override val fluid: Fluid = CastUtil.unsafeNull()
 
     init {
         this::fluid.inject(factory.identifier)
     }
 
-    open class Lava(resourceLocation: ResourceLocation = this.identifier) : FilledBucketItem<LavaFluid>(resourceLocation, LavaFluid) {
+    open class LavaBucketItem(resourceLocation: ResourceLocation = this.identifier) : FilledBucketItem<LavaFluid>(resourceLocation, LavaFluid) {
 
-        companion object : ItemFactory<Lava> {
+        companion object : ItemFactory<LavaBucketItem> {
             override val identifier = minecraft("lava_bucket")
 
-            override fun build(registries: Registries, data: JsonObject) = Lava()
+            override fun build(registries: Registries, data: JsonObject) = LavaBucketItem()
         }
     }
 
-    open class Water(resourceLocation: ResourceLocation = this.identifier) : FilledBucketItem<WaterFluid>(resourceLocation, WaterFluid) {
+    open class WaterBucketItem(resourceLocation: ResourceLocation = this.identifier) : FilledBucketItem<WaterFluid>(resourceLocation, WaterFluid) {
 
-        companion object : ItemFactory<Water> {
+        companion object : ItemFactory<WaterBucketItem> {
             override val identifier = minecraft("water_bucket")
 
-            override fun build(registries: Registries, data: JsonObject) = Water()
+            override fun build(registries: Registries, data: JsonObject) = WaterBucketItem()
         }
     }
 }

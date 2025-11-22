@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.entities
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.concurrent.queue.Queue
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
@@ -43,7 +43,7 @@ import de.bixilon.minosoft.gui.rendering.shader.ShaderManager
 import de.bixilon.minosoft.gui.rendering.skeletal.SkeletalManager
 import de.bixilon.minosoft.gui.rendering.system.dummy.DummyRenderSystem
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil
-import de.bixilon.minosoft.test.ITUtil.allocate
+import de.bixilon.minosoft.test.IT
 import java.util.*
 
 object EntityRendererTestUtil {
@@ -53,7 +53,7 @@ object EntityRendererTestUtil {
         val session = SessionTestUtil.createSession()
         session::scoreboard.forceSet(ScoreboardManager(session))
         session::tabList.forceSet(TabList())
-        val context = RenderContext::class.java.allocate()
+        val context = IT.OBJENESIS.newInstance(RenderContext::class.java)
         context::system.forceSet(DummyRenderSystem(context))
         context::textures.forceSet(context.system.createTextureManager())
         context::shaders.forceSet(ShaderManager(context))
@@ -70,7 +70,7 @@ object EntityRendererTestUtil {
 
     fun create(): EntitiesRenderer {
         val context = createContext()
-        val renderer = EntitiesRenderer::class.java.allocate()
+        val renderer = IT.OBJENESIS.newInstance(EntitiesRenderer::class.java)
         renderer::context.forceSet(context)
         renderer::queue.forceSet(Queue())
         renderer::session.forceSet(context.session)
@@ -98,7 +98,7 @@ object EntityRendererTestUtil {
     }
 
 
-    fun Entity.setInvisible(invisible: Boolean) {
+    fun Entity.isInvisible(invisible: Boolean) {
         var flags = data.get(Entity.FLAGS_DATA, 0x00)
         flags = flags and 0x20.inv()
         if (invisible) {

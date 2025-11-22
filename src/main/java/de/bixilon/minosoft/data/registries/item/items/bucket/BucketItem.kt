@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -28,10 +28,10 @@ import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
 
 abstract class BucketItem(
-    identifier: ResourceLocation,
-) : Item(identifier) {
+    resourceLocation: ResourceLocation,
+) : Item(resourceLocation) {
 
-    open class EmptyBucketItem(identifier: ResourceLocation = this.identifier) : BucketItem(identifier), FluidDrainable {
+    open class EmptyBucketItem(resourceLocation: ResourceLocation = this.identifier) : BucketItem(resourceLocation), FluidDrainable {
 
         companion object : ItemFactory<BucketItem> {
             override val identifier = minecraft("bucket")
@@ -40,7 +40,7 @@ abstract class BucketItem(
         }
     }
 
-    open class PowderSnowBucketItem(identifier: ResourceLocation = this.identifier) : BucketItem(identifier), PlaceableItem {
+    open class PowderSnowBucketItem(resourceLocation: ResourceLocation = this.identifier) : BucketItem(resourceLocation), PlaceableItem {
         protected val block: PowderSnowBlock = this::block.inject(PowderSnowBlock)
 
         override fun getPlacementState(session: PlaySession, target: BlockTarget, stack: ItemStack) = block.states.default

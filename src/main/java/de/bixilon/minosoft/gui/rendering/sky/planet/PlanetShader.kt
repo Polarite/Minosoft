@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,17 +13,17 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.planet
 
-import de.bixilon.kmath.mat.mat4.f.Mat4f
-import de.bixilon.kmath.vec.vec4.f.Vec4f
+import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kotlinglm.vec4.Vec4
 import de.bixilon.minosoft.gui.rendering.shader.Shader
 import de.bixilon.minosoft.gui.rendering.shader.types.TextureShader
 import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureManager
 
 class PlanetShader(
-    native: NativeShader,
-) : Shader(native), TextureShader {
-    var matrix: Mat4f by uniform("uMatrix", Mat4f())
-    var tint: Vec4f by uniform("uTintColor", Vec4f(1.0f))
+    override val native: NativeShader,
+) : Shader(), TextureShader {
+    var matrix: Mat4 by uniform("uMatrix", Mat4())
+    var tintColor: Vec4 by uniform("uTintColor", Vec4(1.0f))
     override var textures: TextureManager by textureManager(animated = false)
 }

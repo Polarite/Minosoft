@@ -13,13 +13,14 @@ Generally I'd say TBA, but some basic rules are here. Feel free to contact me fi
 
 ## Pull Requests
 
-- Just create a pull request (github, gitlab.com or gitlab.bixilon.de)
+- You can either create a pull request on my gitlab (easiest)
+- Use another git and make a pull request there (Consider looking here: [Gitlab-14116](https://gitlab.com/gitlab-org/gitlab/-/issues/14116))
 - Send me patch files per email
 
 ## Where to start
 
 - Issues (just browse through them and pick an interesting one)
-- Todos: In the code are many todos. Just search for them and resolve them.
+- ToDos: In the code are many todos. Just search for them and resolve them.
 - Interesting features you'd like to have included
 
 ## What not to include

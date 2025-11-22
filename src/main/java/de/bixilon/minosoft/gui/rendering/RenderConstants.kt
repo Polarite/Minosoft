@@ -14,21 +14,19 @@
 package de.bixilon.minosoft.gui.rendering
 
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.texture
 import kotlin.time.Duration.Companion.milliseconds
 
 object RenderConstants {
-    val TEXT_BACKGROUND_COLOR = RGBAColor(0, 0, 0, 80)
+    val TEXT_BACKGROUND_COLOR = RGBColor(0, 0, 0, 80)
 
 
     const val FRUSTUM_CULLING_ENABLED = true
-    const val FRUSTUM_CULLING_SPHERE = false
-
     const val OCCLUSION_CULLING_ENABLED = true
     const val SHOW_FPS_IN_WINDOW_TITLE = true
 
-    val MAXIMUM_QUEUE_TIME_PER_FRAME = 3.milliseconds
+    val MAXIMUM_QUEUE_TIME_PER_FRAME = 20.milliseconds
 
 
     val DEBUG_TEXTURE_RESOURCE_LOCATION = minosoft("debug").texture()
@@ -37,7 +35,7 @@ object RenderConstants {
     const val DEFAULT_LINE_WIDTH = 1.0f / 128.0f
 
 
-    const val UV_PRECISION_CORRECTION = 0.0003f
+    const val UV_ADD = 0.00001f
 
     const val DISABLE_GUI_CACHE = false
 

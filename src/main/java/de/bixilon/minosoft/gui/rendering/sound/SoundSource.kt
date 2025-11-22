@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,16 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.sound
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.gui.rendering.sound.sounds.Sound
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
 import org.lwjgl.openal.AL10.*
-import kotlin.time.Duration
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class SoundSource {
-    private var playTime: ValueTimeMark = now()
+    private var playTime = -1L
     private val source: Int = alGenSources()
 
     var loop: Boolean = false
@@ -37,13 +35,13 @@ class SoundSource {
             field = value
         }
 
-    var position: Vec3f = Vec3f.EMPTY
+    var position: Vec3 = Vec3.EMPTY
         set(value) {
             alSource3f(source, AL_POSITION, value.x, value.y, value.z)
             field = value
         }
 
-    var velocity: Vec3f = Vec3f.EMPTY
+    var velocity: Vec3 = Vec3.EMPTY
         set(value) {
             alSource3f(source, AL_VELOCITY, value.x, value.y, value.z)
             field = value
@@ -80,10 +78,10 @@ class SoundSource {
         get() = alGetSourcei(source, AL_SOURCE_STATE) == AL_PLAYING
 
     val available: Boolean
-        get() = !isPlaying || now() - playTime > (sound?.data?.length ?: Duration.ZERO)    // ToDo: Allow pause
+        get() = !isPlaying || millis() - playTime > (sound?.data?.length ?: 0L)    // ToDo: Allow pause
 
     fun play() {
-        playTime = now()
+        playTime = millis()
         alSourcePlay(source)
     }
 
@@ -92,7 +90,7 @@ class SoundSource {
     }
 
     fun stop() {
-        playTime = TimeUtil.NULL
+        playTime = -1L
         alSourceStop(source)
     }
 

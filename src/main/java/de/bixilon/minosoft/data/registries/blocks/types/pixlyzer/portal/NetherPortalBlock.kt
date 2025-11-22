@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.portal
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.blocks.factory.PixLyzerBlockFactory
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
@@ -23,23 +23,20 @@ import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.Registries
 import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.PortalParticle
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.of
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import java.util.*
 
-open class NetherPortalBlock(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>) : PixLyzerBlock(identifier, registries, data), RandomDisplayTickable {
+open class NetherPortalBlock(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>) : PixLyzerBlock(resourceLocation, registries, data), RandomDisplayTickable {
     private val portalParticleType = registries.particleType[PortalParticle]
 
     override fun randomDisplayTick(session: PlaySession, state: BlockState, position: BlockPosition, random: Random) {
         val particle = session.world.particle ?: return
         if (portalParticleType == null) return
-
         for (i in 0 until 4) {
-            val particlePosition = MVec3d(
-                position.x + random.nextDouble(),
-                position.y + random.nextDouble(),
-                position.z + random.nextDouble(),
-            )
-            val velocity = MVec3d((random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5, (random.nextDouble() - 0.5) * 0.5)
+            val particlePosition = Vec3d(position) + { random.nextDouble() }
+            val velocity = Vec3d.of { (random.nextDouble() - 0.5) * 0.5 }
 
             val factor = (random.nextInt(2) * 2 + 1).toDouble()
 
@@ -52,7 +49,7 @@ open class NetherPortalBlock(identifier: ResourceLocation, registries: Registrie
             }
             particle += PortalParticle(
                 session,
-                particlePosition.unsafe,
+                particlePosition,
                 velocity,
                 portalParticleType.default(),
             )
@@ -61,8 +58,8 @@ open class NetherPortalBlock(identifier: ResourceLocation, registries: Registrie
 
     companion object : PixLyzerBlockFactory<NetherPortalBlock> {
 
-        override fun build(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>): NetherPortalBlock {
-            return NetherPortalBlock(identifier, registries, data)
+        override fun build(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>): NetherPortalBlock {
+            return NetherPortalBlock(resourceLocation, registries, data)
         }
     }
 }

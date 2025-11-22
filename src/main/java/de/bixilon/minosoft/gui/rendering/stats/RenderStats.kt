@@ -13,27 +13,24 @@
 
 package de.bixilon.minosoft.gui.rendering.stats
 
-import de.bixilon.kutil.avg.duration.DurationAverage
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
+import de.bixilon.kutil.avg._long.LongAverage
+import de.bixilon.kutil.time.TimeUtil.millis
 import kotlin.time.Duration.Companion.seconds
 
 class RenderStats : AbstractRenderStats {
-    override val avgDrawTime = DurationAverage(1.seconds, Duration.INFINITE)
-    override val avgFrameTime = DurationAverage(1.seconds, Duration.INFINITE)
+    override val avgDrawTime = LongAverage(1.seconds, Long.MAX_VALUE)
+    override val avgFrameTime = LongAverage(1.seconds, Long.MAX_VALUE)
     override var totalFrames: Long = 0L
         private set
 
-    private var lastFrameStartTime = TimeUtil.NULL
+    private var lastFrameStartTime = -1L
 
-    private var lastSmoothFPSCalculationTime = TimeUtil.NULL
+    private var lastSmoothFPSCalculationTime = 0L
 
     override var smoothAvgFPS: Double = 0.0
         get() {
-            val time = now()
-            if (time - lastSmoothFPSCalculationTime > 100.milliseconds) {
+            val time = millis()
+            if (time - lastSmoothFPSCalculationTime > 100) {
                 field = avgFPS
                 lastSmoothFPSCalculationTime = time
             }
@@ -45,16 +42,16 @@ class RenderStats : AbstractRenderStats {
         get() {
             val avgFrameTime = avgFrameTime.avg
 
-            return 1.seconds / avgFrameTime
+            return 1000000000L / avgFrameTime.toDouble()  // SECOND_SCALE
         }
 
 
     override fun startFrame() {
-        lastFrameStartTime = now()
+        lastFrameStartTime = System.nanoTime()
     }
 
     override fun endFrame() {
-        val time = now()
+        val time = System.nanoTime()
 
         val delta = time - lastFrameStartTime
 
@@ -64,7 +61,7 @@ class RenderStats : AbstractRenderStats {
     }
 
     override fun endDraw() {
-        val time = now()
+        val time = System.nanoTime()
         val delta = time - lastFrameStartTime
 
         avgDrawTime += delta

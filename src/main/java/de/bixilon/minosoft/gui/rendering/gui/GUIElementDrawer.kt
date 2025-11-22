@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,23 +14,22 @@
 package de.bixilon.minosoft.gui.rendering.gui
 
 import de.bixilon.kutil.latch.SimpleLatch
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.gui.rendering.RenderUtil.runAsync
 import de.bixilon.minosoft.gui.rendering.gui.elements.Pollable
 import de.bixilon.minosoft.gui.rendering.gui.gui.LayoutedGUIElement
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
-import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 interface GUIElementDrawer {
     val guiRenderer: GUIRenderer
-    var lastTickTime: ValueTimeMark
+    var lastTickTime: Long
 
     fun tickElements(elements: Collection<GUIElement>) {
-        val time = now()
+        val time = millis()
         val latch = SimpleLatch(1)
-        if (time - lastTickTime > TickUtil.INTERVAL) {
+        if (time - lastTickTime > ProtocolDefinition.TICK_TIME) {
             for (element in elements) {
                 if (!element.enabled) {
                     continue
@@ -62,7 +61,7 @@ interface GUIElementDrawer {
             if (element !is AsyncDrawable) {
                 continue
             }
-            if (element.skip) {
+            if (element.skipDraw) {
                 continue
             }
             element.drawAsync()
@@ -86,7 +85,7 @@ interface GUIElementDrawer {
             if (element !is Drawable) {
                 continue
             }
-            if (element.skip) {
+            if (element.skipDraw) {
                 continue
             }
             element.draw()
@@ -102,7 +101,7 @@ interface GUIElementDrawer {
             if (element !is LayoutedGUIElement<*>) {
                 continue
             }
-            if (element.skip) {
+            if (element.skipDraw) {
                 continue
             }
             element.postPrepare()
@@ -110,10 +109,10 @@ interface GUIElementDrawer {
 
         guiRenderer.setup()
         for (element in elements) {
-            if (element !is LayoutedGUIElement<*> || !element.enabled || element.skip) {
+            if (element !is LayoutedGUIElement<*> || !element.enabled || element.skipDraw || element.mesh.data.isEmpty) {
                 continue
             }
-            element.mesh?.draw()
+            element.mesh.draw()
         }
     }
 }

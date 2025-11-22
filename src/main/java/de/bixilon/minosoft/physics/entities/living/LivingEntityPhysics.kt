@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,8 @@
 
 package de.bixilon.minosoft.physics.entities.living
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.cast.CastUtil.nullCast
-import de.bixilon.kutil.primitive.d
 import de.bixilon.minosoft.data.entities.Poses
 import de.bixilon.minosoft.data.entities.entities.LivingEntity
 import de.bixilon.minosoft.data.entities.entities.properties.FluidWalker
@@ -27,6 +26,7 @@ import de.bixilon.minosoft.data.registries.fluid.fluids.LavaFluid
 import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid
 import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.flatten0
 import de.bixilon.minosoft.physics.PhysicsConstants
 import de.bixilon.minosoft.physics.entities.EntityPhysics
@@ -66,7 +66,7 @@ open class LivingEntityPhysics<E : LivingEntity>(entity: E) : EntityPhysics<E>(e
             tickMovement()
         } else {
             input.reset()
-            velocity.clear()
+            velocity = Vec3d.EMPTY
         }
     }
 
@@ -83,7 +83,7 @@ open class LivingEntityPhysics<E : LivingEntity>(entity: E) : EntityPhysics<E>(e
     }
 
     fun swimUpwards(fluid: Identified) {
-        this.velocity.y += SWIM_UPWARDS
+        this.velocity = velocity + SWIM_UPWARDS
     }
 
     fun doesNotCollide(offset: Vec3d): Boolean {
@@ -92,7 +92,7 @@ open class LivingEntityPhysics<E : LivingEntity>(entity: E) : EntityPhysics<E>(e
     }
 
     override fun getVelocityMultiplier(): Float {
-        if (entity.equipment[MovementEnchantment.SoulSpeed] > 0 && positionInfo.velocityState.isIn(entity.session.tags, SOUL_SPEED_BLOCKS)) { // TODO: move that to the block itself?
+        if (entity.equipment[MovementEnchantment.SoulSpeed] > 0 && positionInfo.velocityBlock.isIn(entity.session.tags, SOUL_SPEED_BLOCKS)) { // TODO: move that to the block itself?
             return 1.0f
         }
         return super.getVelocityMultiplier()
@@ -109,7 +109,7 @@ open class LivingEntityPhysics<E : LivingEntity>(entity: E) : EntityPhysics<E>(e
             gravity = PhysicsConstants.SLOW_FALLING_GRAVITY
             fallDistance = 0.0f
         }
-        val state = this.positionInfo.state
+        val state = this.positionInfo.block
         val fluid = state?.block?.nullCast<FluidHolder>()?.fluid
         val canWalkOn = fluid != null && entity is FluidWalker && entity.canWalkOnFluid(fluid, state)
 
@@ -149,10 +149,10 @@ open class LivingEntityPhysics<E : LivingEntity>(entity: E) : EntityPhysics<E>(e
 
     open fun tickMovement() {
         if (this !is LocalPlayerPhysics) {
-            this.velocity *= PhysicsConstants.AIR_RESISTANCE
+            this.velocity = velocity * PhysicsConstants.AIR_RESISTANCE
         }
 
-        velocity.flatten0()
+        this.velocity = velocity.flatten0()
 
         tryJump()
 
@@ -175,6 +175,6 @@ open class LivingEntityPhysics<E : LivingEntity>(entity: E) : EntityPhysics<E>(e
     }
 
     private companion object {
-        val SWIM_UPWARDS = 0.04f.d
+        val SWIM_UPWARDS = Vec3d(0.0, 0.04f, 0.0)
     }
 }

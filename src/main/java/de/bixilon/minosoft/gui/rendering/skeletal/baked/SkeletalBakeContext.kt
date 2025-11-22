@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,23 +13,24 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal.baked
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.models.block.element.ModelElement.Companion.BLOCK_SIZE
-import de.bixilon.minosoft.gui.rendering.skeletal.mesh.AbstractSkeletalMeshBuilder
+import de.bixilon.minosoft.gui.rendering.skeletal.mesh.AbstractSkeletalMesh
 import de.bixilon.minosoft.gui.rendering.skeletal.model.elements.SkeletalElement
 import de.bixilon.minosoft.gui.rendering.skeletal.model.elements.SkeletalRotation
-import de.bixilon.minosoft.gui.rendering.skeletal.model.textures.SkeletalInstanceTextureMap
+import de.bixilon.minosoft.gui.rendering.skeletal.model.textures.SkeletalTextureInstance
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
 
 data class SkeletalBakeContext(
-    val offset: Vec3f = Vec3f.EMPTY,
+    val offset: Vec3 = Vec3.EMPTY,
     val inflate: Float = 0.0f,
     val texture: ResourceLocation? = null,
     val transform: BakedSkeletalTransform,
     val rotation: SkeletalRotation? = null,
 
-    val textures: SkeletalInstanceTextureMap,
-    val consumer: AbstractSkeletalMeshBuilder,
+    val textures: Map<ResourceLocation, SkeletalTextureInstance>,
+    val consumer: AbstractSkeletalMesh,
 ) {
 
     fun copy(element: SkeletalElement): SkeletalBakeContext {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.vehicle.boat
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.enums.EnumUtil
 import de.bixilon.kutil.enums.ValuesEnum
 import de.bixilon.minosoft.data.entities.EntityRotation
@@ -24,6 +24,7 @@ import de.bixilon.minosoft.data.entities.entities.properties.riding.InputSteerab
 import de.bixilon.minosoft.data.registries.entities.EntityFactory
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.input.camera.PlayerMovementInput
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
@@ -93,7 +94,7 @@ open class Boat(session: PlaySession, entityType: EntityType, data: EntityData, 
     }
 
     companion object : EntityFactory<Boat> {
-        override val identifier = minecraft("boat")
+        override val identifier: ResourceLocation = minecraft("boat")
         private val TIME_SINCE_LAST_HIT_DATA = EntityDataField("BOAT_HURT")
         private val HIT_DIRECTION_DATA = EntityDataField("BOAT_HURT_DIRECTION")
         private val DAMAGE_TAKEN_DATA = EntityDataField("BOAT_DAMAGE_TAKEN")

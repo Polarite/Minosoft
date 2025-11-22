@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -18,7 +18,7 @@ import de.bixilon.kutil.latch.SimpleLatch
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
 import de.bixilon.minosoft.modding.loader.ModLoader
-import de.bixilon.minosoft.modding.loader.ModOptions
+import de.bixilon.minosoft.terminal.RunConfiguration
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 import java.io.File
@@ -47,9 +47,9 @@ class LoadingPhaseTest {
 
     fun `load but skip loading`() {
         val phase = create("empty")
-        ModOptions.disabled = true
+        RunConfiguration.IGNORE_MODS = true
         phase.load()
-        ModOptions.disabled = false
+        RunConfiguration.IGNORE_MODS = false
         phase.latch.await()
     }
 

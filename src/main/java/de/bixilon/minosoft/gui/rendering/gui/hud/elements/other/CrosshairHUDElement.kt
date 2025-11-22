@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -26,19 +26,15 @@ import de.bixilon.minosoft.gui.rendering.gui.gui.LayoutedGUIElement
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.CustomHUDElement
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.HUDBuilder
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.other.debug.DebugHUDElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GuiMeshBuilder
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMesh
 import de.bixilon.minosoft.gui.rendering.system.base.BlendingFunctions
-import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
-import de.bixilon.minosoft.util.collections.floats.FloatListUtil
-import de.bixilon.minosoft.util.collections.ints.IntListUtil
+import de.bixilon.minosoft.util.collections.floats.BufferedArrayFloatList
 
 class CrosshairHUDElement(guiRenderer: GUIRenderer) : CustomHUDElement(guiRenderer) {
     private val profile = guiRenderer.session.profiles.gui
     private val crosshairProfile = profile.hud.crosshair
-    private val data = FloatListUtil.direct(42, false)
-    private val index = IntListUtil.direct(42, false) // TODO
     private var crosshairAtlasElement: AtlasElement? = null
-    private var mesh: Mesh? = null
+    private var mesh: GUIMesh? = null
     private var previousDebugEnabled: Boolean? = true
     private var reapply = true
     private var previousNeedsDraw = needsDraw
@@ -95,21 +91,16 @@ class CrosshairHUDElement(guiRenderer: GUIRenderer) : CustomHUDElement(guiRender
         mesh?.unload()
         this.mesh = null
 
-        val mesh = GuiMeshBuilder(context, guiRenderer.halfSize, this.data, this.index)
+        val mesh = GUIMesh(context, guiRenderer.halfSize, BufferedArrayFloatList(42))
         val start = (guiRenderer.scaledSize - CROSSHAIR_SIZE) / 2
-        mesh.addQuad(start, start + CROSSHAIR_SIZE, crosshairAtlasElement, crosshairProfile.color.rgba(), null)
-        mesh.fixIndex()
+        mesh.addQuad(start, start + CROSSHAIR_SIZE, crosshairAtlasElement, crosshairProfile.color, null)
 
 
         // ToDo: Attack indicator
 
-        this.mesh = mesh.bake().apply { load() }
+        mesh.load()
+        this.mesh = mesh
         this.reapply = false
-    }
-
-    override fun unload() {
-        data.free()
-        index.free()
     }
 
 

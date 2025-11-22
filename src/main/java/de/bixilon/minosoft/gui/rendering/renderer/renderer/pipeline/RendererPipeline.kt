@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.renderer.renderer.pipeline
 
-import de.bixilon.kutil.profiler.stack.StackedProfiler.Companion.invoke
+import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.Renderer
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.RendererManager
@@ -23,6 +23,7 @@ import de.bixilon.minosoft.gui.rendering.system.base.PolygonModes
 import de.bixilon.minosoft.gui.rendering.system.base.RenderSystem
 import de.bixilon.minosoft.gui.rendering.system.base.phases.PostDrawable
 import de.bixilon.minosoft.gui.rendering.system.base.phases.PreDrawable
+import de.bixilon.minosoft.gui.rendering.system.base.phases.SkipAll
 
 class RendererPipeline(private val renderer: RendererManager) : Drawable {
     val world = WorldRendererPipeline(renderer)
@@ -32,54 +33,52 @@ class RendererPipeline(private val renderer: RendererManager) : Drawable {
     private val pre: MutableList<PreDrawable> = mutableListOf()
     private val post: MutableList<PostDrawable> = mutableListOf()
 
-    private val system = renderer.context.system
+    private val renderSystem = renderer.context.system
     private val framebuffer = renderer.context.framebuffer
 
 
     private fun RenderSystem.set(renderer: Renderer) {
         val framebuffer = renderer.framebuffer
-        if (framebuffer == null) {
-            this.framebuffer = null
-            this.polygonMode = PolygonModes.DEFAULT
-        } else {
-            framebuffer.bind()
-        }
+        this.framebuffer = framebuffer?.framebuffer
+        this.polygonMode = framebuffer?.polygonMode ?: PolygonModes.DEFAULT
     }
 
     private fun drawOther() {
         for (renderer in other) {
-            renderer as Renderer
-            if (renderer.skip) continue
+            if (renderer.skipDraw) continue
+            if (renderer is SkipAll && renderer.skipAll) continue
 
-            system.set(renderer)
+            renderSystem.set(renderer.unsafeCast<Renderer>())
             renderer.draw()
         }
     }
 
     private fun drawPre() {
         for (renderer in pre) {
-            if (renderer.skip) continue
-            system.set(renderer)
+            if (renderer is SkipAll && renderer.skipAll) continue
+            if (renderer.skipPre) continue
+            renderSystem.set(renderer)
             renderer.drawPre()
         }
     }
 
     private fun drawPost() {
         for (renderer in post) {
-            if (renderer.skip) continue
-            system.set(renderer)
+            if (renderer is SkipAll && renderer.skipAll) continue
+            if (renderer.skipPost) continue
+            renderSystem.set(renderer)
             renderer.drawPost()
         }
     }
 
 
     override fun draw() {
-        renderer.context.profiler("world") { world.draw() }
-        renderer.context.profiler("other") { drawOther() }
+        world.draw()
+        drawOther()
 
-        renderer.context.profiler("pre") { drawPre() }
-        renderer.context.profiler("framebuffer") { framebuffer.draw() }
-        renderer.context.profiler("post") { drawPost() }
+        drawPre()
+        framebuffer.draw()
+        drawPost()
     }
 
     operator fun plusAssign(renderer: Renderer) {

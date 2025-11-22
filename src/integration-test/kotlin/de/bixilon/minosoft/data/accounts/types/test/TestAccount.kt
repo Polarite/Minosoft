@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,21 +16,21 @@ package de.bixilon.minosoft.data.accounts.types.test
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.uuid.UUIDUtil.toUUID
 import de.bixilon.minosoft.data.accounts.Account
-import de.bixilon.minosoft.data.accounts.AccountCapabilities
 import de.bixilon.minosoft.data.accounts.AccountStates
 import de.bixilon.minosoft.data.entities.entities.player.properties.PlayerProperties
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import java.util.*
 
 object TestAccount : Account("Bixilon", null) {
     override val id: String = "id"
-    override val type = minosoft("test_account")
+    override val type: ResourceLocation = minosoft("test_account")
     override val properties: PlayerProperties = PlayerProperties()
     override val uuid: UUID = "9e6ce7c5-40d3-483e-8e5a-b6350987d65f".toUUID()
     override var state: AccountStates
         get() = AccountStates.WORKING
         set(value) {}
-    override val capabilities = AccountCapabilities.setOfAll()
+    override val supportsSkins: Boolean get() = true
 
     override fun join(serverId: String) = Unit
 

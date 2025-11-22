@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,12 @@
 
 package de.bixilon.minosoft.data.entities.data.types
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
 
-object Vec3EntityDataType : EntityDataType<Vec3f> {
+object Vec3EntityDataType : EntityDataType<Vec3> {
 
-    override fun read(buffer: PlayInByteBuffer): Vec3f {
+    override fun read(buffer: PlayInByteBuffer): Vec3 {
         return buffer.readVec3f()
     }
 }

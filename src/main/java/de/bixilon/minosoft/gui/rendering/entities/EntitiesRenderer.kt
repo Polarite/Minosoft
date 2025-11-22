@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,17 +16,18 @@ package de.bixilon.minosoft.gui.rendering.entities
 import de.bixilon.kutil.concurrent.queue.Queue
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
-import de.bixilon.kutil.profiler.stack.StackedProfiler.Companion.invoke
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.gui.eros.crash.ErosCrashReport.Companion.crash
 import de.bixilon.minosoft.gui.rendering.RenderContext
-import de.bixilon.minosoft.gui.rendering.entities.draw.EntityDrawer
+import de.bixilon.minosoft.gui.rendering.entities.feature.EntityRenderFeature
 import de.bixilon.minosoft.gui.rendering.entities.feature.register.EntityRenderFeatures
+import de.bixilon.minosoft.gui.rendering.entities.visibility.EntityLayer
 import de.bixilon.minosoft.gui.rendering.entities.visibility.VisibilityManager
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.AsyncRenderer
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.RendererBuilder
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.world.LayerSettings
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.world.WorldRenderer
+import de.bixilon.minosoft.gui.rendering.system.base.RenderSystem
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
 class EntitiesRenderer(
@@ -34,17 +35,21 @@ class EntitiesRenderer(
     override val context: RenderContext,
 ) : WorldRenderer, AsyncRenderer {
     override val layers = LayerSettings()
+    override val renderSystem: RenderSystem = context.system
     val profile = session.profiles.entity
+    val visibilityGraph = context.camera.visibilityGraph
     val features = EntityRenderFeatures(this)
     val renderers = EntityRendererManager(this)
     val visibility = VisibilityManager(this)
-    val drawer = EntityDrawer(this)
     val queue = Queue()
 
 
-    private var invalid = false
+    private var reset = false
 
-    override fun registerLayers() = drawer.registerLayers()
+    override fun registerLayers() {
+        layers.register(EntityLayer.Opaque, null, { visibility.opaque.draw() }) { visibility.opaque.size <= 0 }
+        layers.register(EntityLayer.Translucent, null, { visibility.translucent.draw() }) { visibility.translucent.size <= 0 }
+    }
 
     override fun prePrepareDraw() {
         queue.work()
@@ -52,40 +57,31 @@ class EntitiesRenderer(
 
     override fun prepareDrawAsync() {
         this.features.update()
-        val time = now()
-        this.visibility.update()
-        drawer.clear()
-
+        val millis = millis()
+        this.visibility.reset()
         renderers.iterate {
             try {
-                if (invalid) {
-                    it.invalidate()
-                }
-
-                it.updateVisibility(visibility.getVisibilityLevel(it)) // TODO: only calculate if position, world or frustum changed (but still set it)
-                it.enqueueUnload()
-
-                if (!it.isVisible()) return@iterate
-
-                it.update(time)
-                it.enqueueUnload()
-
-                it.collect(drawer)
+                if (reset) it.reset()
+                visibility.update(it, millis)
+                if (!it.visible) return@iterate
+                it.update(millis)
+                it.prepare()
+                visibility.collect(it)
             } catch (error: Throwable) {
                 error.printStackTrace()
-                Exception("Exception while rendering entity (session=${session.id}, entity=${it.entity})", error).crash()
+                Exception("Exception while rendering entities: ${session.id}", error).crash()
             }
         }
-        this.invalid = false
+        this.reset = false
+        this.visibility.finish()
     }
 
     override fun postPrepareDraw() {
-        context.profiler("queue") { queue.work() }
-        drawer.prepare()
+        queue.work()
     }
 
     override fun init(latch: AbstractLatch) {
-        context.camera.offset::offset.observe(this) { invalid = true }
+        context.camera.offset::offset.observe(this) { reset = true }
         features.init()
         renderers.init()
         visibility.init()
@@ -95,6 +91,11 @@ class EntitiesRenderer(
         features.postInit()
     }
 
+    private fun ArrayList<EntityRenderFeature>.draw() {
+        for (feature in this) {
+            feature.draw()
+        }
+    }
 
     companion object : RendererBuilder<EntitiesRenderer> {
 

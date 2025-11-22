@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,29 +13,29 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.water
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kmath.vec.vec3.f.Vec3f
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.particle.data.ParticleData
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.particle.ParticleFactory
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import java.util.*
 
-class WarpedSporeParticle(session: PlaySession, position: Vec3d, data: ParticleData? = null) : WaterSuspendParticle(session, position, MVec3d(0.0, (random.nextDouble() * -1.9 * random.nextDouble() * 0.1), 0.0), data) {
+class WarpedSporeParticle(session: PlaySession, position: Vec3d, data: ParticleData? = null) : WaterSuspendParticle(session, position, Vec3d(0.0, (random.nextDouble() * -1.9 * random.nextDouble() * 0.1), 0.0), data) {
 
     init {
-        color = RGBAColor(0.1f, 0.1f, 0.3f)
-        spacing = Vec3f(0.001f)
+        color = RGBColor(0.1f, 0.1f, 0.3f)
+        spacing = Vec3(0.001f)
     }
 
 
     companion object : ParticleFactory<WarpedSporeParticle> {
-        override val identifier = minecraft("warped_spore")
+        override val identifier: ResourceLocation = "minecraft:warped_spore".toResourceLocation()
         private val random = Random()
 
-        override fun build(session: PlaySession, position: Vec3d, velocity: MVec3d, data: ParticleData): WarpedSporeParticle {
+        override fun build(session: PlaySession, position: Vec3d, velocity: Vec3d, data: ParticleData): WarpedSporeParticle {
             return WarpedSporeParticle(session, position, data)
         }
     }

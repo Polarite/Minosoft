@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,17 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.items
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
-import de.bixilon.kutil.observer.map.MapObserver.Companion.observeMap
 import de.bixilon.minosoft.data.container.Container
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.atlas.AtlasArea
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.gui.AbstractLayout
 import de.bixilon.minosoft.gui.rendering.gui.gui.dragged.elements.item.FloatingItem
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isGreater
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isSmaller
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap
@@ -39,13 +38,23 @@ class ContainerItemsElement(
     private var floatingItem: FloatingItem? = null
     override var activeElement: ItemElement? = null
     override var activeDragElement: ItemElement? = null
+    private var update = true
+        set(value) {
+            if (value) {
+                cacheUpToDate = false
+            }
+            if (field == value) {
+                return
+            }
+            field = value
+        }
 
     init {
         silentApply()
 
-        val size = MVec2f.EMPTY
+        val size = Vec2.EMPTY
         for ((slotId, binding) in slots) {
-            val item = container.items[slotId]
+            val item = container[slotId]
             itemElements[slotId] = ItemElementData(
                 element = ItemElement(
                     guiRenderer = guiRenderer,
@@ -59,23 +68,20 @@ class ContainerItemsElement(
             size.x = maxOf(binding.end.x, size.x)
             size.y = maxOf(binding.end.y, size.y)
         }
-        this._size = size.unsafe
+        this._size = size
 
-        container.items::slots.observeMap(this) {
-            for ((slot, _) in it.removes) {
-                itemElements[slot]?.element?.stack = null
-            }
-            for ((slot, stack) in it.adds) {
-                itemElements[slot]?.element?.stack = stack
-            }
-        }
-        container::floating.observe(this) {
+        container::revision.observe(this) { update = true; }
+        container::floatingItem.observe(this) {
             this.floatingItem?.close()
-            this.floatingItem = it?.let { FloatingItem(guiRenderer, stack = it, container = container).apply { show() } }
+            this.floatingItem = null
+            this.floatingItem = FloatingItem(guiRenderer, stack = it ?: return@observe, container = container).apply { show() }
         }
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+        if (update) {
+            forceSilentApply()
+        }
         for (data in itemElements.values) {
             data.element.render(offset + data.offset, consumer, options)
         }
@@ -83,9 +89,25 @@ class ContainerItemsElement(
 
 
     override fun forceSilentApply() {
+        container.lock.acquire()
+        var changes = 0
+        for ((slotId, data) in itemElements) {
+            val stack = container.slots[slotId]
+            if (data.element.stack === stack) {
+                continue
+            }
+            data.element._stack = stack
+            changes++
+        }
+        container.lock.release()
+
+        if (changes > 0) {
+            cacheUpToDate = false
+        }
+        update = false
     }
 
-    override fun getAt(position: Vec2f): Pair<ItemElement, Vec2f>? {
+    override fun getAt(position: Vec2): Pair<ItemElement, Vec2>? {
         for (item in itemElements.values) {
             if (position isSmaller item.offset) {
                 continue
@@ -101,6 +123,6 @@ class ContainerItemsElement(
 
     private data class ItemElementData(
         val element: ItemElement,
-        val offset: Vec2f,
+        val offset: Vec2,
     )
 }

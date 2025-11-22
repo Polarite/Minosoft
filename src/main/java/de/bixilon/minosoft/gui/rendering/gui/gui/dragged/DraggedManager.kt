@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.dragged
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
@@ -26,7 +25,7 @@ import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
 import de.bixilon.minosoft.gui.rendering.system.window.CursorModes
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 class DraggedManager(
     private val guiRenderer: GUIRenderer,
@@ -39,18 +38,18 @@ class DraggedManager(
             }
             val position = guiRenderer.currentMousePosition
             val previous = field
-            previous?.element?.onDragEnd(position, guiRenderer.gui.onDragMove(Vec2f(-1, -1), previous.element))
+            previous?.element?.onDragEnd(position, guiRenderer.gui.onDragMove(Vec2(-1, -1), previous.element))
 
             field = value
             if (value == null) {
                 guiRenderer.gui.onMouseMove(position)
             } else {
-                guiRenderer.gui.onMouseMove(Vec2f(-1, -1)) // move mouse out
+                guiRenderer.gui.onMouseMove(Vec2(-1, -1)) // move mouse out
                 value.element.onDragStart(position, guiRenderer.gui.onDragMove(position, value.element))
             }
             applyCursor()
         }
-    private var lastTickTime = TimeUtil.NULL
+    private var lastTickTime: Long = -1L
 
     fun onScreenChange() {
         element?.element?.forceSilentApply()
@@ -66,8 +65,8 @@ class DraggedManager(
 
     override fun drawAsync() {
         val element = element ?: return
-        val time = now()
-        val tick = time - lastTickTime > TickUtil.INTERVAL
+        val time = millis()
+        val tick = time - lastTickTime > ProtocolDefinition.TICK_TIME
         if (tick) {
             lastTickTime = time
         }
@@ -76,9 +75,11 @@ class DraggedManager(
         }
         if (tick) {
             element.tick()
+
+            lastTickTime = time
         }
 
-        if (!element.skip) {
+        if (!element.skipDraw) {
             element.draw()
         }
         element.prepare()
@@ -93,7 +94,10 @@ class DraggedManager(
         element.postPrepare()
 
         guiRenderer.setup()
-        element.mesh?.draw()
+        if (element.mesh.data.isEmpty) {
+            return
+        }
+        element.mesh.draw()
     }
 
     override fun onCharPress(char: Int): Boolean {
@@ -103,7 +107,7 @@ class DraggedManager(
         return true
     }
 
-    override fun onMouseMove(position: Vec2f): Boolean {
+    override fun onMouseMove(position: Vec2): Boolean {
         element?.onMouseMove(position) ?: return false
         return true
     }
@@ -119,11 +123,11 @@ class DraggedManager(
 
         val mouseAction = MouseActions[change] ?: return false
 
-        element.element.onDragMouseAction(guiRenderer.currentMousePosition, mouseButton, mouseAction, clickCounter.getClicks(mouseButton, mouseAction, guiRenderer.currentMousePosition, now()), target)
+        element.element.onDragMouseAction(guiRenderer.currentMousePosition, mouseButton, mouseAction, clickCounter.getClicks(mouseButton, mouseAction, guiRenderer.currentMousePosition, millis()), target)
         return true
     }
 
-    override fun onScroll(scrollOffset: Vec2f): Boolean {
+    override fun onScroll(scrollOffset: Vec2): Boolean {
         val element = element ?: return false
         val target = guiRenderer.gui.onDragScroll(scrollOffset, element.element)
         element.element.onDragScroll(guiRenderer.currentMousePosition, scrollOffset, target)

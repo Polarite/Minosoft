@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,16 +13,16 @@
 
 package de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.entity
 
-import de.bixilon.minosoft.data.entities.block.BlockEntity
+import de.bixilon.minosoft.data.entities.block.BeehiveBlockEntity
 import de.bixilon.minosoft.data.registries.blocks.factory.PixLyzerBlockFactory
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.Registries
 
-open class BeehiveBlock(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>) : PixLyzerBlockWithEntity<BlockEntity>(identifier, registries, data) {
+open class BeehiveBlock(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>) : PixLyzerBlockWithEntity<BeehiveBlockEntity>(resourceLocation, registries, data) {
 
     companion object : PixLyzerBlockFactory<BeehiveBlock> {
-        override fun build(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>): BeehiveBlock {
-            return BeehiveBlock(identifier, registries, data)
+        override fun build(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>): BeehiveBlock {
+            return BeehiveBlock(resourceLocation, registries, data)
         }
     }
 }

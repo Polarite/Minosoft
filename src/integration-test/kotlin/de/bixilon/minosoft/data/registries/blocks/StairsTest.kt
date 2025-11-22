@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -26,7 +26,9 @@ class StairsTest : BlockTest<Block>() {
         StairsTest0 = this
     }
 
-    override val type get() = MinecraftBlocks.OAK_STAIRS
+    fun getOakStairs() {
+        super.retrieveBlock(MinecraftBlocks.OAK_STAIRS)
+    }
 
     fun testLightPropertiesNorth() {
         block.states.withProperties(BlockProperties.FACING to Directions.NORTH).testLightProperties(0, true, true, false, booleanArrayOf(false, true, false, true, true, true))
@@ -45,5 +47,4 @@ class StairsTest : BlockTest<Block>() {
     }
 }
 
-@Deprecated("")
 var StairsTest0: StairsTest = CastUtil.unsafeNull()

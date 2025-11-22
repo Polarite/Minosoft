@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,8 +12,8 @@
  */
 package de.bixilon.minosoft.data.entities.entities.player
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.bit.BitByte.isBitMask
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.kutil.json.JsonObject
@@ -38,8 +38,9 @@ import de.bixilon.minosoft.data.registries.item.items.dye.DyeableItem
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.entities.renderer.living.player.PlayerRenderer
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.physics.entities.living.player.PlayerPhysics
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions.V_19W12A
@@ -54,10 +55,10 @@ abstract class PlayerEntity(
     val additional: PlayerAdditional,
 ) : LivingEntity(session, entityType, data, position, rotation) {
 
-    override val dimensions: Vec2f
-        get() = pose?.let { getDimensions(it) } ?: Vec2f(type.width, type.height)
+    override val dimensions: Vec2
+        get() = pose?.let { getDimensions(it) } ?: Vec2(type.width, type.height)
 
-    override fun getDimensions(pose: Poses): Vec2f? {
+    override fun getDimensions(pose: Poses): Vec2? {
         if (pose == Poses.SNEAKING) {
             return if (session.version < V_19W12A) SNEAKING_LEGACY else SNEAKING
         }
@@ -127,16 +128,16 @@ abstract class PlayerEntity(
     val lastDeathPosition: GlobalPosition?
         get() = data.get(LAST_DEATH_POSITION_DATA, null)
 
-    override val hitboxColor: RGBAColor
+    override val hitboxColor: RGBColor
         get() {
             if (this.isInvisible) {
                 return ChatColors.GREEN
             }
             val chestPlate = equipment[EquipmentSlots.CHEST]
-            if (chestPlate != null && chestPlate.item is DyeableItem) {
-                chestPlate.display?.dyeColor?.let { return it.rgba() }
+            if (chestPlate != null && chestPlate.item.item is DyeableItem) {
+                chestPlate._display?.dyeColor?.let { return it }
             }
-            additional.team?.formatting?.color?.let { return it.rgba() }
+            additional.team?.formatting?.color?.let { return it }
             return ChatColors.RED
         }
 
@@ -155,15 +156,12 @@ abstract class PlayerEntity(
         }
     }
 
-    override fun isVisibleTo(camera: Entity): Boolean {
-        return when {
-            super.isVisibleTo(camera) -> true
-            camera !is PlayerEntity -> false
-            else -> {
-                val team = additional.team ?: return false
-                return team.canSee(camera.additional.team)
-            }
-        }
+    override fun isInvisible(camera: Entity): Boolean {
+        if (!super.isInvisible(camera)) return false
+        if (camera !is PlayerEntity) return true
+        val team = additional.team ?: return true
+        if (team != camera.additional.team) return true
+        return !team.visibility.invisibleTeam
     }
 
     companion object : Identified {
@@ -177,16 +175,16 @@ abstract class PlayerEntity(
         private val RIGHT_SHOULDER_DATA_DATA = EntityDataField("PLAYER_RIGHT_SHOULDER_DATA")
         private val LAST_DEATH_POSITION_DATA = EntityDataField("PLAYER_LAST_DEATH_POSITION")
 
-        private val SNEAKING = Vec2f(0.6f, 1.5f)
-        private val SNEAKING_LEGACY = Vec2f(0.6f, 1.65f)
+        private val SNEAKING = Vec2(0.6f, 1.5f)
+        private val SNEAKING_LEGACY = Vec2(0.6f, 1.65f)
 
-        private val DIMENSIONS: Map<Poses, Vec2f> = EnumMap(mapOf(
-            Poses.STANDING to Vec2f(0.6f, 1.8f),
-            Poses.SLEEPING to Vec2f(0.2f, 0.2f),
-            Poses.ELYTRA_FLYING to Vec2f(0.6f, 0.6f),
-            Poses.SWIMMING to Vec2f(0.6f, 0.6f),
-            Poses.SPIN_ATTACK to Vec2f(0.6f, 0.6f),
-            Poses.DYING to Vec2f(0.2f, 0.2f),
+        private val DIMENSIONS: Map<Poses, Vec2> = EnumMap(mapOf(
+            Poses.STANDING to Vec2(0.6f, 1.8f),
+            Poses.SLEEPING to Vec2(0.2f, 0.2f),
+            Poses.ELYTRA_FLYING to Vec2(0.6f, 0.6f),
+            Poses.SWIMMING to Vec2(0.6f, 0.6f),
+            Poses.SPIN_ATTACK to Vec2(0.6f, 0.6f),
+            Poses.DYING to Vec2(0.2f, 0.2f),
         ))
     }
 }
