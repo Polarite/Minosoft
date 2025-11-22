@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,9 @@
 
 package de.bixilon.minosoft.gui.rendering.font.types.unicode.unihex
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.kutil.bit.BitByte.isBit
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor.Companion.rgba
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.RenderUtil.fixUVEnd
 import de.bixilon.minosoft.gui.rendering.RenderUtil.fixUVStart
@@ -64,7 +63,7 @@ class UnifontTexture(
     }
 
     private fun TextureData.set(row: Int, offset: Int, x: Int, y: Int) {
-        buffer.setRGBA(offset + x, (row * UnifontRasterizer.HEIGHT + y), 0xFFFFFFFF.toInt().rgba())
+        buffer.setRGBA(offset + x, (row * UnifontRasterizer.HEIGHT + y), 0xFFFFFFFF.toInt())
     }
 
     private fun rasterize(row: Int, offset: Int, start: Int, end: Int, dataWidth: Int, data: ByteArray): CodePointRenderer {
@@ -76,8 +75,8 @@ class UnifontTexture(
             }
         }
 
-        val uvStart = Vec2f(pixel * (offset), pixel * (row * UnifontRasterizer.HEIGHT)).unsafe.apply { fixUVStart() }.unsafe
-        val uvEnd = Vec2f(pixel * (offset + (end - start)), pixel * ((row + 1) * UnifontRasterizer.HEIGHT)).unsafe.apply { fixUVEnd() }.unsafe
+        val uvStart = Vec2(pixel * (offset), pixel * (row * UnifontRasterizer.HEIGHT)).fixUVStart()
+        val uvEnd = Vec2(pixel * (offset + (end - start)), pixel * ((row + 1) * UnifontRasterizer.HEIGHT)).fixUVEnd()
         val width = (end - start) * (FontProperties.CHAR_BASE_HEIGHT.toFloat() / UnifontRasterizer.HEIGHT)
 
         return UnicodeCodeRenderer(this, uvStart, uvEnd, width)

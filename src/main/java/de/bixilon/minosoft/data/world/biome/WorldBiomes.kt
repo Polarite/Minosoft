@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,39 +13,41 @@
 
 package de.bixilon.minosoft.data.world.biome
 
-import de.bixilon.kutil.concurrent.lock.LockUtil.locked
-import de.bixilon.kutil.math.simple.IntMath.clamp
+import de.bixilon.kotlinglm.func.common.clamp
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.world.World
+import de.bixilon.minosoft.data.world.biome.accessor.BiomeAccessor
 import de.bixilon.minosoft.data.world.biome.accessor.noise.FastNoiseAccessor
 import de.bixilon.minosoft.data.world.biome.accessor.noise.NoiseBiomeAccessor
 import de.bixilon.minosoft.data.world.biome.accessor.noise.VoronoiBiomeAccessor
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.data.world.positions.InChunkPosition
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.sectionHeight
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions.V_19W36A
 
-class WorldBiomes(val world: World) {
+class WorldBiomes(val world: World) : BiomeAccessor {
     var noise: NoiseBiomeAccessor? = null
         set(value) {
             field = value
             resetCache()
         }
 
-    operator fun get(position: BlockPosition): Biome? {
-        val chunk = world.chunks[position.chunkPosition] ?: return null
-        val inChunk = position.inChunkPosition
-        return get(inChunk, chunk)
+
+    operator fun get(position: BlockPosition) = getBiome(position)
+    override fun getBiome(position: BlockPosition) = getBiome(position.x, position.y, position.z)
+
+    operator fun get(x: Int, y: Int, z: Int) = getBiome(x, y, z)
+    override fun getBiome(x: Int, y: Int, z: Int): Biome? {
+        val chunk = world.chunks[x shr 4, z shr 4] ?: return null
+        return getBiome(x and 0x0F, y.clamp(world.dimension.minY, world.dimension.maxY), z and 0x0F, chunk)
     }
 
-    operator fun get(position: InChunkPosition, chunk: Chunk): Biome? {
-        val position = position.with(y = position.y.clamp(world.dimension.minY, world.dimension.maxY))
-        if (this.noise == null) {
-            return chunk.biomeSource?.get(position)
-        }
+    fun getBiome(x: Int, y: Int, z: Int, chunk: Chunk): Biome? {
+        val noise = this.noise ?: return chunk.biomeSource.get(x, y, z)
+        chunk[y.sectionHeight]?.let { return it.biomes[x, y, z] } // access cache
 
-        return chunk.getBiome(position)
+        return noise.get(x, y, z, chunk)
     }
 
     fun updateNoise(seed: Long) {
@@ -62,11 +64,14 @@ class WorldBiomes(val world: World) {
         world.session.profiles.rendering.performance::fastBiomeNoise.observe(this) { updateNoise(noise?.seed ?: 0L) }
     }
 
-    fun resetCache() = world.lock.locked {
-        world.chunks.forEach { chunk ->
-            chunk.sections.forEach { section ->
+    fun resetCache() {
+        world.lock.lock()
+        for ((_, chunk) in world.chunks.chunks.unsafe) {
+            for (section in chunk.sections) {
+                if (section == null) continue
                 section.biomes.clear()
             }
         }
+        world.lock.unlock()
     }
 }

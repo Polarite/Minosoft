@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.monster
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
 import de.bixilon.minosoft.data.entities.data.EntityDataField
@@ -40,7 +40,7 @@ open class Guardian(session: PlaySession, entityType: EntityType, data: EntityDa
 
 
     companion object : EntityFactory<Guardian> {
-        override val identifier = minecraft("guardian")
+        override val identifier: ResourceLocation = minecraft("guardian")
         private val IS_MOVING_DATA = EntityDataField("GUARDIAN_IS_MOVING")
         private val TARGET_DATA = EntityDataField("GUARDIAN_TARGET_ENTITY_ID")
         private val LEGACY_FLAGS_DATA = EntityDataField("LEGACY_GUARDIAN_FLAGS")

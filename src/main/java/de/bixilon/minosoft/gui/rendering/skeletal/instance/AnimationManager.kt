@@ -14,17 +14,14 @@
 package de.bixilon.minosoft.gui.rendering.skeletal.instance
 
 import de.bixilon.kutil.concurrent.lock.Lock
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.AbstractAnimation
-import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.AnimationResult
-import kotlin.time.Duration
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
+import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.keyframe.instance.KeyframeInstance.Companion.OVER
 
 class AnimationManager(val instance: SkeletalInstance) {
     private val playing: MutableMap<String, AbstractAnimation> = mutableMapOf()
     private val lock = Lock.lock()
-    private var lastDraw = TimeUtil.NULL
+    private var lastDraw = -1L
 
 
     fun play(animation: AbstractAnimation) {
@@ -49,10 +46,10 @@ class AnimationManager(val instance: SkeletalInstance) {
     }
 
 
-    fun draw(millis: ValueTimeMark = now()) {
-        val delta = if (lastDraw == TimeUtil.NULL) Duration.ZERO else millis - lastDraw
+    fun draw(millis: Long = millis()) {
+        val delta = if (lastDraw < 0) 0L else millis - lastDraw
         this.lastDraw = millis
-        draw(delta)
+        draw(delta / 1000.0f)
     }
 
     fun reset() {
@@ -62,14 +59,14 @@ class AnimationManager(val instance: SkeletalInstance) {
         lock.unlock()
     }
 
-    fun draw(delta: Duration) {
+    fun draw(delta: Float) {
         if (playing.isEmpty()) return
         lock.lock()
         val iterator = playing.iterator()
 
-        for ((_, animation) in iterator) {
+        for ((name, animation) in iterator) {
             val over = animation.draw(delta)
-            if (over == AnimationResult.ENDED) {
+            if (over == OVER) {
                 iterator.remove()
             }
         }

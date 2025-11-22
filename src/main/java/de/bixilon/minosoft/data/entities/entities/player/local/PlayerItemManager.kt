@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,18 +15,22 @@ package de.bixilon.minosoft.data.entities.entities.player.local
 
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedBiMapOf
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedMapOf
+import de.bixilon.kutil.collections.map.SynchronizedMap
 import de.bixilon.kutil.collections.map.bi.SynchronizedBiMap
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
 import de.bixilon.minosoft.data.abilities.ItemCooldown
 import de.bixilon.minosoft.data.container.Container
+import de.bixilon.minosoft.data.container.IncompleteContainer
 import de.bixilon.minosoft.data.container.equipment.EquipmentSlots
-import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.container.types.PlayerInventory
 import de.bixilon.minosoft.data.registries.item.items.Item
 
 class PlayerItemManager(private val player: LocalPlayerEntity) {
     val inventory = PlayerInventory(this, player.session)
+
+    @Deprecated("this is probably not needed anymore, container network packets are not async anymore")
+    val incomplete: SynchronizedMap<Int, IncompleteContainer> = synchronizedMapOf()
 
     val containers: SynchronizedBiMap<Int, Container> = synchronizedBiMapOf(
         PlayerInventory.CONTAINER_ID to inventory,
@@ -48,14 +52,8 @@ class PlayerItemManager(private val player: LocalPlayerEntity) {
 
     fun reset() {
         cooldown.clear()
-        inventory.items.clear()
-        inventory.floating = null
+        inventory.clear()
         opened = null
-
-        inventory.transactions.clear()
-
-        containers.clear()
-        containers[PlayerInventory.CONTAINER_ID] = inventory
     }
 
     init {

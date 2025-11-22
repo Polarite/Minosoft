@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -18,22 +18,23 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.minosoft.config.profile.storage.ProfileStorage
 import de.bixilon.minosoft.data.accounts.Account
-import de.bixilon.minosoft.data.accounts.AccountCapabilities
 import de.bixilon.minosoft.data.accounts.AccountStates
 import de.bixilon.minosoft.data.entities.entities.player.properties.PlayerProperties
 import de.bixilon.minosoft.data.registries.identified.Identified
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import java.util.*
 
 class OfflineAccount(username: String, @JacksonInject storage: ProfileStorage?) : Account(username, storage) {
     override val id: String = username
     override val uuid: UUID = UUID("OfflinePlayer:$username".hashCode().toLong(), 0L) // ToDo
-    override val type = identifier
+    override val type: ResourceLocation = identifier
     override var state: AccountStates
         get() = AccountStates.WORKING
         set(value) {}
 
-    override val capabilities = AccountCapabilities.set()
+    override val supportsEncryption: Boolean get() = false
+    override val supportsSkins: Boolean get() = false
 
     @JsonIgnore
     override val properties: PlayerProperties = PlayerProperties()
@@ -49,6 +50,6 @@ class OfflineAccount(username: String, @JacksonInject storage: ProfileStorage?) 
     }
 
     companion object : Identified {
-        override val identifier = minosoft("offline_account")
+        override val identifier: ResourceLocation = "minosoft:offline_account".toResourceLocation()
     }
 }

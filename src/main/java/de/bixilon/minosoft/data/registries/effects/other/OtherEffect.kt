@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -20,58 +20,58 @@ import de.bixilon.minosoft.data.registries.effects.properties.categories.Neutral
 import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.text.formatting.color.Colored
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asRGBColor
 
 interface OtherEffect {
 
 
     object WaterBreathing : StatusEffectType(), OtherEffect, Identified, Colored, BeneficalEffect {
         override val identifier = minecraft("water_breathing")
-        override val color = 0x2E5299.rgb()
+        override val color = 0x2E5299.asRGBColor()
     }
 
     object Invisibility : StatusEffectType(), OtherEffect, Identified, Colored, BeneficalEffect {
         override val identifier = minecraft("invisibility")
-        override val color = 0x7F8392.rgb()
+        override val color = 0x7F8392.asRGBColor()
     }
 
     object Hunger : StatusEffectType(), OtherEffect, Identified, Colored, HarmfulEffect {
         override val identifier = minecraft("hunger")
-        override val color = 0x587653.rgb()
+        override val color = 0x587653.asRGBColor()
     }
 
     object Saturation : StatusEffectType(), OtherEffect, Identified, Colored, BeneficalEffect {
         override val identifier = minecraft("saturation")
-        override val color = 0xF82423.rgb()
+        override val color = 0xF82423.asRGBColor()
     }
 
     object Glowing : StatusEffectType(), OtherEffect, Identified, Colored, NeutralEffect {
         override val identifier = minecraft("glowing")
-        override val color = 0x94A061.rgb()
+        override val color = 0x94A061.asRGBColor()
     }
 
     object Luck : StatusEffectType(), OtherEffect, Identified, Colored, BeneficalEffect {
         override val identifier = minecraft("luck")
-        override val color = 0x339900.rgb()
+        override val color = 0x339900.asRGBColor()
     }
 
     object Unluck : StatusEffectType(), OtherEffect, Identified, Colored, HarmfulEffect {
         override val identifier = minecraft("unluck")
-        override val color = 0xC0A44D.rgb()
+        override val color = 0xC0A44D.asRGBColor()
     }
 
     object ConduitPower : StatusEffectType(), OtherEffect, Identified, Colored, BeneficalEffect {
         override val identifier = minecraft("conduit_power")
-        override val color = 0x1DC2D1.rgb()
+        override val color = 0x1DC2D1.asRGBColor()
     }
 
     object BadOmen : StatusEffectType(), OtherEffect, Identified, Colored, NeutralEffect {
         override val identifier = minecraft("bad_omen")
-        override val color = 0x0B6138.rgb()
+        override val color = 0x0B6138.asRGBColor()
     }
 
     object HeroOfTheVillage : StatusEffectType(), OtherEffect, Identified, Colored, BeneficalEffect {
         override val identifier = minecraft("hero_of_the_village")
-        override val color = 0x44FF44.rgb()
+        override val color = 0x44FF44.asRGBColor()
     }
 }

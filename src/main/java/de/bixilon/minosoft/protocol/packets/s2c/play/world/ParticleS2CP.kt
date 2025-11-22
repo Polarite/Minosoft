@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,9 +12,10 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.world
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.registries.particle.data.ParticleData
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.times
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.s2c.PlayS2CPacket
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions
@@ -26,8 +27,12 @@ import de.bixilon.minosoft.util.logging.LogMessageType
 class ParticleS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
     val type = buffer.readParticleType()
     val longDistance = if (buffer.versionId >= ProtocolVersions.V_14W29A) buffer.readBoolean() else false
-    val position: Vec3d = if (buffer.versionId < ProtocolVersions.V_1_15_PRE4) Vec3d(buffer.readVec3f()) else buffer.readVec3d()
-    val offset: Vec3f = buffer.readVec3f()
+    val position: Vec3d = if (buffer.versionId < ProtocolVersions.V_1_15_PRE4) {
+        Vec3d(buffer.readVec3f())
+    } else {
+        buffer.readVec3d()
+    }
+    val offset: Vec3 = buffer.readVec3f()
     val speed: Float = buffer.readFloat()
     val count: Int = buffer.readInt()
     val data: ParticleData = buffer.readParticleData(type)
@@ -47,15 +52,15 @@ class ParticleS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
 
         fun spawn(position: Vec3d, velocity: Vec3d) {
             val factory = data.type.factory ?: return
-            renderer += factory.build(session, position, velocity.mutable(), data) ?: return
+            renderer += factory.build(session, position, velocity, data) ?: return
         }
 
         if (count <= 1) {
             return spawn(position, Vec3d(offset * speed))
         }
         for (i in 0 until count) {
-            val offset = Vec3d(offset.x * renderer.random.nextGaussian(), offset.y * renderer.random.nextGaussian(), offset.z * renderer.random.nextGaussian())
-            val velocity = Vec3d(speed * renderer.random.nextGaussian(), speed * renderer.random.nextGaussian(), speed * renderer.random.nextGaussian())
+            val offset = Vec3d(offset) * { renderer.random.nextGaussian() }
+            val velocity = Vec3d(speed) * { renderer.random.nextGaussian() }
 
             spawn(position + offset, velocity)
         }

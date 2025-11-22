@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,10 @@
 
 package de.bixilon.minosoft.physics.input
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.func.rad
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.math.Trigonometry
-import de.bixilon.kutil.primitive.FloatUtil.rad
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.physics.PhysicsConstants
 import kotlin.math.sqrt
 
@@ -42,17 +42,17 @@ data class MovementInput(
     }
 
     fun getVelocity(speed: Float, yaw: Float): Vec3d {
-        val velocity = MVec3d(forwards, upwards, sideways)
+        val velocity = Vec3d(forwards, upwards, sideways)
         val length = velocity.length2()
         if (length < 1.0E-7) return Vec3d.EMPTY
 
         velocity.normalizeAssign(length)
-        velocity *= speed.toDouble()
+        velocity *= speed
         return velocity.rotate(yaw)
     }
 
 
-    private fun MVec3d.normalizeAssign(length2: Double) {
+    private fun Vec3d.normalizeAssign(length2: Double) {
         if (length2 <= 1.0) return
         val length = sqrt(length2)
 
@@ -62,7 +62,7 @@ data class MovementInput(
     }
 
 
-    private fun MVec3d.rotate(yaw: Float): Vec3d {
+    private fun Vec3d.rotate(yaw: Float): Vec3d {
         val rad = yaw.rad
         val sin = Trigonometry.sin(rad)
         val cos = Trigonometry.cos(rad)

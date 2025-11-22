@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,10 @@
 
 package de.bixilon.minosoft.camera.target
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kutil.cast.CastUtil.nullCast
+import de.bixilon.kutil.math.simple.DoubleMath.floor
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
 import de.bixilon.minosoft.camera.SessionCamera
 import de.bixilon.minosoft.camera.target.targets.BlockTarget
@@ -23,18 +25,16 @@ import de.bixilon.minosoft.camera.target.targets.FluidTarget
 import de.bixilon.minosoft.camera.target.targets.GenericTarget
 import de.bixilon.minosoft.data.entities.entities.player.local.LocalPlayerEntity
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.offset.OffsetBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.outline.OutlinedBlock
-import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
-import de.bixilon.minosoft.data.registries.shapes.shape.AABBRaycastHit
+import de.bixilon.minosoft.data.registries.shapes.voxel.AABBRaycastHit
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.gui.rendering.RenderingOptions
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.blockPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPosition
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.toVec3d
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.raycastDistance
+import de.bixilon.minosoft.terminal.RunConfiguration
 
 class TargetHandler(
     private val camera: SessionCamera,
@@ -47,8 +47,8 @@ class TargetHandler(
 
     fun update() {
         val entity = camera.entity
-        val position = if (RenderingOptions.disabled) entity.physics.position + Vec3d(0.0f, entity.eyeHeight, 0.0f) else entity.renderInfo.eyePosition
-        val front = (if (entity is LocalPlayerEntity || RenderingOptions.disabled) entity.physics.rotation else entity.renderInfo.rotation).front.let { Vec3d(it) }
+        val position = if (RunConfiguration.DISABLE_RENDERING) entity.physics.position + Vec3d(0.0f, entity.eyeHeight, 0.0f) else entity.renderInfo.eyePosition.toVec3d
+        val front = (if (entity is LocalPlayerEntity || RunConfiguration.DISABLE_RENDERING) entity.physics.rotation else entity.renderInfo.rotation).front.toVec3d
 
         val (target, fluid) = this.raycast(position, front)
         this.target = target
@@ -71,12 +71,14 @@ class TargetHandler(
     private fun raycastEntity(origin: Vec3d, front: Vec3d, maxDistance: Double): EntityTarget? {
         var target: EntityTarget? = null
 
+        val originF = Vec3(origin)
         val world = camera.session.world
 
         world.entities.lock.acquire()
         for (entity in world.entities) {
+            if (entity is LocalPlayerEntity) continue
             if (!entity.canRaycast) continue
-            if (Vec3dUtil.distance2(entity.renderInfo.position, origin) > MAX_ENTITY_DISTANCE) {
+            if ((entity.renderInfo.position - originF).length2() > MAX_ENTITY_DISTANCE) {
                 continue
             }
             val aabb = entity.renderInfo.cameraAABB
@@ -93,36 +95,28 @@ class TargetHandler(
         return target
     }
 
-    private fun raycast(origin: Vec3d, front: Vec3d, state: BlockState, position: BlockPosition): AABBRaycastHit? {
-        val block = state.block
-        if (BlockStateFlags.OUTLINE !in state.flags || block !is OutlinedBlock) {
+    private fun raycast(origin: Vec3d, front: Vec3d, state: BlockState, blockPosition: BlockPosition): AABBRaycastHit? {
+        if (state.block !is OutlinedBlock) {
             // no block, continue going into that direction
             return null
         }
-        var shape = when {
-            BlockStateFlags.FULL_OUTLINE in state.flags -> AABB.BLOCK
-            else -> block.outlineShape ?: block.getOutlineShape(state) ?: block.getOutlineShape(camera.session, position, state)
-        }
-        if (shape == null) {
-            shape = camera.session.world.getBlockEntity(position)?.let { block.getOutlineShape(camera.session, position, state, it) }
-        }
-        if (shape == null) return null
-        if (BlockStateFlags.OFFSET in state.flags && block is OffsetBlock) {
-            shape += block.offsetShape(position)
-        }
+        var shape = state.block.getOutlineShape(camera.session, blockPosition, state) ?: return null
+        state.block.nullCast<OffsetBlock>()?.offsetShape(blockPosition)?.let { shape += it }
 
-        shape += position
+        shape += blockPosition
 
         return shape.raycast(origin, front)
     }
 
     fun raycastBlock(origin: Vec3d, front: Vec3d): Pair<BlockTarget?, FluidTarget?> {
-        val position = MVec3d(origin)
-        var chunk: Chunk? = camera.entity.physics.positionInfo.chunk
+        val position = Vec3d(origin)
+        var chunk: Chunk? = null
 
         var fluid: FluidTarget? = null
 
 
+        val blockPosition = BlockPosition()
+        val chunkPosition = ChunkPosition()
 
         for (step in 0..MAX_STEPS) {
             if (step > 0) {
@@ -130,26 +124,25 @@ class TargetHandler(
                 position.x += front.x * distance; position.y += front.y * distance; position.z += front.z * distance
             }
 
-            val blockPosition = position.blockPosition
-            val chunkPosition = blockPosition.chunkPosition
+            blockPosition.x = position.x.floor;blockPosition.y = position.y.floor;blockPosition.z = position.z.floor
+            chunkPosition.x = blockPosition.x shr 4; chunkPosition.y = blockPosition.z shr 4
             if (chunk == null) {
                 chunk = camera.session.world.chunks[chunkPosition] ?: break
-            } else if (chunk.position != chunkPosition) {
-                chunk = chunk.neighbours.traceChunk(chunkPosition - chunk.position) ?: break
+            } else if (chunk.chunkPosition != chunkPosition) {
+                chunk = chunk.neighbours.trace(chunkPosition - chunk.chunkPosition) ?: break
             }
-            val state = chunk[blockPosition.inChunkPosition] ?: continue
-
+            val state = chunk[blockPosition.x and 0x0F, blockPosition.y, blockPosition.z and 0x0F] ?: continue
             if (state.block is FluidBlock) {
                 if (fluid == null) {
                     val hit = raycast(origin, front, state, blockPosition)
                     if (hit != null) {
-                        fluid = FluidTarget(origin + front * hit.distance, hit.distance, hit.direction, state, blockPosition, state.block.fluid)
+                        fluid = FluidTarget(position + front * hit.distance, hit.distance, hit.direction, state, blockPosition, state.block.fluid)
                     }
                 }
                 continue
             }
             val hit = raycast(origin, front, state, blockPosition) ?: continue
-            val entity = chunk.getBlockEntity(blockPosition.inChunkPosition)
+            val entity = chunk.getBlockEntity(blockPosition.x and 0x0F, blockPosition.y, blockPosition.z and 0x0F)
             val target = BlockTarget(origin + front * hit.distance, hit.distance, hit.direction, state, entity, blockPosition, hit.inside)
             return Pair(target, fluid)
         }

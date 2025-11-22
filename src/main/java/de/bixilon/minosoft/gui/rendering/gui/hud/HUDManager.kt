@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -18,11 +18,9 @@ import de.bixilon.kutil.collections.CollectionUtil.lockMapOf
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedMap
 import de.bixilon.kutil.collections.map.LockMap
 import de.bixilon.kutil.latch.SimpleLatch
-import de.bixilon.kutil.time.TimeUtil
 import de.bixilon.minosoft.config.key.KeyActions
 import de.bixilon.minosoft.config.key.KeyBinding
 import de.bixilon.minosoft.config.key.KeyCodes
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.RenderUtil.runAsync
 import de.bixilon.minosoft.gui.rendering.gui.GUIElementDrawer
@@ -42,6 +40,7 @@ import de.bixilon.minosoft.gui.rendering.gui.hud.elements.wawla.WawlaHUDElement
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
 import de.bixilon.minosoft.util.Initializable
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class HUDManager(
     override val guiRenderer: GUIRenderer,
@@ -49,7 +48,7 @@ class HUDManager(
     val context = guiRenderer.context
     private val hudElements: LockMap<ResourceLocation, HUDElement> = lockMapOf()
 
-    override var lastTickTime = TimeUtil.NULL
+    override var lastTickTime = 0L
 
     var enabled: Boolean = true
 
@@ -99,7 +98,7 @@ class HUDManager(
         }
 
         context.input.bindings.register(
-            minosoft("enable_hud"), KeyBinding(
+            "minosoft:enable_hud".toResourceLocation(), KeyBinding(
                 KeyActions.STICKY to setOf(KeyCodes.KEY_F1),
             ), pressed = enabled
         ) { enabled = it }
@@ -110,6 +109,9 @@ class HUDManager(
 
         for (element in this.hudElements.toSynchronizedMap().values) {
             element.postInit()
+            if (element is LayoutedGUIElement<*>) {
+                element.initMesh()
+            }
         }
     }
 
@@ -123,15 +125,6 @@ class HUDManager(
 
     override fun draw() {
         drawElements(values)
-    }
-
-    fun unload() {
-        val iterator = hudElements.entries.iterator()
-        while (iterator.hasNext()) {
-            val (_, element) = iterator.next()
-            iterator.remove()
-            element.unload()
-        }
     }
 
     operator fun <T : HUDElement> get(hudBuilder: HUDBuilder<T>): T? {

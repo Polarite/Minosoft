@@ -19,7 +19,6 @@ layout (location = 2) in float vinIndexLayerAnimation;
 layout (location = 3) in float vinTintColor;
 
 
-#include "minosoft:vsh"
 #include "minosoft:tint"
 #include "minosoft:color"
 #include "minosoft:animation"

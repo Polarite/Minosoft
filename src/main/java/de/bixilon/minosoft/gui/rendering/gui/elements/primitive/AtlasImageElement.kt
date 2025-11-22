@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,54 +13,55 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.primitive
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMesh
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GuiMeshBuilder
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TexturePart
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 
 open class AtlasImageElement(
     guiRenderer: GUIRenderer,
     texturePart: TexturePart?,
-    size: Vec2f = texturePart?.size?.let { Vec2f(it) } ?: Vec2f.EMPTY,
-    tint: RGBAColor = ChatColors.WHITE,
-) : Element(guiRenderer, 1) {
+    size: Vec2 = texturePart?.size?.let { Vec2(it) } ?: Vec2.EMPTY,
+    tint: RGBColor = ChatColors.WHITE,
+) : Element(guiRenderer, GUIMesh.GUIMeshStruct.FLOATS_PER_VERTEX * 6) {
     var texture: Texture? = texturePart?.texture
         set(value) {
             field = value
             cacheUpToDate = false
         }
-    var uvStart: Vec2f? = null
+    var uvStart: Vec2? = null
         set(value) {
             field = value
             cacheUpToDate = false
         }
-    var uvEnd: Vec2f? = null
+    var uvEnd: Vec2? = null
         set(value) {
             field = value
             cacheUpToDate = false
         }
 
-    override var size: Vec2f
+    override var size: Vec2
         get() = super.size
         set(value) {
             super.size = value
             cacheUpToDate = false
         }
 
-    override var prefSize: Vec2f
+    override var prefSize: Vec2
         get() = size
         set(value) {
             size = value
         }
 
-    var tint: RGBAColor = tint
+    var tint: RGBColor = tint
         set(value) {
             field = value
             cacheUpToDate = false
@@ -88,11 +89,11 @@ open class AtlasImageElement(
         guiRenderer: GUIRenderer,
         texturePart: TexturePart?,
         size: Vec2i,
-        tint: RGBAColor = ChatColors.WHITE,
-    ) : this(guiRenderer, texturePart, Vec2f(size), tint)
+        tint: RGBColor = ChatColors.WHITE,
+    ) : this(guiRenderer, texturePart, Vec2(size), tint)
 
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         val texture = texture ?: return
         val textureLike = texturePart ?: return
         consumer.addQuad(offset, offset + size, texture, uvStart ?: textureLike.uvStart, uvEnd ?: textureLike.uvEnd, tint, options)

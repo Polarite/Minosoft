@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -22,6 +22,7 @@ import de.bixilon.minosoft.gui.rendering.events.input.MouseScrollEvent
 import de.bixilon.minosoft.gui.rendering.input.key.manager.InputManager
 import de.bixilon.minosoft.input.interaction.InteractionManager
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class InteractionManagerKeys(
     private val input: InputManager,
@@ -37,7 +38,7 @@ class InteractionManagerKeys(
     private fun registerInteraction() {
         input.bindings.register(USE_ITEM, KeyBinding(
             KeyActions.CHANGE to setOf(KeyCodes.MOUSE_BUTTON_RIGHT),
-        )) { if (it) interactions.use.press() else interactions.use.release() }
+        )) { interactions.use.change(it) }
     }
 
     private fun registerPick() {
@@ -68,7 +69,7 @@ class InteractionManagerKeys(
 
     private fun registerHotbar() {
         for (i in 1..PlayerInventory.HOTBAR_SLOTS) {
-            input.bindings.register(minosoft("hotbar_slot_$i"), KeyBinding(
+            input.bindings.register("minosoft:hotbar_slot_$i".toResourceLocation(), KeyBinding(
                 KeyActions.PRESS to setOf(KeyCodes.KEY_CODE_MAP["$i"]!!),
             )) { interactions.hotbar.selectSlot(i - 1) }
         }
@@ -118,14 +119,14 @@ class InteractionManagerKeys(
     }
 
     companion object {
-        private val ATTACK = minosoft("attack")
-        private val USE_ITEM = minosoft("use_item")
+        private val ATTACK = "minosoft:attack".toResourceLocation()
+        private val USE_ITEM = "minosoft:use_item".toResourceLocation()
         private val SWAP = minosoft("swap_items")
         private val PICK = minosoft("pick_item")
 
-        private val DROP_ITEM = minosoft("drop_item")
-        private val DROP_ITEM_STACK = minosoft("drop_item_stack")
+        private val DROP_ITEM = "minosoft:drop_item".toResourceLocation()
+        private val DROP_ITEM_STACK = "minosoft:drop_item_stack".toResourceLocation()
 
-        private val STOP_SPECTATING = minosoft("stop_spectating")
+        private val STOP_SPECTATING = "minosoft:stop_spectating".toResourceLocation()
     }
 }

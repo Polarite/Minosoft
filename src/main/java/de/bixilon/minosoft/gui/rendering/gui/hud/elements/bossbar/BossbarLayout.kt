@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,11 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.bossbar
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedMapOf
 import de.bixilon.minosoft.data.bossbar.Bossbar
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments
 import de.bixilon.minosoft.gui.rendering.gui.elements.LayoutedElement
@@ -27,13 +27,14 @@ import de.bixilon.minosoft.gui.rendering.gui.hud.elements.HUDBuilder
 import de.bixilon.minosoft.modding.event.events.bossbar.*
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.util.Initializable
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class BossbarLayout(guiRenderer: GUIRenderer) : RowLayout(guiRenderer, HorizontalAlignments.CENTER, 2.0f), LayoutedElement, Initializable {
     private val session = context.session
     private val bossbars: MutableMap<Bossbar, BossbarElement> = synchronizedMapOf()
 
-    override val layoutOffset: Vec2f
-        get() = Vec2f((guiRenderer.scaledSize.x - super.size.x) / 2, 2f)
+    override val layoutOffset: Vec2
+        get() = Vec2((guiRenderer.scaledSize.x - super.size.x) / 2, 2)
 
 
     val atlas = guiRenderer.atlas[ATLAS]?.let { BossbarAtlas(it) }
@@ -65,7 +66,7 @@ class BossbarLayout(guiRenderer: GUIRenderer) : RowLayout(guiRenderer, Horizonta
 
     companion object : HUDBuilder<LayoutedGUIElement<BossbarLayout>> {
         private val ATLAS = minecraft("hud/bossbar")
-        override val identifier = minosoft("bossbar")
+        override val identifier: ResourceLocation = "minosoft:bossbar".toResourceLocation()
 
         override fun register(gui: GUIRenderer) {
             gui.atlas.load(ATLAS)

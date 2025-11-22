@@ -22,20 +22,18 @@ import de.bixilon.kutil.collections.CollectionUtil.mutableBiMapOf
 import de.bixilon.kutil.collections.map.bi.AbstractMutableBiMap
 import de.bixilon.kutil.concurrent.lock.RWLock
 import de.bixilon.kutil.exception.Broken
-import de.bixilon.kutil.file.FileUtil.div
 import de.bixilon.kutil.file.FileUtil.mkdirParent
-import de.bixilon.kutil.file.PathUtil.div
 import de.bixilon.kutil.file.watcher.FileWatcherService
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
 import de.bixilon.kutil.observer.map.bi.BiMapObserver.Companion.observedBiMap
 import de.bixilon.kutil.stream.InputStreamUtil.readAsString
-import de.bixilon.minosoft.config.profile.ProfileOptions
 import de.bixilon.minosoft.config.profile.ProfileType
 import de.bixilon.minosoft.config.profile.ProfileUtil.isValidName
 import de.bixilon.minosoft.config.profile.profiles.Profile
 import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.protocol.ProtocolUtil.encodeNetwork
+import de.bixilon.minosoft.terminal.RunConfiguration
 import de.bixilon.minosoft.util.json.Jackson
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
@@ -91,23 +89,18 @@ abstract class StorageProfileManager<P : Profile> : Iterable<P>, Identified {
         val content = Jackson.MAPPER.readTree(stream).unsafeCast<ObjectNode>()
         stream.close()
         val storage = FileStorage(name, this, path)
-        try {
-            return load(storage, content)
-        } catch (error: Throwable) {
-            Log.log(LogMessageType.PROFILES, LogLevels.FATAL) { "Error loading profile: $path: $error" }
-            throw error
-        }
+        return load(storage, content)
     }
 
     private fun loadSelected(root: File): String? {
-        val file = root / SELECTED
+        val file = root.resolve(SELECTED)
         if (!file.isFile) return null
         val stream = FileInputStream(file)
         return stream.readAsString()
     }
 
     fun saveSelected(name: String? = this.selected.storage?.nullCast<FileStorage>()?.name) {
-        val file = root / SELECTED
+        val file = root.resolve(SELECTED)
         file.mkdirParent()
         val stream = FileOutputStream(file)
         if (name != null) {
@@ -117,7 +110,7 @@ abstract class StorageProfileManager<P : Profile> : Iterable<P>, Identified {
     }
 
     open fun load() {
-        root = (ProfileOptions.path / identifier.namespace / identifier.path).toFile()
+        root = RunConfiguration.CONFIG_DIRECTORY.resolve(identifier.namespace).resolve(identifier.path).toFile()
         if (!root.exists()) {
             root.mkdirs()
             return createDefault()
@@ -152,7 +145,7 @@ abstract class StorageProfileManager<P : Profile> : Iterable<P>, Identified {
         this.selected = this[selected] ?: create(selected)
         this::selected.observe(this) { ProfileIOManager.saveSelected(this) }
 
-        if (ProfileOptions.hotReloading) {
+        if (RunConfiguration.PROFILES_HOT_RELOADING) {
             observe(root.toPath())
         }
     }
@@ -206,7 +199,7 @@ abstract class StorageProfileManager<P : Profile> : Iterable<P>, Identified {
 
     fun create(name: String): P {
         if (!name.isValidName()) throw IllegalArgumentException("Invalid profile name!")
-        val path = ProfileOptions.path / identifier.namespace / identifier.path / "$name.json"
+        val path = RunConfiguration.CONFIG_DIRECTORY.resolve(identifier.namespace).resolve(identifier.path).resolve("$name.json")
         val storage = FileStorage(name, this, path.toFile())
         val profile = type.create(storage)
         storage.profile = profile

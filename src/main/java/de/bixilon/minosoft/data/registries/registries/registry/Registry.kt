@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -34,53 +34,63 @@ open class Registry<T : RegistryItem>(
     val codec: IdentifierCodec<T>? = null,
     val integrated: IntegratedRegistry<T>? = null,
     val metaType: MetaTypes = MetaTypes.NONE,
-    val flattened: Boolean = true,
+    var flattened: Boolean = false,
     private val fixer: ResourceLocationFixer? = null,
 ) : AbstractRegistry<T> {
     protected val idValueMap: Int2ObjectOpenHashMap<T> = Int2ObjectOpenHashMap()
     protected val valueIdMap: Object2IntOpenHashMap<T> = Object2IntOpenHashMap()
-    protected val identifierMap: MutableMap<ResourceLocation, T> = HashMap()
+    protected val resourceLocationMap: MutableMap<ResourceLocation, T> = HashMap()
 
-    override val size get() = valueIdMap.size + (parent?.size ?: 0)
-
-    override operator fun get(any: Any?) = when (any) {
-        null -> null
-        is Number -> getOrNull(any.toInt())
-        is ResourceLocation -> get(any)
-        is String -> get(any)
-        is Identified -> get(any.identifier)
-        else -> TODO()
-    }
-
-    open operator fun get(identifier: ResourceLocation): T? {
-        val fixed = fixer?.fix(identifier) ?: identifier
-        return identifierMap[fixed] ?: parent?.get(fixed)
-    }
-
-    operator fun set(id: Int, value: T) {
-        idValueMap[id] = value
-        valueIdMap[value] = id
-    }
-
-    open operator fun set(any: Any, value: T) = when (any) {
-        is Int -> set(any, value)
-        is ResourceLocation -> identifierMap[any] = value
-        is Identified -> identifierMap[any.identifier] = value
-        is AliasedIdentified -> {
-            for (identifier in any.identifiers) {
-                identifierMap[identifier] = value
+    override val size: Int
+        get() {
+            val value = valueIdMap.size
+            parent?.let {
+                return value + it.size
             }
+            return value
         }
 
-        else -> TODO("Can not set $any, value=$value")
+    override operator fun get(any: Any?): T? {
+        return when (any) {
+            null -> null
+            is Number -> getOrNull(any.toInt())
+            is ResourceLocation -> get(any)
+            is String -> get(any)
+            is Identified -> get(any.identifier)
+            else -> TODO()
+        }
     }
 
-    open operator fun get(identifier: String): T? {
-        return get(identifier.toResourceLocation())
+    open operator fun get(resourceLocation: ResourceLocation): T? {
+        val fixed = fixer?.fix(resourceLocation) ?: resourceLocation
+        return resourceLocationMap[fixed] ?: parent?.get(fixed)
     }
 
-    open operator fun get(identified: Identified): T? {
-        return get(identified.identifier)
+    open operator fun set(any: Any, value: T) {
+        when (any) {
+            is Int -> {
+                idValueMap[any] = value
+                valueIdMap[value] = any
+            }
+
+            is ResourceLocation -> resourceLocationMap[any] = value
+            is Identified -> resourceLocationMap[any.identifier] = value
+            is AliasedIdentified -> {
+                for (resourceLocation in any.identifiers) {
+                    resourceLocationMap[resourceLocation] = value
+                }
+            }
+
+            else -> TODO("Can not set $any, value=$value")
+        }
+    }
+
+    open operator fun get(resourceLocation: String): T? {
+        return get(resourceLocation.toResourceLocation())
+    }
+
+    open operator fun get(resourceLocation: Identified): T? {
+        return get(resourceLocation.identifier)
     }
 
     override fun getOrNull(id: Int): T? {
@@ -91,17 +101,16 @@ open class Registry<T : RegistryItem>(
         return valueIdMap[value] ?: parent?.getId(value)!!
     }
 
-    override fun updatePixlyzer(data: JsonObject?, version: Version, registries: Registries?) {
+    override fun update(data: Map<String, Any>?, version: Version, registries: Registries?) {
         if (data == null) return
-
         for ((name, value) in data) {
             check(value is Map<*, *>)
-            val id = value["id"]?.toInt()?.let { if (metaType != MetaTypes.NONE && !flattened) metaType.combine(it, value["meta"]?.toInt() ?: 0) else it }
+            val id = value["id"]?.toInt()?.let { if (metaType != MetaTypes.NONE && !flattened) metaType.modify(it, value["meta"]?.toInt() ?: 0) else it }
             add(name.toResourceLocation(), id, value.unsafeCast(), version, registries)
         }
     }
 
-    override fun updateNbt(data: List<JsonObject>, version: Version, registries: Registries?) {
+    override fun update(data: List<JsonObject>, version: Version, registries: Registries?) {
         for (entry in data) {
             val name = (entry["name"] ?: entry["key"])?.toResourceLocation() ?: throw IllegalArgumentException("Can not find name: $entry")
             val id = entry["id"]?.toInt()
@@ -135,7 +144,7 @@ open class Registry<T : RegistryItem>(
             idValueMap[id] = item
             valueIdMap[item] = id
         }
-        identifierMap[identifier] = item
+        resourceLocationMap[identifier] = item
     }
 
     fun add(id: Int?, item: T) {
@@ -143,24 +152,24 @@ open class Registry<T : RegistryItem>(
     }
 
     open fun postInit(registries: Registries) {
-        for ((_, value) in identifierMap) {
+        for ((_, value) in resourceLocationMap) {
             value.inject(registries)
             value.postInit(registries)
         }
     }
 
     override fun toString(): String {
-        return super.toString() + ": ${size}x"
+        return super.toString() + ": ${resourceLocationMap.size}x"
     }
 
     override fun clear() {
-        identifierMap.clear()
+        resourceLocationMap.clear()
         idValueMap.clear()
         valueIdMap.clear()
     }
 
     override fun noParentIterator(): Iterator<T> {
-        return identifierMap.values.iterator()
+        return resourceLocationMap.values.iterator()
     }
 
     override fun optimize() {

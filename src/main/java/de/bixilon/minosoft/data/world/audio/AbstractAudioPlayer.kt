@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,23 +13,25 @@
 
 package de.bixilon.minosoft.data.world.audio
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
-import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.data.world.positions.BlockPositionUtil.center
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.center
 
 interface AbstractAudioPlayer {
 
-    fun play(sound: ResourceLocation, position: BlockPosition? = null, volume: Float = 1.0f, pitch: Float = 1.0f) = play(sound, position?.center, volume, pitch)
-
-    fun play(sound: ResourceLocation, position: Vec3d? = null, volume: Float = 1.0f, pitch: Float = 1.0f)
-
-    fun play2D(sound: ResourceLocation, volume: Float = 1.0f, pitch: Float = 1.0f) {
-        play(sound, null as Vec3d?, volume, pitch)
+    fun playSoundEvent(sound: ResourceLocation, position: Vec3i? = null, volume: Float = 1.0f, pitch: Float = 1.0f) {
+        playSound(sound, position?.center, volume, pitch)
     }
 
-    fun stopAll()
+    fun playSound(sound: ResourceLocation, position: Vec3d? = null, volume: Float = 1.0f, pitch: Float = 1.0f)
+
+    fun play2DSound(sound: ResourceLocation, volume: Float = 1.0f, pitch: Float = 1.0f) {
+        playSound(sound, null as Vec3d?, volume, pitch)
+    }
+
+    fun stopAllSounds()
 
     // ToDo: Stop category
-    fun stop(sound: ResourceLocation)
+    fun stopSound(sound: ResourceLocation)
 }

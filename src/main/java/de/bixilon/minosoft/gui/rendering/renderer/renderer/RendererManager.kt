@@ -18,8 +18,6 @@ import de.bixilon.kutil.concurrent.worker.unconditional.UnconditionalWorker
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.latch.ParentLatch
 import de.bixilon.kutil.latch.SimpleLatch
-import de.bixilon.kutil.profiler.stack.StackedProfiler.Companion.invoke
-import de.bixilon.kutil.reflection.ReflectionUtil.realName
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.RenderUtil.runAsync
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
@@ -81,28 +79,31 @@ class RendererManager(
         }
         pipeline.world.rebuild()
 
-        runAsync(latch, Renderer::asyncInit)
+        runAsync(latch, Renderer::preAsyncInit)
 
         for (renderer in list) {
             renderer.init(latch)
         }
+        runAsync(latch, Renderer::asyncInit)
     }
 
     fun postInit(latch: AbstractLatch) {
         for (renderer in list) {
             renderer.postInit(latch)
         }
+
+        runAsync(latch, Renderer::postAsyncInit)
     }
 
     private fun prepare() {
-        val queue = LinkedBlockingQueue<Renderer>(this.list.size)
-        val total = list.size
+        val queue = LinkedBlockingQueue<Renderer>()
+        var total = 0
 
         for (renderer in list) {
-            val name = renderer::class.java.realName
-            context.profiler("pre $name") { renderer.prePrepareDraw() }
+            total++
+            renderer.prePrepareDraw()
             if (renderer is AsyncRenderer) {
-                context.profiler("?async $name") { context.runAsync { renderer.prepareDrawAsync(); queue += renderer } }
+                context.runAsync { renderer.prepareDrawAsync(); queue += renderer }
             } else {
                 queue += renderer
             }
@@ -111,23 +112,18 @@ class RendererManager(
         var done = 0
         while (true) {
             if (done >= total) break
-            val renderer = context.profiler("wait") { queue.take() }
-            val name = renderer::class.java.realName
-            context.profiler("post $name") { renderer.postPrepareDraw() }
+            val element = queue.take()
+            element.postPrepareDraw()
             done++
         }
     }
 
     override fun draw() {
-        context.profiler("prepare") { prepare() }
-        context.profiler("draw") { pipeline.draw() }
+        prepare()
+        pipeline.draw()
     }
 
     override fun iterator(): Iterator<Renderer> {
         return list.iterator()
-    }
-
-    fun unload() {
-        list.forEach { it.unload() }
     }
 }

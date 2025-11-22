@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,44 +13,45 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.feature.item
 
-import de.bixilon.kmath.mat.mat4.f.MMat4f
-import de.bixilon.kmath.mat.mat4.f.Mat4f
-import de.bixilon.kmath.vec.vec3.f.MVec3f
+import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kutil.random.RandomUtil.nextFloat
 import de.bixilon.minosoft.data.container.stack.ItemStack
-import de.bixilon.minosoft.gui.rendering.entities.feature.block.BlockMeshBuilder
+import de.bixilon.minosoft.gui.rendering.entities.feature.block.BlockMesh
 import de.bixilon.minosoft.gui.rendering.entities.feature.block.BlockShader
 import de.bixilon.minosoft.gui.rendering.entities.feature.item.ItemFeature.ItemRenderDistance.Companion.getCount
-import de.bixilon.minosoft.gui.rendering.entities.feature.mesh.MeshedFeature
+import de.bixilon.minosoft.gui.rendering.entities.feature.properties.MeshedFeature
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
 import de.bixilon.minosoft.gui.rendering.entities.visibility.EntityLayer
 import de.bixilon.minosoft.gui.rendering.models.item.ItemRenderUtil.getModel
 import de.bixilon.minosoft.gui.rendering.models.raw.display.DisplayPositions
-import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
-import de.bixilon.minosoft.util.Backports.nextFloatPort
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.EMPTY_INSTANCE
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.reset
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.translateXAssign
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.translateZAssign
 import java.util.*
-import kotlin.time.Duration
 
 open class ItemFeature(
     renderer: EntityRenderer<*>,
     stack: ItemStack?,
     val display: DisplayPositions,
     val many: Boolean = true,
-) : MeshedFeature<Mesh>(renderer) {
-    private var matrix = MMat4f()
-    private var displayMatrix = Mat4f.EMPTY
+) : MeshedFeature<BlockMesh>(renderer) {
+    private var matrix = Mat4()
+    private var displayMatrix: Mat4 = Mat4.EMPTY_INSTANCE
     private var distance: ItemRenderDistance? = null
     var stack: ItemStack? = stack
         set(value) {
             if (field == value) return
             field = value
-            unload = true
+            unload()
         }
+
+    // TODO: observe stack
 
     override val layer get() = EntityLayer.Translucent // TODO
 
-    override fun update(delta: Duration) {
-        super.update(delta)
-
+    override fun update(millis: Long, delta: Float) {
+        if (!_enabled) return unload()
         updateDistance()
         if (this.mesh == null) {
             val stack = this.stack ?: return unload()
@@ -60,70 +61,67 @@ open class ItemFeature(
     }
 
     private fun updateDistance() {
-        val distance = ItemRenderDistance.of(renderer.distance2)
+        val distance = ItemRenderDistance.of(renderer.distance)
         if (distance == this.distance) return
-        unload = true
+        unload()
         this.distance = distance
     }
 
     private fun createMesh(stack: ItemStack) {
         val distance = this.distance ?: return
-        val model = stack.item.getModel(renderer.renderer.session) ?: return
+        val model = stack.item.item.getModel(renderer.renderer.session) ?: return
         val display = model.getDisplay(display)
-        this.displayMatrix = display?.matrix ?: Mat4f.EMPTY
-        val mesh = BlockMeshBuilder(renderer.renderer.context)
-        val offset = MVec3f()
+        this.displayMatrix = display?.matrix ?: Mat4.EMPTY_INSTANCE
+        val mesh = BlockMesh(renderer.renderer.context)
 
         val tint = renderer.renderer.context.tints.getItemTint(stack)
 
-        val count = if (many) distance.getCount(stack.count) else 1
+        val count = if (many) distance.getCount(stack.item.count) else 1
         val spread = maxOf(0.1f, count / 30.0f)
 
-        model.render(offset.unsafe, mesh, stack, tint) // 0 without offset
+        model.render(mesh, stack, tint) // 0 without offset
 
         if (count > 1) {
             val random = Random(1234567890123456789L)
             for (i in 0 until count - 1) {
-                offset.x = random.nextFloatPort(-spread, spread)
-                offset.y = random.nextFloatPort(-spread, spread)
-                offset.z = random.nextFloatPort(-spread, spread)
+                mesh.offset.x = random.nextFloat(-spread, spread)
+                mesh.offset.y = random.nextFloat(-spread, spread)
+                mesh.offset.z = random.nextFloat(-spread, spread)
 
-                model.render(offset.unsafe, mesh, stack, tint)
+                model.render(mesh, stack, tint)
             }
         }
         // TODO: enchantment glint, ...
 
-        this.mesh = mesh.bake()
+        this.mesh = mesh
     }
 
     private fun updateMatrix() {
-        val matrix = this.matrix
+        this.matrix.reset()
+        this.matrix
+            .translateXAssign(-0.5f)
+            .translateZAssign(-0.5f)
 
-        matrix.set(renderer.matrix.unsafe)
-        matrix *= displayMatrix
 
-        matrix.apply {
-            translateXAssign(-0.5f)
-            translateZAssign(-0.5f)
-        }
+        this.matrix = renderer.matrix * displayMatrix * matrix
     }
 
-    override fun draw(mesh: Mesh) {
+    override fun draw(mesh: BlockMesh) {
         renderer.renderer.context.system.set(layer.settings)
         val shader = renderer.renderer.features.block.shader
         draw(mesh, shader)
     }
 
 
-    protected open fun draw(mesh: Mesh, shader: BlockShader) {
+    protected open fun draw(mesh: BlockMesh, shader: BlockShader) {
         shader.use()
-        shader.matrix = matrix.unsafe
+        shader.matrix = matrix
         shader.tint = renderer.light.value
         super.draw(mesh)
     }
 
     override fun unload() {
-        this.displayMatrix = Mat4f.EMPTY
+        this.displayMatrix = Mat4.EMPTY_INSTANCE
         super.unload()
     }
 

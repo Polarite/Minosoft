@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -37,12 +37,11 @@ object PixLyzerUtil {
         return ByteArrayInputStream(this).readMBFMap().toJsonObject() ?: throw IllegalStateException("Could not read pixlyzer data!")
     }
 
-    private fun load(url: String, hash: String): JsonObject {
+    private fun verify(url: String, hash: String): JsonObject {
         val url = url.formatPlaceholder(
             "hashPrefix" to hash.substring(0, 2),
             "fullHash" to hash,
         ).toURL()
-
         Log.log(LogMessageType.ASSETS, LogLevels.VERBOSE) { "Downloading pixlyzer data $url" }
         val data = FileAssetsUtil.read(url.openStream(), type = FileAssetsTypes.PIXLYZER, compress = false, hash = HashTypes.SHA1)
 
@@ -53,23 +52,23 @@ object PixLyzerUtil {
         return data.data.read()
     }
 
-    private fun load(urls: List<String>, hash: String): JsonObject {
+    private fun verify(urls: List<String>, hash: String): JsonObject {
         FileAssetsUtil.readOrNull(hash, type = FileAssetsTypes.PIXLYZER, compress = false)?.let { return it.read() }
 
-        return DownloadUtil.retry(urls) { load(it, hash) }
+        return DownloadUtil.retry(urls) { verify(it, hash) }
     }
 
-    fun load(profile: ResourcesProfile, version: Version): JsonObject {
+    fun loadPixlyzerData(profile: ResourcesProfile, version: Version): JsonObject {
         val pixlyzerHash = AssetsVersionProperties[version]?.pixlyzerHash ?: throw IllegalStateException("$version has no pixlyzer data available!")
 
-        return load(profile.source.pixlyzer, pixlyzerHash)
+        return verify(profile.source.pixlyzer, pixlyzerHash)
     }
 
     fun loadRegistry(version: Version, profile: ResourcesProfile, latch: AbstractLatch): Registries {
-        val registries = Registries(version = version)
-        val data = load(profile, version)
+        val registries = Registries()
+        val data = loadPixlyzerData(profile, version)
 
-        registries.load(data, latch)
+        registries.load(version, data, latch)
 
         return registries
     }

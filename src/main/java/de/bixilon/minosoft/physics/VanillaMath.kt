@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,11 @@
 
 package de.bixilon.minosoft.physics
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 
 object VanillaMath {
 
-    fun MVec3d.vanillaNormalizeAssign() {
+    fun Vec3d.vanillaNormalizeAssign() {
         val length = this.length()
         x /= length
         y /= length

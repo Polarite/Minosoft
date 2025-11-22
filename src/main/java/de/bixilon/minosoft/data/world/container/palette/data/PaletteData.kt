@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,14 @@
 
 package de.bixilon.minosoft.data.world.container.palette.data
 
-import de.bixilon.minosoft.data.world.container.palette.data.array.ArrayPaletteData
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
 
 interface PaletteData {
-    val isEmpty: Boolean
     val size: Int
 
     fun get(index: Int): Int
 
     fun read(buffer: PlayInByteBuffer)
-
-    fun free()
 
     companion object {
         fun create(versionId: Int, bits: Int, size: Int): PaletteData {

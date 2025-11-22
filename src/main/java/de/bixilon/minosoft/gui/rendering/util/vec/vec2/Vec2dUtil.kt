@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,20 @@
 
 package de.bixilon.minosoft.gui.rendering.util.vec.vec2
 
-import de.bixilon.kmath.vec.vec2.d.Vec2d
+import de.bixilon.kotlinglm.vec2.Vec2d
 import de.bixilon.kutil.primitive.DoubleUtil.toDouble
 
 object Vec2dUtil {
+
+    val Vec2d.Companion.MIN: Vec2d
+        get() = Vec2d(Double.MIN_VALUE, Double.MIN_VALUE)
+
+    val Vec2d.Companion.EMPTY: Vec2d
+        get() = Vec2d(0.0, 0.0)
+
+    val Vec2d.Companion.MAX: Vec2d
+        get() = Vec2d(Double.MAX_VALUE, Double.MAX_VALUE)
+
 
     fun Any?.toVec2d(default: Vec2d? = null): Vec2d {
         return toVec2dN() ?: default ?: throw IllegalArgumentException("Not a Vec2d: $this")

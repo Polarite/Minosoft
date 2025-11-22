@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,22 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.system.dummy.buffer
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.Framebuffer
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.FramebufferState
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.depth.DepthAttachment
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.stencil.StencilAttachment
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.texture.TextureAttachment
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.texture.FramebufferTexture
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.render.Renderbuffer
 
-class DummyFramebuffer(
-    override val size: Vec2i = Vec2i(1, 1),
-    override val scale: Float = 1.0f,
-) : Framebuffer {
+class DummyFramebuffer : Framebuffer {
     override val state: FramebufferState = FramebufferState.COMPLETE
-
-    override val depth: DepthAttachment? get() = null
-    override val stencil: StencilAttachment? get() = null
-    override val texture: TextureAttachment? get() = null
 
     override fun init() {
     }
@@ -36,6 +28,15 @@ class DummyFramebuffer(
     override fun delete() {
     }
 
+    override fun attach(renderbuffer: Renderbuffer) {
+    }
+
+    override fun attach(texture: FramebufferTexture) {
+    }
+
     override fun bindTexture() {
+    }
+
+    override fun resize(size: Vec2i, scale: Float) {
     }
 }

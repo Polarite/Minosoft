@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,11 @@
 
 package de.bixilon.minosoft.input.interaction.short
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.minosoft.camera.target.targets.EntityTarget
-import de.bixilon.minosoft.data.container.TestItem3
 import de.bixilon.minosoft.data.container.equipment.EquipmentSlots
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.direction.Directions
@@ -28,6 +27,9 @@ import de.bixilon.minosoft.data.entities.entities.animal.Pig
 import de.bixilon.minosoft.data.entities.entities.player.Hands
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.data.registries.items.CoalTest0
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil.assertUseItem
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil.unsafePress
@@ -53,9 +55,9 @@ class EntityUseIT {
 
         use.unsafePress()
 
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.MAIN, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.MAIN, false))
         session.assertPacket(EntityEmptyInteractC2SP(session, entity, Hands.MAIN, false))
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.OFF, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.OFF, false))
         session.assertOnlyPacket(EntityEmptyInteractC2SP(session, entity, Hands.OFF, false))
     }
 
@@ -63,17 +65,17 @@ class EntityUseIT {
         val session = InteractionTestUtil.createSession()
         val entity = Pig(session, this.pig, EntityData(session), Vec3d.EMPTY, EntityRotation.EMPTY)
         session.world.entities.add(10, null, entity)
-        session.player.items.inventory[EquipmentSlots.MAIN_HAND] = ItemStack(TestItem3)
+        session.player.items.inventory[EquipmentSlots.MAIN_HAND] = ItemStack(CoalTest0.item)
         session.camera.target::target.forceSet(DataObserver(EntityTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, entity)))
         val use = session.camera.interactions.use
 
         use.unsafePress()
 
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.MAIN, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.MAIN, false))
         session.assertPacket(EntityEmptyInteractC2SP(session, entity, Hands.MAIN, false))
         session.assertPacket(PositionRotationC2SP::class.java)
         session.assertUseItem(Hands.MAIN)
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.OFF, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.OFF, false))
         session.assertOnlyPacket(EntityEmptyInteractC2SP(session, entity, Hands.OFF, false))
     }
 
@@ -81,15 +83,15 @@ class EntityUseIT {
         val session = InteractionTestUtil.createSession()
         val entity = Pig(session, this.pig, EntityData(session), Vec3d.EMPTY, EntityRotation.EMPTY)
         session.world.entities.add(10, null, entity)
-        session.player.items.inventory[EquipmentSlots.OFF_HAND] = ItemStack(TestItem3)
+        session.player.items.inventory[EquipmentSlots.OFF_HAND] = ItemStack(CoalTest0.item)
         session.camera.target::target.forceSet(DataObserver(EntityTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, entity)))
         val use = session.camera.interactions.use
 
         use.unsafePress()
 
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.MAIN, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.MAIN, false))
         session.assertPacket(EntityEmptyInteractC2SP(session, entity, Hands.MAIN, false))
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.OFF, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.OFF, false))
         session.assertPacket(EntityEmptyInteractC2SP(session, entity, Hands.OFF, false))
         session.assertPacket(PositionRotationC2SP::class.java)
         session.assertOnlyPacket(UseItemC2SP(Hands.OFF))
@@ -99,18 +101,18 @@ class EntityUseIT {
         val session = InteractionTestUtil.createSession()
         val entity = Pig(session, this.pig, EntityData(session), Vec3d.EMPTY, EntityRotation.EMPTY)
         session.world.entities.add(10, null, entity)
-        session.player.items.inventory[EquipmentSlots.MAIN_HAND] = ItemStack(TestItem3)
-        session.player.items.inventory[EquipmentSlots.OFF_HAND] = ItemStack(TestItem3)
+        session.player.items.inventory[EquipmentSlots.MAIN_HAND] = ItemStack(CoalTest0.item)
+        session.player.items.inventory[EquipmentSlots.OFF_HAND] = ItemStack(CoalTest0.item)
         session.camera.target::target.forceSet(DataObserver(EntityTarget(Vec3d.EMPTY, 1.0, Directions.DOWN, entity)))
         val use = session.camera.interactions.use
 
         use.unsafePress()
 
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.MAIN, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.MAIN, false))
         session.assertPacket(EntityEmptyInteractC2SP(session, entity, Hands.MAIN, false))
         session.assertPacket(PositionRotationC2SP::class.java)
         session.assertUseItem(Hands.MAIN)
-        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3f.EMPTY, Hands.OFF, false))
+        session.assertPacket(EntityInteractPositionC2SP(session, entity, Vec3.EMPTY, Hands.OFF, false))
         session.assertPacket(EntityEmptyInteractC2SP(session, entity, Hands.OFF, false))
         session.assertPacket(PositionRotationC2SP::class.java)
         session.assertOnlyPacket(UseItemC2SP(Hands.OFF, 2))

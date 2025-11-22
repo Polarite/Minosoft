@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -19,7 +19,6 @@ import de.bixilon.minosoft.data.language.translate.Translatable
 import de.bixilon.minosoft.data.language.translate.Translator
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.formatting.TextFormattable
-import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.text
 import de.bixilon.minosoft.util.json.Jackson
@@ -45,8 +44,7 @@ interface ChatComponent {
     val message: String
 
 
-    fun toJson(): Any
-    fun toNbt() = toJson()
+    fun getJson(): Any
 
     val textFlow: TextFlow
         get() {
@@ -77,16 +75,11 @@ interface ChatComponent {
     fun bold(): ChatComponent
     fun underline(): ChatComponent
     fun italic(): ChatComponent
-    fun setFallbackColor(color: RGBAColor): ChatComponent
-    fun setFallbackColor(color: RGBColor) = setFallbackColor(color.rgba())
+    fun setFallbackColor(color: RGBColor): ChatComponent
 
 
     companion object {
-        val EMPTY: ChatComponent = EmptyComponent
-
-        fun of(component: ChatComponent) = component
-        fun of(component: TextFormattable) = component.toText()
-
+        val EMPTY = EmptyComponent
 
         @JvmOverloads
         fun of(raw: Any? = null, translator: Translator? = null, parent: TextComponent? = null, ignoreJson: Boolean = false, restricted: Boolean = false): ChatComponent {
@@ -107,28 +100,24 @@ interface ChatComponent {
                     return component.trim() ?: EmptyComponent
                 }
             }
-            return of(raw.toString(), translator, parent, ignoreJson, restricted)
-        }
-
-        @JvmOverloads
-        fun of(string: String, translator: Translator? = null, parent: TextComponent? = null, ignoreJson: Boolean = false, restricted: Boolean = false): ChatComponent {
-            if (string.isEmpty()) return EMPTY
-
+            val string = raw.toString()
+            if (string.isEmpty()) {
+                return EMPTY
+            }
             if (!ignoreJson) {
-                val stream = string.codePoints().iterator()
-                while (stream.hasNext()) {
-                    val codePoint = stream.nextInt()
+                for (codePoint in string.codePoints()) {
                     if (Character.isWhitespace(codePoint)) {
                         continue
                     }
-                    if (codePoint != '{'.code && codePoint != '['.code) break
-
-                    try {
-                        val read: Any = Jackson.MAPPER.readValue(string, Any::class.java)
-                        return of(read, translator, parent, ignoreJson = true, restricted).trim() ?: EmptyComponent
-                    } catch (ignored: JacksonException) {
-                        break
+                    if (codePoint == '{'.code || codePoint == '['.code) {
+                        try {
+                            val read: Any = Jackson.MAPPER.readValue(string, Any::class.java)
+                            return of(read, translator, parent, ignoreJson = true, restricted).trim() ?: EmptyComponent
+                        } catch (ignored: JacksonException) {
+                            break
+                        }
                     }
+                    break
                 }
             }
 

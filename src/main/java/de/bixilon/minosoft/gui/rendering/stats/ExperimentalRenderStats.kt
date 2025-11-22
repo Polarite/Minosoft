@@ -13,31 +13,29 @@
 
 package de.bixilon.minosoft.gui.rendering.stats
 
-import de.bixilon.kutil.avg.duration.DurationAverage
-import de.bixilon.kutil.math.simple.DoubleMath.clamp
-import de.bixilon.kutil.time.TimeUtil
-import de.bixilon.kutil.time.TimeUtil.now
-import de.bixilon.minosoft.util.Backports.nextFloatPort
-import de.bixilon.minosoft.util.Backports.nextIntPort
+import de.bixilon.kotlinglm.func.common.clamp
+import de.bixilon.kutil.avg._long.LongAverage
+import de.bixilon.kutil.random.RandomUtil.nextFloat
+import de.bixilon.kutil.random.RandomUtil.nextInt
+import de.bixilon.kutil.time.TimeUtil.millis
 import java.util.*
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class ExperimentalRenderStats : AbstractRenderStats {
     private val renderStats = RenderStats()
     private val random = Random()
 
-    private val baseMultiplier = random.nextFloatPort(1.0f, 1.5f)
-    private val baseJitter = random.nextIntPort(0, 20)
+    private val baseMultiplier = random.nextFloat(1.0f, 1.5f)
+    private val baseJitter = random.nextInt(0, 20)
 
-    override val avgFrameTime = DurationAverage(1.seconds)
-    override val avgDrawTime = DurationAverage(1.seconds)
+    override val avgFrameTime = LongAverage(1.seconds)
+    override val avgDrawTime = LongAverage(1.seconds)
 
-    private var lastSmoothFPSCalculationTime = TimeUtil.NULL
+    private var lastSmoothFPSCalculationTime = 0L
     override var smoothAvgFPS: Double = 0.0
         get() {
-            val time = now()
-            if (time - lastSmoothFPSCalculationTime > 100.milliseconds) {
+            val time = millis()
+            if (time - lastSmoothFPSCalculationTime > 100) {
                 field = avgFPS
                 lastSmoothFPSCalculationTime = time
             }
@@ -49,21 +47,21 @@ class ExperimentalRenderStats : AbstractRenderStats {
         get() {
             val avgFPS = renderStats.avgFPS
 
-            val multiplier = 3.0f * baseMultiplier * random.nextFloatPort(0.9f, 1.1f)
+            val multiplier = 3.0f * baseMultiplier * random.nextFloat(0.9f, 1.1f)
 
             var fps = avgFPS * multiplier
 
             fps += baseJitter
 
-            fps += random.nextIntPort(-10, 10)
+            fps += random.nextInt(-10, 10)
 
             return fps.clamp(0.0, 10000.0)
         }
 
 
     init {
-        avgFrameTime.add(5.milliseconds) // ToDo: Add real stats
-        avgFrameTime.add(5.milliseconds) // ToDo: Add real stats
+        avgFrameTime.add(5000000L) // ToDo: Add real stats
+        avgFrameTime.add(5000000L) // ToDo: Add real stats
     }
 
     override val totalFrames: Long

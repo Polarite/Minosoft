@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.feature.text.name
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
@@ -36,7 +36,7 @@ import de.bixilon.minosoft.data.scoreboard.team.TeamVisibility
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.gui.rendering.entities.EntityRendererTestUtil.create
-import de.bixilon.minosoft.gui.rendering.entities.EntityRendererTestUtil.setInvisible
+import de.bixilon.minosoft.gui.rendering.entities.EntityRendererTestUtil.isInvisible
 import de.bixilon.minosoft.gui.rendering.entities.feature.text.BillbaordTextTestUtil.assertEmpty
 import de.bixilon.minosoft.gui.rendering.entities.feature.text.BillbaordTextTestUtil.assertText
 import org.testng.Assert.assertNotEquals
@@ -63,7 +63,7 @@ class EntityNameFeatureTest {
     }
 
     private fun EntityNameFeature.isInvisible(invisible: Boolean) {
-        renderer.entity.setInvisible(invisible)
+        renderer.entity.isInvisible(invisible)
     }
 
     private fun EntityNameFeature.cameraTeam(same: Boolean) {

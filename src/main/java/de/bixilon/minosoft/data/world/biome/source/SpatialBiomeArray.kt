@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,28 +14,25 @@
 package de.bixilon.minosoft.data.world.biome.source
 
 import de.bixilon.minosoft.data.registries.biomes.Biome
-import de.bixilon.minosoft.data.world.chunk.ChunkSize
-import de.bixilon.minosoft.data.world.positions.InChunkPosition
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
-class SpatialBiomeArray(
-    var data: Array<Biome?>,
-) : BiomeSource {
+class SpatialBiomeArray(val data: Array<Biome>) : BiomeSource {
 
     init {
         if (data.size != SIZE) throw IllegalArgumentException("Biome array must have a size of $SIZE: ${data.size}")
     }
 
-    override fun get(position: InChunkPosition): Biome? {
-        return this.data[getIndex(position.x, position.y, position.z)]
+    override fun get(x: Int, y: Int, z: Int): Biome {
+        return this.data[getIndex(x, y, z)]
     }
 
 
-    operator fun get(index: Int): Biome? {
+    operator fun get(index: Int): Biome {
         return data[index]
     }
 
     companion object {
-        const val SIZE = ChunkSize.BLOCKS_PER_SECTION / 4
+        const val SIZE = ProtocolDefinition.BLOCKS_PER_SECTION / 4
         const val XZ_BITS = 2
         const val XZ_MASK = (1 shl XZ_BITS) - 1
 

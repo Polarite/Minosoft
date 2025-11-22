@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,15 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.model.human.animator
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.func.rad
+import de.bixilon.kotlinglm.func.sin
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.kutil.math.MathConstants.PIf
-import de.bixilon.kutil.primitive.FloatUtil.rad
-import de.bixilon.kutil.primitive.FloatUtil.sin
 import de.bixilon.minosoft.data.entities.entities.player.Arms
 import de.bixilon.minosoft.gui.rendering.entities.model.human.HumanModel
 import de.bixilon.minosoft.gui.rendering.skeletal.instance.TransformInstance
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.rotateRadAssign
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.rotateXAssign
 
 class ArmAnimator(
     val model: HumanModel<*>,
@@ -30,11 +30,11 @@ class ArmAnimator(
 ) {
     private var swinging = FloatArray(Arms.VALUES.size) { Float.NaN }
 
-    fun update(delta: Duration) {
+    fun update(delta: Float) {
         apply()
         for ((arm, progress) in swinging.withIndex()) {
             if (progress.isNaN()) continue
-            swinging[arm] += (delta / 0.2.seconds).toFloat()
+            swinging[arm] += delta * 5.0f
             if (swinging[arm] >= 1.0f) {
                 swinging[arm] = Float.NaN
             }
@@ -51,10 +51,11 @@ class ArmAnimator(
     private fun apply(arm: Arms, walking: Float) {
         val transform = this[arm]
         val swinging = swinging[arm.ordinal]
-        transform.matrix.translateAssign(right.pivot)
+        transform.value
+            .translateAssign(right.pivot)
 
         if (swinging.isNaN()) {
-            transform.matrix.rotateXAssign(walking)
+            transform.value.rotateXAssign(walking)
         } else {
             var swing = 1.0f - (swinging)
             swing *= swing
@@ -68,9 +69,9 @@ class ArmAnimator(
             val x = sin * -1.4f
 
 
-            transform.matrix.rotateRadAssign(Vec3f(x, y, if (arm == Arms.RIGHT) z else -z))
+            transform.value.rotateRadAssign(Vec3(x, y, if (arm == Arms.RIGHT) z else -z))
         }
-        transform.matrix
+        transform.value
             .translateAssign(right.nPivot)
 
     }

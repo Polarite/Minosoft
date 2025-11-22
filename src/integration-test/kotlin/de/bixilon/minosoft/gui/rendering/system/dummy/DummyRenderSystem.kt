@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,38 +13,40 @@
 
 package de.bixilon.minosoft.gui.rendering.system.dummy
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.formatting.color.Colors
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.gui.rendering.RenderContext
+import de.bixilon.minosoft.gui.rendering.shader.Shader
 import de.bixilon.minosoft.gui.rendering.system.base.*
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.Framebuffer
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.depth.DepthModes
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.stencil.StencilModes
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.texture.TextureModes
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.uniform.FloatUniformBuffer
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.uniform.IntUniformBuffer
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.FloatVertexBuffer
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.PrimitiveTypes
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.VertexBuffer
+import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureManager
 import de.bixilon.minosoft.gui.rendering.system.base.texture.data.buffer.TextureBuffer
 import de.bixilon.minosoft.gui.rendering.system.dummy.buffer.DummyFramebuffer
 import de.bixilon.minosoft.gui.rendering.system.dummy.buffer.DummyVertexBuffer
 import de.bixilon.minosoft.gui.rendering.system.dummy.buffer.uniform.DummyFloatUniformBuffer
 import de.bixilon.minosoft.gui.rendering.system.dummy.buffer.uniform.DummyIntUniformBuffer
-import de.bixilon.minosoft.gui.rendering.system.dummy.shader.DummyShaderManagement
+import de.bixilon.minosoft.gui.rendering.system.dummy.shader.DummyNativeShader
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTextureManager
-import de.bixilon.minosoft.gui.rendering.util.mesh.struct.MeshStruct
+import de.bixilon.minosoft.gui.rendering.util.mesh.MeshOrder
+import de.bixilon.minosoft.gui.rendering.util.mesh.MeshStruct
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
 import java.nio.FloatBuffer
-import java.nio.IntBuffer
 
 class DummyRenderSystem(
-    val context: RenderContext,
+    private val context: RenderContext,
 ) : RenderSystem {
-    override val shader = DummyShaderManagement(this)
+    override val shaders: MutableSet<Shader> = mutableSetOf()
     override lateinit var vendor: GPUVendor
+    override var shader: NativeShader? = null
     override var framebuffer: Framebuffer? = null
     override val active: Boolean = true
-    override val primitives = PrimitiveTypes.setOfAll()
 
     override var viewport = Vec2i.EMPTY
 
@@ -74,20 +76,28 @@ class DummyRenderSystem(
     override val usedVRAM: Long = -1
     override val availableVRAM: Long = -1
     override val maximumVRAM: Long = -1
-    override val vendorString: String = "Bixilon's hand made super gpu"
+    override val vendorString: String = "Bixilon hand made super gpu"
     override val version: String = "dummy"
     override val gpuType: String = "dummy"
-    override var clearColor = Colors.TRANSPARENT
+    override var clearColor: RGBColor = Colors.TRANSPARENT
+    override var quadType: PrimitiveTypes = PrimitiveTypes.QUAD
 
-    override fun readPixels(start: Vec2i, size: Vec2i): TextureBuffer {
+    override var quadOrder: RenderOrder = if (quadType == PrimitiveTypes.QUAD) MeshOrder.QUAD else MeshOrder.TRIANGLE
+    override var legacyQuadOrder: RenderOrder = if (quadType == PrimitiveTypes.QUAD) MeshOrder.LEGACY_QUAD else MeshOrder.LEGACY_TRIANGLE
+
+    override fun readPixels(start: Vec2i, end: Vec2i): TextureBuffer {
         TODO("Not yet implemented")
     }
 
-    override fun createVertexBuffer(struct: MeshStruct, data: FloatBuffer, primitive: PrimitiveTypes, index: IntBuffer?, reused: Boolean): VertexBuffer {
-        return DummyVertexBuffer(struct)
+    override fun createNativeShader(vertex: ResourceLocation, geometry: ResourceLocation?, fragment: ResourceLocation): NativeShader {
+        return DummyNativeShader(context)
     }
 
-    override fun createIntUniformBuffer(data: IntBuffer): IntUniformBuffer {
+    override fun createVertexBuffer(struct: MeshStruct, data: FloatBuffer, primitiveType: PrimitiveTypes): FloatVertexBuffer {
+        return DummyVertexBuffer(struct, data)
+    }
+
+    override fun createIntUniformBuffer(data: IntArray): IntUniformBuffer {
         return DummyIntUniformBuffer(data)
     }
 
@@ -95,8 +105,8 @@ class DummyRenderSystem(
         return DummyFloatUniformBuffer(data)
     }
 
-    override fun createFramebuffer(size: Vec2i, scale: Float, texture: TextureModes?, depth: DepthModes?, stencil: StencilModes?): Framebuffer {
-        return DummyFramebuffer(size, scale)
+    override fun createFramebuffer(color: Boolean, depth: Boolean, scale: Float): Framebuffer {
+        return DummyFramebuffer()
     }
 
     override fun createTextureManager(): TextureManager {

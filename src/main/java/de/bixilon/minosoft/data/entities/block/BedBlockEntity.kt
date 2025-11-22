@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,13 +15,11 @@ package de.bixilon.minosoft.data.entities.block
 
 import de.bixilon.kutil.primitive.IntUtil.toInt
 import de.bixilon.minosoft.data.colors.DyeColors
-import de.bixilon.minosoft.data.registries.blocks.state.BlockState
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
-@Deprecated("in 1.12 only for color. Not ticking, not rendering, doing nothing")
-class BedBlockEntity(session: PlaySession, position: BlockPosition, state: BlockState) : BlockEntity(session, position, state) {
+class BedBlockEntity(session: PlaySession) : BlockEntity(session) {
     var color = DyeColors.RED
         private set
 
@@ -30,14 +28,11 @@ class BedBlockEntity(session: PlaySession, position: BlockPosition, state: Block
         color = DyeColors.getOrNull(nbt["color"]?.toInt()) ?: DyeColors.RED
     }
 
-    @Suppress("DEPRECATION")
     companion object : BlockEntityFactory<BedBlockEntity> {
-        override val identifier = minecraft("bed")
+        override val identifier: ResourceLocation = minecraft("bed")
 
-        override fun build(session: PlaySession, position: BlockPosition, state: BlockState): BedBlockEntity? {
-            if (session.version.flattened) return null
-
-            return BedBlockEntity(session, position, state)
+        override fun build(session: PlaySession): BedBlockEntity {
+            return BedBlockEntity(session)
         }
     }
 }

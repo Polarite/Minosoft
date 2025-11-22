@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,10 +14,9 @@
 package de.bixilon.minosoft.gui.rendering.textures.properties
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.kutil.primitive.IntUtil.toInt
-import de.bixilon.minosoft.protocol.network.session.play.tick.Ticks.Companion.ticks
-import kotlin.time.Duration
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 data class AnimationProperties(
     val interpolate: Boolean = false,
@@ -34,7 +33,7 @@ data class AnimationProperties(
         val count = size.y / height
 
         val frames: MutableList<Frame> = mutableListOf()
-        val frameTime = this.frameTime.ticks.duration
+        val frameTime = ticksToSeconds(this.frameTime)
 
         if (this.frames.isEmpty()) {
             // automatic
@@ -46,7 +45,7 @@ data class AnimationProperties(
                 when (frame) {
                     is Number -> frames += Frame(frameTime, frame.toInt())
                     is Map<*, *> -> {
-                        frames += Frame(frame["time"].toInt().ticks.duration, frame["index"].toInt())
+                        frames += Frame(ticksToSeconds(frame["time"].toInt()), frame["index"].toInt())
                     }
                 }
             }
@@ -62,7 +61,15 @@ data class AnimationProperties(
     )
 
     data class Frame(
-        val time: Duration,
+        val time: Float,
         val texture: Int,
     )
+
+    companion object {
+
+        private fun ticksToSeconds(ticks: Int): Float {
+            val millis = ticks * ProtocolDefinition.TICK_TIME
+            return millis / 1000.0f
+        }
+    }
 }

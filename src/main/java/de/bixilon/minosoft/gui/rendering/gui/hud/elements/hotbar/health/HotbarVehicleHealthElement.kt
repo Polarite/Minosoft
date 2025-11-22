@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,19 +13,20 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.hotbar.health
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.kutil.math.simple.FloatMath.rounded10
+import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.minosoft.data.entities.entities.LivingEntity
 import de.bixilon.minosoft.data.registries.effects.attributes.MinecraftAttributes
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TextComponent
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asColor
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Pollable
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.hotbar.AbstractHotbarHealthElement
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import java.lang.Float.max
 
 class HotbarVehicleHealthElement(guiRenderer: GUIRenderer) : AbstractHotbarHealthElement(guiRenderer), Pollable {
@@ -37,7 +38,7 @@ class HotbarVehicleHealthElement(guiRenderer: GUIRenderer) : AbstractHotbarHealt
     override var totalHealth = 0.0f
     override var totalMaxHealth = 0.0f
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         if (!shown) {
             return
         }
@@ -57,10 +58,10 @@ class HotbarVehicleHealthElement(guiRenderer: GUIRenderer) : AbstractHotbarHealt
             val halfHeart = healthLeft < 1.5f
             val image = atlas?.getHeart(halfHeart)?.let { AtlasImageElement(guiRenderer, it) }
 
-            image?.render(offset + Vec2f(column, (rows - 1) - row) * HEART_SIZE, consumer, options)
+            image?.render(offset + Vec2(column, (rows - 1) - row) * HEART_SIZE, consumer, options)
 
             heart++
-            healthLeft -= if(halfHeart) 1.0f else 2.0f
+            healthLeft -= halfHeart.decide(1.0f, 2.0f)
         }
     }
 
@@ -97,6 +98,6 @@ class HotbarVehicleHealthElement(guiRenderer: GUIRenderer) : AbstractHotbarHealt
     }
 
     companion object {
-        private val NORMAL_TEXT_COLOR = "#da662c".rgb()
+        private val NORMAL_TEXT_COLOR = "#da662c".asColor()
     }
 }

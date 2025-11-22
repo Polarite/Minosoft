@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,16 @@
 
 package de.bixilon.minosoft.data.registries.blocks.types.stone
 
-import de.bixilon.kutil.enums.inline.IntInlineSet
-import de.bixilon.kutil.enums.inline.enums.IntInlineEnumSet
-import de.bixilon.kutil.enums.inline.enums.IntInlineEnumSet.Companion.plus
+import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.minosoft.data.registries.blocks.BlockTest
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.EmptyCollisionContext
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
-import de.bixilon.minosoft.data.registries.blocks.state.manager.SingleStateManager
+import de.bixilon.minosoft.data.registries.blocks.state.manager.SimpleStateManager
 import de.bixilon.minosoft.data.registries.blocks.types.building.stone.StoneBlock
-import de.bixilon.minosoft.data.registries.shapes.shape.Shape
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.registries.shapes.voxel.AbstractVoxelShape
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
-import de.bixilon.minosoft.test.IT.NULL_SESSION
+import de.bixilon.minosoft.test.IT.NULL_CONNECTION
 import org.testng.Assert.assertEquals
 import org.testng.Assert.assertTrue
 import org.testng.annotations.Test
@@ -32,27 +30,29 @@ import org.testng.annotations.Test
 @Test(groups = ["block"])
 class StoneTest : BlockTest<StoneBlock.Block>() {
 
-    override val type get() = StoneBlock.Block.identifier
+    init {
+        StoneTest0 = this
+    }
+
+    fun getStone() {
+        super.retrieveBlock(StoneBlock.Block.identifier)
+    }
 
     fun testOutlineShape() {
-        assertEquals(Shape.FULL, block.getOutlineShape(createSession(), BlockPosition.EMPTY, state))
+        assertEquals(AbstractVoxelShape.FULL, block.getOutlineShape(createSession(), Vec3i.EMPTY, state))
     }
 
     fun testCollisionShape() {
-        assertEquals(Shape.FULL, block.getCollisionShape(NULL_SESSION, EmptyCollisionContext, BlockPosition.EMPTY, state))
+        assertEquals(AbstractVoxelShape.FULL, block.getCollisionShape(NULL_CONNECTION, EmptyCollisionContext, Vec3i.EMPTY, state, null))
     }
 
     fun testStates() {
-        assertTrue(block.states is SingleStateManager)
+        assertTrue(block.states is SimpleStateManager)
     }
 
     fun testLightProperties() {
         state.testLightProperties(0, false, false, true, booleanArrayOf(false, false, false, false, false, false))
     }
-
-    fun `block state flags`() {
-        val expected = IntInlineSet() + BlockStateFlags.OUTLINE + BlockStateFlags.FULL_OUTLINE + BlockStateFlags.COLLISIONS + BlockStateFlags.FULL_COLLISION + BlockStateFlags.FULL_OPAQUE + BlockStateFlags.CAVE_SURFACE
-
-        assertEquals(expected, block.states.default.flags)
-    }
 }
+
+var StoneTest0: StoneTest = unsafeNull()

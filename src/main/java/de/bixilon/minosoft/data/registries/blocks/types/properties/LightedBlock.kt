@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,12 +14,16 @@
 package de.bixilon.minosoft.data.registries.blocks.types.properties
 
 import de.bixilon.minosoft.data.registries.blocks.light.LightProperties
-import de.bixilon.minosoft.data.registries.blocks.light.TransparentProperty
+import de.bixilon.minosoft.data.registries.blocks.light.OpaqueProperty
+import de.bixilon.minosoft.data.registries.blocks.state.AdvancedBlockState
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
 
 interface LightedBlock {
-    val lightProperties: LightProperties? get() = null
 
-    @Suppress("DEPRECATION")
-    fun getLightProperties(state: BlockState) = lightProperties ?: state.lightProperties ?: TransparentProperty
+    fun getLightProperties(blockState: BlockState): LightProperties {
+        if (blockState is AdvancedBlockState) {
+            return blockState.lightProperties
+        }
+        return OpaqueProperty
+    }
 }

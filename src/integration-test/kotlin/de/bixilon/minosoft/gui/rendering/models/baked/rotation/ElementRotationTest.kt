@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.models.baked.rotation
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.Axes
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
@@ -33,8 +33,8 @@ import org.testng.annotations.Test
 class ElementRotationTest {
 
     private fun block(rotation: ElementRotation): SingleBlockStateApply {
-        val from = Vec3f(0.0f)
-        val to = Vec3f(1.0f)
+        val from = Vec3(0.0f)
+        val to = Vec3(1.0f)
         return SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces(), rotation = rotation)), textures = mapOf("test" to minecraft("block/test").texture())))
     }
 
@@ -57,9 +57,9 @@ class ElementRotationTest {
     }
 
     fun `rotate grass around origin 45 degree on the y axis and rescale`() {
-        val from = Vec3f(0.8f, 0f, 8f) / 16
-        val to = Vec3f(15.2f, 16f, 8f) / 16
-        val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces(), rotation = ElementRotation(origin = Vec3f(0.5f), axis = Axes.Y, angle = 45.0f, rescale = true))), textures = mapOf("test" to minecraft("block/test").texture())))
+        val from = Vec3(0.8, 0, 8) / 16
+        val to = Vec3(15.2, 16, 8) / 16
+        val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces(), rotation = ElementRotation(origin = Vec3(0.5f), axis = Axes.Y, angle = 45.0f, rescale = true))), textures = mapOf("test" to minecraft("block/test").texture())))
 
 
         val baked = model.bake(createTextureManager("block/test"))!!

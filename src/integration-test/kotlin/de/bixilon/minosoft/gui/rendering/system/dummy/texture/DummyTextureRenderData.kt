@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,17 +13,19 @@
 
 package de.bixilon.minosoft.gui.rendering.system.dummy.texture
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.TextureRenderData
-import de.bixilon.minosoft.gui.rendering.util.mesh.uv.PackedUV
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 
 object DummyTextureRenderData : TextureRenderData {
     override val shaderTextureId: Int = 0
     override val animationData: Int = -1
 
-    override fun transformUV(uv: Vec2f) = uv
-    override fun transformUV(u: Float, v: Float) = PackedUV(u, v)
-    override fun transformU(u: Float) = u
-    override fun transformV(v: Float) = v
-    override fun transformUV(uv: PackedUV): PackedUV = uv
+    override fun transformUV(end: Vec2?): Vec2 {
+        return end ?: Vec2.EMPTY
+    }
+
+    override fun transformUV(end: FloatArray?): FloatArray {
+        return end ?: floatArrayOf(1.0f, 1.0f)
+    }
 }

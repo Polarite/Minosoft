@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.models.block.state.baked
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.BakingUtil.pushRight
 import de.bixilon.minosoft.gui.rendering.models.util.CuboidUtil
@@ -21,8 +21,8 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 
 class CuboidUtilTest {
-    val from = Vec3f(1, 2, 3)
-    val to = Vec3f(6, 5, 4)
+    val from = Vec3(1, 2, 3)
+    val to = Vec3(6, 5, 4)
 
 
     @Test

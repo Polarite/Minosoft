@@ -20,14 +20,15 @@ import de.bixilon.kutil.os.OSTypes
 import de.bixilon.kutil.os.PlatformInfo
 import de.bixilon.kutil.primitive.BooleanUtil.toBoolean
 import de.bixilon.kutil.stream.InputStreamUtil.copy
+import de.bixilon.kutil.time.TimeUtil
 import org.ajoberstar.grgit.Commit
 import org.ajoberstar.grgit.Grgit
 import org.ajoberstar.grgit.operation.LogOp
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.gradle.configurationcache.extensions.capitalized
 import org.gradle.jvm.tasks.Jar
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -42,16 +43,15 @@ import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
 import java.security.spec.PKCS8EncodedKeySpec
-import java.time.Instant
 import java.util.stream.Collectors
 
 
 plugins {
-    kotlin("jvm") version "2.2.20"
+    kotlin("jvm") version "2.1.0"
     `jvm-test-suite`
     application
-    id("org.ajoberstar.grgit.service") version "5.3.3"
-    id("com.github.ben-manes.versions") version "0.53.0"
+    id("org.ajoberstar.grgit.service") version "5.3.0"
+    id("com.github.ben-manes.versions") version "0.52.0"
 }
 
 fun getProperty(name: String): String {
@@ -69,6 +69,7 @@ val ikonliVersion = getProperty("ikonli.version")
 val nettyVersion = getProperty("netty.version")
 val jacksonVersion = getProperty("jackson.version")
 val kutilVersion = getProperty("kutil.version")
+val glmVersion = getProperty("glm.version")
 
 val updates = properties["minosoft.updates"]?.toBoolean() ?: false
 
@@ -78,12 +79,14 @@ val architecture = properties["architecture"]?.let { Architectures[it] } ?: Plat
 logger.info("Building for ${os.name.lowercase()}, ${architecture.name.lowercase()}")
 
 repositories {
+    mavenLocal()
     mavenCentral()
+    maven(url = "https://s01.oss.sonatype.org/content/repositories/releases/")
 }
 
 buildscript {
     dependencies {
-        classpath("de.bixilon:kutil:1.30.1")
+        classpath("de.bixilon", "kutil", "1.27")
     }
 }
 
@@ -144,15 +147,16 @@ when (os) {
 
             Architectures.X86 -> {
                 lwjglNatives += "-x86"
-                zstdNatives += "_x86"
+                zstdNatives += "-x86"
                 javafxNatives += "-x86"
             }
-
-            Architectures.AARCH64, Architectures.ARM -> {
+            /*
+            Architectures.ARM -> {
                 lwjglNatives += "-arm64"
-                zstdNatives += "_aarch64"
-                // TODO: javafx for Windows on arm is not yet supported
+                zstdNatives += "-amd64"
+                 // TODO: javafx for Windows on arm is not yet supported
             }
+             */
 
             else -> throw IllegalArgumentException("Can not determinate windows natives on $architecture")
         }
@@ -167,13 +171,13 @@ when (os) {
 testing {
     suites {
         val test by getting(JvmTestSuite::class) {
+            testType.set(TestSuiteType.UNIT_TEST)
             useJUnitJupiter("5.9.2")
 
             dependencies {
                 implementation(project())
                 implementation("de.bixilon:kutil:$kutilVersion")
-                implementation("org.jetbrains.kotlin:kotlin-test:2.2.0")
-                implementation("com.github.ajalt.clikt:clikt:5.0.3")
+                implementation("org.jetbrains.kotlin:kotlin-test:2.1.0")
             }
 
             targets {
@@ -206,6 +210,7 @@ testing {
 
 
         val integrationTest by registering(JvmTestSuite::class) {
+            testType.set(TestSuiteType.INTEGRATION_TEST)
             useTestNG("7.7.1")
 
             dependencies {
@@ -215,13 +220,10 @@ testing {
 
                 // ToDo: Include dependencies from project
                 implementation("de.bixilon:kutil:$kutilVersion")
-                implementation("it.unimi.dsi:fastutil-core:8.5.18")
+                implementation("de.bixilon:kotlin-glm:$glmVersion")
+                implementation("it.unimi.dsi:fastutil-core:8.5.15")
 
                 implementation("de.bixilon:mbf-kotlin:1.0.3") { exclude("com.github.luben", "zstd-jni") }
-
-                // netty
-                netty("buffer")
-                netty("handler")
 
                 jacksonCore("core")
                 jacksonCore("databind")
@@ -232,7 +234,7 @@ testing {
             targets {
                 all {
                     testTask.configure {
-                        maxHeapSize = "2G"
+                        shouldRunAfter(test)
                         filter {
                             isFailOnNoMatchingTests = true
                         }
@@ -251,6 +253,8 @@ testing {
                         options {
                             val options = this as TestNGOptions
                             options.preserveOrder = true
+                            // options.excludeGroups("models", "mesher", "chunk", "input", "font", "command", "registry", "biome", "version", "fluid", "world", "raycasting", "pixlyzer", "item", "block", "physics", "light", "packet", "container", "item_stack", "signature", "private_key", "interaction", "item_digging", "chunk_renderer", "rendering", "texture", "atlas", "gui")
+                            //   options.excludeGroups("models", "chunk", "input", "font", "command", "registry", "biome", "version", "fluid", "world", "raycasting", "pixlyzer", "item", "physics", "light", "packet", "container", "item_stack", "signature", "private_key", "interaction", "item_digging", "chunk_renderer", "texture", "atlas", "gui")
                         }
                     }
                 }
@@ -265,6 +269,7 @@ testing {
             }
         }
         val benchmark by registering(JvmTestSuite::class) {
+            testType.set(TestSuiteType.PERFORMANCE_TEST)
             useTestNG("7.7.1")
 
             dependencies {
@@ -274,6 +279,7 @@ testing {
 
                 // ToDo: Include dependencies from project
                 implementation("de.bixilon:kutil:$kutilVersion")
+                implementation("de.bixilon:kotlin-glm:$glmVersion")
             }
 
             targets {
@@ -306,16 +312,13 @@ testing {
     }
 }
 
+tasks.named("check") {
+    dependsOn(testing.suites.named("integrationTest"))
+}
+
 fun DependencyHandler.javafx(name: String) {
-    if (javafxNatives == "") {
-        logger.error("JavaFX does not have natives for windows. You must use a JRE that bundles these or disable eros.")
-        compileOnly("org.openjfx", "javafx-$name", javafxVersion, classifier = "win") {
-            version { strictly(javafxVersion) }
-        }
-    } else {
-        implementation("org.openjfx", "javafx-$name", javafxVersion, classifier = javafxNatives) {
-            version { strictly(javafxVersion) }
-        }
+    implementation("org.openjfx", "javafx-$name", javafxVersion, classifier = javafxNatives) {
+        version { strictly(javafxVersion) }
     }
 }
 
@@ -340,10 +343,6 @@ fun JvmComponentDependencies.jackson(group: String, name: String) {
     implementation("com.fasterxml.jackson.$group:jackson-$group-$name:$jacksonVersion")
 }
 
-fun JvmComponentDependencies.netty(name: String) {
-    implementation("io.netty:netty-$name:$nettyVersion")
-}
-
 fun DependencyHandler.netty(name: String) {
     implementation("io.netty", "netty-$name", nettyVersion)
 }
@@ -358,15 +357,18 @@ fun DependencyHandler.lwjgl(name: String? = null) {
 }
 
 dependencies {
-    implementation("org.slf4j", "slf4j-api", "2.0.17")
+    implementation("org.slf4j", "slf4j-api", "2.0.16")
+    implementation("com.google.guava", "guava", "33.4.0-jre")
     implementation("dnsjava", "dnsjava", "3.6.3")
-    implementation("com.github.ajalt.clikt", "clikt", "5.0.3")
-    implementation("org.jline", "jline", "3.30.6")
+    implementation("net.sourceforge.argparse4j", "argparse4j", "0.9.0")
+    implementation("org.jline", "jline", "3.29.0")
     implementation("org.l33tlabs.twl", "pngdecoder", "1.0")
-    implementation("com.github.oshi", "oshi-core", "6.9.1")
-    implementation("com.github.luben", "zstd-jni", "1.5.7-6", classifier = zstdNatives)
+    implementation("com.github.oshi", "oshi-core", "6.6.6")
+    implementation("com.github.luben", "zstd-jni", "1.5.6-9", classifier = zstdNatives)
+    implementation("org.apache.commons", "commons-lang3", "3.17.0")
     implementation("org.kamranzafar", "jtar", "2.3")
-    implementation("it.unimi.dsi", "fastutil-core", "8.5.16")
+    implementation("org.reflections", "reflections", "0.10.2")
+    implementation("it.unimi.dsi", "fastutil-core", "8.5.15")
     implementation("org.xeustechnologies", "jcl-core", "2.8")
 
 
@@ -384,8 +386,9 @@ dependencies {
     // de.bixilon
     implementation("de.bixilon", "kutil", kutilVersion)
     implementation("de.bixilon", "jiibles", "1.1.1")
+    implementation("de.bixilon", "kotlin-glm", glmVersion)
     implementation("de.bixilon", "mbf-kotlin", "1.0.3") { exclude("com.github.luben", "zstd-jni") }
-    implementation("de.bixilon.javafx", "javafx-svg", "0.3.1") { exclude("org.openjfx", "javafx-controls") } // TODO: remove this, it is really large
+    implementation("de.bixilon.javafx", "javafx-svg", "0.3.1") { exclude("org.openjfx", "javafx-controls") }
 
     // netty
     netty("buffer")
@@ -401,7 +404,7 @@ dependencies {
     lwjgl("stb")
 
     // kotlin
-    implementation(kotlin("reflect", "2.2.20"))
+    implementation(kotlin("reflect", "2.1.0"))
 
 
     // platform specific
@@ -434,15 +437,16 @@ var commit: Commit? = null
 fun Commit.shortId() = id.substring(0, 10)
 
 fun loadGit() {
+    val git: Grgit
     try {
         git = Grgit.open(mapOf("currentDir" to project.rootDir))
     } catch (error: Throwable) {
         logger.warn("Can not open git folder: $error")
         return
     }
-    val git = git!!
-    commit = git.log { LogOp(git.repository).apply { maxCommits = 1 } }.first()
-    val commit = commit!!
+    this.git = git
+    val commit = git.log { LogOp(git.repository).apply { maxCommits = 1 } }.first()
+    this.commit = commit
     val tag = git.tag.list().find { it.commit == commit }
     var nextVersion = if (tag != null) {
         stable = true
@@ -453,6 +457,7 @@ fun loadGit() {
     val status = git.status()
     if (!status.isClean) {
         nextVersion += "-dirty"
+        println(status)
     }
     if (project.version != nextVersion) {
         project.version = nextVersion
@@ -479,7 +484,7 @@ val versionJsonTask = tasks.register("versionJson") {
         val versionInfo: MutableMap<String, Any> = mutableMapOf(
             "general" to mutableMapOf(
                 "name" to project.version,
-                "date" to Instant.now().toEpochMilli() / 1000,
+                "date" to TimeUtil.seconds(),
                 "stable" to stable,
                 "updates" to updates,
             )
@@ -493,7 +498,7 @@ val versionJsonTask = tasks.register("versionJson") {
         } catch (exception: Throwable) {
             exception.printStackTrace()
         }
-        val file = project.layout.buildDirectory.get().asFile.resolve("resources/main/assets/minosoft/version.json")
+        val file = File(project.buildDir.path + "/resources/main/assets/minosoft/version.json")
         file.writeText(groovy.json.JsonOutput.toJson(versionInfo))
     }
 }
@@ -508,14 +513,10 @@ java {
     targetCompatibility = JavaVersion.VERSION_11
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_11)
-        languageVersion.set(KotlinVersion.KOTLIN_2_1)
-        freeCompilerArgs.add("-Xskip-prerelease-check")
-        freeCompilerArgs.add("-Xallow-unstable-dependencies")
-        freeCompilerArgs.add("-Xwarning-level=NOTHING_TO_INLINE:disabled")
-    }
+tasks.withType<KotlinCompile> {
+    kotlinOptions.jvmTarget = "11"
+    kotlinOptions.languageVersion = "2.0"
+    kotlinOptions { freeCompilerArgs += "-Xskip-prerelease-check"; freeCompilerArgs += "-Xallow-unstable-dependencies" }
 }
 
 tasks.withType<JavaCompile> {
@@ -528,103 +529,36 @@ application {
 
 var destination: File? = null
 
-val fatJar = tasks.register("fatJar", fun Jar.() {
+val fatJar = task("fatJar", type = Jar::class) {
     destination = destinationDirectory.get().asFile
     archiveBaseName.set("${project.name}-fat-${os.name.lowercase()}-${architecture.name.lowercase()}")
     manifest {
-        attributes["Implementation-Title"] = project.name.replaceFirstChar { it.uppercaseChar() }
+        attributes["Implementation-Title"] = project.name.capitalized()
         attributes["Implementation-Version"] = project.version
         attributes["Main-Class"] = application.mainClass
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     exclude("META-INF/maven/**")
-
-
-    exclude("com/sun/jna/*sparc*/**")
-    exclude("com/sun/jna/*ppc*/**")
-    exclude("com/sun/jna/*mips*/**")
-    exclude("com/sun/jna/*riscv*/**")
-    exclude("com/sun/jna/*s390x*/**")
-
-    if (PlatformInfo.OS != OSTypes.WINDOWS) {
-        exclude("com/sun/jna/win32*/**")
-        exclude("com/sun/jna/platform/win32/**")
-        exclude("com/sun/jna/platform/wince/**")
-        exclude("org/lwjgl/system/windows/**")
-        exclude("oshi/software/os/windows/**")
-        exclude("oshi/hardware/platform/windows/**")
-        exclude("oshi/driver/windows/**")
-    }
-    if (PlatformInfo.OS != OSTypes.MAC) {
-        exclude("com/sun/jna/darwin*/**")
-        exclude("com/sun/jna/platform/mac/**")
-        exclude("org/lwjgl/system/macosx/**")
-        exclude("oshi/software/os/mac/**")
-        exclude("oshi/hardware/platform/mac/**")
-        exclude("oshi/driver/mac/**")
-    }
-    if (PlatformInfo.OS != OSTypes.UNIX) {
-        exclude("com/sun/jna/aix*/**")
-        exclude("com/sun/jna/sunos*/**")
-        exclude("com/sun/jna/freebsd*/**")
-        exclude("com/sun/jna/openbsd*/**")
-        exclude("com/sun/jna/dragonflybsd*/**")
-        exclude("com/sun/jna/platform/unix/**")
-        exclude("com/sun/jna/platform/bsd/**")
-        exclude("oshi/software/os/unix/**")
-        exclude("oshi/hardware/platform/unix/**")
-        exclude("oshi/driver/unix/**")
-        exclude("org/lwjgl/system/freebsd/**")
-    }
-    if (PlatformInfo.OS != OSTypes.LINUX) {
-        exclude("com/sun/jna/platform/linux/**")
-        exclude("com/sun/jna/linux*/**")
-        exclude("org/lwjgl/system/linux/**")
-        exclude("oshi/software/os/linux/**")
-        exclude("oshi/hardware/platform/linux/**")
-        exclude("oshi/driver/linux/**")
-    }
-
-    exclude("com/sun/jna/*loongarch64/**")
-    exclude("com/sun/jna/*armel/**")
-    if (PlatformInfo.ARCHITECTURE != Architectures.AMD64) {
-        exclude("com/sun/jna/*x86-64/**")
-    }
-    if (PlatformInfo.ARCHITECTURE != Architectures.X86) {
-        exclude("com/sun/jna/*x86/**")
-    }
-    if (PlatformInfo.ARCHITECTURE != Architectures.ARM) {
-        exclude("com/sun/jna/*arm/**")
-    }
-    if (PlatformInfo.ARCHITECTURE != Architectures.AARCH64) {
-        exclude("com/sun/jna/*aarch64/**")
-    }
-
-
-    // exclude("it/unimi/dsi/fastutil/doubles/**")
-    exclude("it/unimi/dsi/fastutil/longs/**")
-    exclude("it/unimi/dsi/fastutil/io/**")
-    exclude("it/unimi/dsi/fastutil/bytes/**")
-    exclude("it/unimi/dsi/fastutil/booleans/**")
-    exclude("it/unimi/dsi/fastutil/chars/**")
-    exclude("it/unimi/dsi/fastutil/shorts/**")
-
-
     // TODO: This is bad! dnsjava is a multi release jar, and that a class is only present with java>18. See https://github.com/dnsjava/dnsjava/issues/329 and https://github.com/Bixilon/Minosoft/issues/33
     exclude("META-INF/services/java.net.spi.InetAddressResolverProvider")
     from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
     with(tasks["jar"] as CopySpec)
-})
+
+    // TODO: exclude a lot of unneeded files
+
+    // remote other platforms from com.sun.jna
+    // remove most of it.unimi.fastutil classes
+}
 
 
-tasks.register("assetsProperties", fun JavaExec.() {
+task("assetsProperties", type = JavaExec::class) {
     dependsOn("processResources", "compileKotlin", "compileJava")
     classpath(project.configurations.runtimeClasspath.get(), tasks["jar"])
     standardOutput = System.out
     mainClass.set("de.bixilon.minosoft.assets.properties.version.generator.AssetsPropertiesGenerator")
-})
+}
 
-tasks.register("upload") {
+task("upload") {
     dependsOn("fatJar")
     doLast {
         val base = (destination ?: File("build/libs"))

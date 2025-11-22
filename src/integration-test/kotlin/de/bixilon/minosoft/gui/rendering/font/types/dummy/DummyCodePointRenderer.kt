@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.font.types.dummy
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.font.renderer.code.AscentedCodePointRenderer
 import de.bixilon.minosoft.gui.rendering.font.renderer.code.AscentedCodePointRenderer.Companion.DEFAULT_ASCENT
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTexture
 
 class DummyCodePointRenderer(
-    override val uvStart: Vec2f = Vec2f(0.1f, 0.2f),
-    override val uvEnd: Vec2f = Vec2f(0.6f, 0.7f),
+    override val uvStart: Vec2 = Vec2(0.1f, 0.2f),
+    override val uvEnd: Vec2 = Vec2(0.6f, 0.7f),
     override val width: Float = 5.0f,
     override val ascent: Float = DEFAULT_ASCENT,
     override val height: Float = 8.0f,

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,9 @@
 
 package de.bixilon.minosoft.gui.rendering.camera.view
 
-import de.bixilon.kmath.vec.vec2.d.Vec2d
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec2.Vec2d
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.input.camera.MovementInputActions
@@ -34,7 +34,7 @@ interface CameraView {
     val eyePosition: Vec3d
 
     val rotation: EntityRotation
-    val front: Vec3f
+    val front: Vec3
 
     val fovMultiplier: Float get() = 1.0f
 

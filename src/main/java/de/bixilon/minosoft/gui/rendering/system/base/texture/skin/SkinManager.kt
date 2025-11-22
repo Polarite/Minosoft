@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base.texture.skin
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.kutil.exception.ExceptionUtil.catchAll
 import de.bixilon.minosoft.assets.AssetsManager
 import de.bixilon.minosoft.config.profile.profiles.account.AccountProfileManager
@@ -27,6 +27,7 @@ import de.bixilon.minosoft.gui.rendering.system.base.texture.data.buffer.Texture
 import de.bixilon.minosoft.gui.rendering.system.base.texture.skin.vanilla.DefaultSkinProvider
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.isBlack
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.readTexture
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY_INSTANCE
 import java.io.ByteArrayInputStream
 import java.util.*
 
@@ -81,7 +82,7 @@ class SkinManager(private val textures: TextureManager) {
             32 -> {
                 // <1.8 legacy skin
                 val next = RGBA8Buffer(Vec2i(64))
-                next.put(data, Vec2i.EMPTY, Vec2i.EMPTY, data.size)
+                next.put(data, Vec2i.EMPTY_INSTANCE, Vec2i.EMPTY_INSTANCE, data.size)
 
                 next.put(next, Vec2i(0, 16), Vec2i(16, 48), Vec2i(16, 16))// leg [0, 16][16,16] to left leg [16, 48]
                 next.put(next, Vec2i(40, 16), Vec2i(32, 48), Vec2i(16, 16)) // arm [40, 16] to left arm [32, 48]
@@ -104,7 +105,7 @@ class SkinManager(private val textures: TextureManager) {
         }
 
         private fun TextureBuffer.isReallyWide(): Boolean {
-            // check if pixel at arm (wide, not slim) is black. If not, its a wide skin
+            // check if pixel at arm (wide, not slim) is black. If not, its a wide skinn
             if (!this[50, 16].isBlack()) return true // left arm slim
             if (!this[42, 48].isBlack()) return true // right arm slim
 

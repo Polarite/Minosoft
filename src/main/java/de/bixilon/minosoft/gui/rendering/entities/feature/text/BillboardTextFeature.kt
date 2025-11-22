@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,39 +13,37 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.feature.text
 
-import de.bixilon.kmath.mat.mat4.f.MMat4f
-import de.bixilon.kmath.mat.mat4.f.Mat4Operations
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kutil.primitive.FloatUtil.rad
+import de.bixilon.kotlinglm.func.rad
+import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.text.ChatComponent
-import de.bixilon.minosoft.gui.rendering.entities.feature.mesh.MeshedFeature
+import de.bixilon.minosoft.gui.rendering.entities.feature.properties.MeshedFeature
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
 import de.bixilon.minosoft.gui.rendering.entities.visibility.EntityLayer
-import de.bixilon.minosoft.gui.rendering.entities.visibility.EntityVisibilityLevels
 import de.bixilon.minosoft.gui.rendering.font.renderer.component.ChatComponentRenderer
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.CharSpacing
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderInfo
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.system.base.BlendingFunctions
 import de.bixilon.minosoft.gui.rendering.system.base.DepthFunctions
-import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
-import kotlin.time.Duration
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.reset
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.translateXAssign
+import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.translateYAssign
 
 open class BillboardTextFeature(
     renderer: EntityRenderer<*>,
     text: ChatComponent?,
     offset: Float = DEFAULT_OFFSET,
-) : MeshedFeature<Mesh>(renderer) {
-    override val priority get() = 10000
+) : MeshedFeature<BillboardTextMesh>(renderer) {
+    override val priority: Int get() = 10000
     private var info: TextRenderInfo? = null
-    private var matrix = MMat4f()
+    private var matrix = Mat4()
     var text: ChatComponent? = text
         set(value) {
             if (field == value) return
             field = value
-            info = null
-            unload = true
+            unload()
         }
     var offset: Float = offset
         set(value) {
@@ -55,25 +53,26 @@ open class BillboardTextFeature(
 
     override val layer get() = EntityLayer.Translucent
 
-    override fun update(delta: Duration) {
-        super.update(delta)
-        if (unload || this.mesh == null) {
-            val text = this.text ?: return
-            if (text.length == 0) return
+    override fun update(millis: Long, delta: Float) {
+        if (!_enabled) return unload()
+        if (!isInRenderDistance()) return unload()
+        if (this.mesh == null) {
+            val text = this.text ?: return unload()
+            if (text.length == 0) return unload()
             createMesh(text)
         }
         updateMatrix()
     }
 
     protected open fun isInRenderDistance(): Boolean {
-        return renderer.distance2 <= (RENDER_DISTANCE * RENDER_DISTANCE)
+        return renderer.distance <= (RENDER_DISTANCE * RENDER_DISTANCE)
     }
 
     private fun createMesh(text: ChatComponent) {
-        val mesh = BillboardTextMeshBuilder(renderer.renderer.context)
+        val mesh = BillboardTextMesh(renderer.renderer.context)
         val info = ChatComponentRenderer.render3d(renderer.renderer.context, PROPERTIES, MAX_SIZE, mesh, text)
 
-        this.mesh = mesh.bake()
+        this.mesh = mesh
         this.info = info
     }
 
@@ -81,18 +80,17 @@ open class BillboardTextFeature(
         // TODO: update matrix only on demand (and maybe do the camera rotation somewhere else and cached)
         val width = this.info?.size?.x ?: return
         val mat = renderer.renderer.context.camera.view.view.rotation
-        this.matrix.clearAssign()
-        this.matrix.apply {
-            translateYAssign(renderer.entity.dimensions.y + offset)
-            rotateYAssign((EntityRotation.HALF_CIRCLE_DEGREE - mat.yaw).rad)
-            rotateXAssign((180.0f - mat.pitch).rad)
-            translateXAssign(width / -2.0f * BillboardTextMeshBuilder.SCALE); translateYAssign(-PROPERTIES.lineHeight * BillboardTextMeshBuilder.SCALE)
-        }
+        this.matrix.reset()
+        this.matrix
+            .translateYAssign(renderer.entity.dimensions.y + offset)
+            .rotateYassign((EntityRotation.HALF_CIRCLE_DEGREE - mat.yaw).rad)
+            .rotateXassign((180.0f - mat.pitch).rad)
+            .translateXAssign(width / -2.0f * BillboardTextMesh.SCALE).translateYAssign(-PROPERTIES.lineHeight * BillboardTextMesh.SCALE)
 
-        Mat4Operations.times(renderer.matrix.unsafe, matrix.unsafe, matrix)
+        this.matrix = renderer.matrix * matrix
     }
 
-    override fun draw(mesh: Mesh) {
+    override fun draw(mesh: BillboardTextMesh) {
         renderer.renderer.context.system.reset(
             blending = true,
             sourceRGB = BlendingFunctions.SOURCE_ALPHA,
@@ -104,21 +102,23 @@ open class BillboardTextFeature(
         )
         val shader = renderer.renderer.features.text.shader
         shader.use()
-        shader.matrix = matrix.unsafe
+        shader.matrix = matrix
         shader.tint = renderer.light.value
         super.draw(mesh)
     }
 
-    override fun updateVisibility(level: EntityVisibilityLevels) = when {
-        level < EntityVisibilityLevels.OCCLUDED -> super.updateVisibility(level)
-        !isInRenderDistance() -> super.updateVisibility(EntityVisibilityLevels.OUT_OF_VIEW_DISTANCE)
-        level == EntityVisibilityLevels.OCCLUDED -> super.updateVisibility(EntityVisibilityLevels.VISIBLE)
-        else -> super.updateVisibility(level)
+    override fun updateVisibility(occluded: Boolean) {
+        this.visible = true
+    }
+
+    override fun unload() {
+        this.info = null
+        super.unload()
     }
 
     companion object {
         val PROPERTIES = TextRenderProperties(allowNewLine = false, shadow = false, charSpacing = CharSpacing(top = 1.0f, bottom = 1.0f))
-        val MAX_SIZE = Vec2f(300.0f, PROPERTIES.lineHeight)
+        val MAX_SIZE = Vec2(300.0f, PROPERTIES.lineHeight)
         const val DEFAULT_OFFSET = 0.25f
         const val RENDER_DISTANCE = 48
     }

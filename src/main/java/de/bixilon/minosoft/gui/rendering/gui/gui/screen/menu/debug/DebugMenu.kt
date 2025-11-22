@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.menu.debug
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
 import de.bixilon.minosoft.data.world.weather.WorldWeather
@@ -33,7 +33,7 @@ class DebugMenu(guiRenderer: GUIRenderer) : Menu(guiRenderer) {
 
     init {
         this += TextElement(guiRenderer, "Debug options", background = null, properties = TextRenderProperties(HorizontalAlignments.CENTER))
-        this += SpacerElement(guiRenderer, Vec2f(0, 10))
+        this += SpacerElement(guiRenderer, Vec2(0, 10))
 
         this += ButtonElement(guiRenderer, "Switch to next gamemode") { session.util.typeChat("/gamemode ${session.player.gamemode.next().name.lowercase()}") }
         this += ButtonElement(guiRenderer, "Hack to next gamemode") { session.player.additional.apply { gamemode = gamemode.next() } }

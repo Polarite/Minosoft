@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.local
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
-import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.chat.message.SimpleChatMessage
@@ -23,14 +22,12 @@ import de.bixilon.minosoft.data.entities.entities.player.additional.AdditionalDa
 import de.bixilon.minosoft.data.entities.entities.player.local.Abilities
 import de.bixilon.minosoft.data.registries.dimension.DimensionProperties
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
-import de.bixilon.minosoft.data.text.BaseComponent
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.local.generator.ChunkGenerator
 import de.bixilon.minosoft.local.storage.WorldStorage
+import de.bixilon.minosoft.modding.event.events.DimensionChangeEvent
 import de.bixilon.minosoft.modding.event.events.TabListEntryChangeEvent
 import de.bixilon.minosoft.modding.event.events.chat.ChatMessageEvent
-import de.bixilon.minosoft.modding.event.events.chat.ChatMessageSendEvent
-import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.ServerConnection
 import de.bixilon.minosoft.protocol.network.session.Session
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -52,6 +49,7 @@ class LocalConnection(
     private lateinit var session: PlaySession
     lateinit var chunks: LocalChunkManager
 
+
     fun sendMessage(message: Any, type: ResourceLocation = DefaultMessageTypes.CHAT) {
         val type = session.registries.messageType[type]!!
         session.events.fire(ChatMessageEvent(session, SimpleChatMessage(ChatComponent.of(message), type)))
@@ -60,7 +58,7 @@ class LocalConnection(
 
     override fun connect(session: Session) {
         if (session !is PlaySession) throw IllegalStateException("Not a play session?")
-        Log.log(LogMessageType.NETWORK, LogLevels.INFO) { "Establishing local connection" }
+        Log.log(LogMessageType.NETWORK, LogLevels.INFO) { "Establishing debug connection" }
         active = true
         this.session = session
         this.chunks = LocalChunkManager(session, storage.invoke(session), generator.invoke(session))
@@ -79,6 +77,7 @@ class LocalConnection(
 
         session.player.abilities = Abilities(flying = true, allowFly = true)
 
+        session.events.fire(DimensionChangeEvent(session))
         session.state = PlaySessionStates.SPAWNING
 
         val additional = session.player.additional
@@ -88,20 +87,14 @@ class LocalConnection(
 
         session.events.fire(TabListEntryChangeEvent(session, mapOf(session.player.uuid to AdditionalDataUpdate())))
 
-
-        Log.log(LogMessageType.NETWORK, LogLevels.INFO) { "Loading local world" }
-        chunks.storage.load(session.world)
-        DefaultThreadPool += { chunks.update() }
-        Log.log(LogMessageType.NETWORK, LogLevels.INFO) { "Loaded local world!" }
-
-        session.player.physics.forceTeleport(Vec3d(0.5, 20.0, 0.5)) // TODO: teleport on ground (after world is loaded)
-
-
-        session.events.listen<ChatMessageSendEvent> { sendMessage(BaseComponent(session.player.name, "> ", it.message.replace('&', '§'))) }
-
+        session.player.physics.forceTeleport(Vec3d(0, 20, 0))
         session.state = PlaySessionStates.PLAYING
 
         sendMessage("§e${session.player.name} §ejoined the game!")
+
+
+        chunks.storage.loadWorld(session.world)
+        chunks.update()
     }
 
     override fun disconnect() {

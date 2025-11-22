@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.models.loader
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.latch.SimpleLatch
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
@@ -30,17 +30,17 @@ import de.bixilon.minosoft.gui.rendering.system.dummy.DummyRenderSystem
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTexture
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTextureManager
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil
-import de.bixilon.minosoft.test.ITUtil.allocate
+import de.bixilon.minosoft.test.IT
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
-@Test(groups = ["skeletal"])
+@Test(groups = ["rendering", "skeletal"])
 class SkeletalLoaderTest {
     private val dummyModel = minosoft("model/dummy").sModel()
 
 
     private fun createContext(): RenderContext {
-        val context = RenderContext::class.java.allocate()
+        val context = IT.OBJENESIS.newInstance(RenderContext::class.java)
         context::session.forceSet(SessionTestUtil.createSession())
         context::system.forceSet(DummyRenderSystem(context))
         context::textures.forceSet(DummyTextureManager(context))
@@ -87,6 +87,6 @@ class SkeletalLoaderTest {
         val baked = loader[dummyModel]!!
 
 
-        assertEquals(baked.transform.children, mapOf("body" to BakedSkeletalTransform(1, Vec3f(0.0f, 0.5f, 0.0f), mapOf("head" to BakedSkeletalTransform(2, Vec3f(0.0f, 1.0f, 0.0f), emptyMap())))))
+        assertEquals(baked.transform.children, mapOf("body" to BakedSkeletalTransform(1, Vec3(0.0, 0.5, 0.0), mapOf("head" to BakedSkeletalTransform(2, Vec3(0.0, 1.0, 0.0), emptyMap())))))
     }
 }

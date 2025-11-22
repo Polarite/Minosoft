@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.box
 
-import de.bixilon.kmath.mat.mat4.f.Mat4f
+import de.bixilon.kotlinglm.mat4x4.Mat4
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
 import de.bixilon.minosoft.gui.rendering.shader.Shader
 import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
 
 class SkyboxColorShader(
-    native: NativeShader,
-) : Shader(native) {
-    var skyViewProjectionMatrix by uniform("uSkyViewProjectionMatrix", Mat4f())
+    override val native: NativeShader,
+) : Shader() {
+    var skyViewProjectionMatrix by uniform("uSkyViewProjectionMatrix", Mat4())
     var skyColor by uniform("uSkyColor", ChatColors.BLACK)
 }

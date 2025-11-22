@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -37,31 +37,32 @@ import de.bixilon.minosoft.data.entities.entities.player.Hands
 import de.bixilon.minosoft.data.entities.entities.player.local.PlayerItemManager
 import de.bixilon.minosoft.data.registries.containers.ContainerFactory
 import de.bixilon.minosoft.data.registries.containers.ContainerType
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.c2s.play.entity.player.ClientActionC2SP
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions.V_17W13B
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 // https://c4k3.github.io/wiki.vg/images/1/13/Inventory-slots.png
 class PlayerInventory(
-    val manager: PlayerItemManager,
+    private val items: PlayerItemManager,
     session: PlaySession,
-) : Container(session = session, type = TYPE, id = CONTAINER_ID), ClientContainer {
+) : Container(session = session, type = TYPE), ClientContainer {
     override val sections: Array<ContainerSection> get() = SECTIONS
     val equipment: LockMap<EquipmentSlots, ItemStack> = lockMapOf()
 
     init {
-        this.items::slots.observeMap(this) {
-            for ((slotId, _) in it.removes) {
-                if (slotId - HOTBAR_OFFSET == manager.hotbar) {
+        this::slots.observeMap(this) {
+            for ((slotId, stack) in it.removes) {
+                if (slotId - HOTBAR_OFFSET == items.hotbar) {
                     this.equipment -= EquipmentSlots.MAIN_HAND
                     continue
                 }
                 this.equipment -= slotId.equipmentSlot ?: continue
             }
             for ((slotId, stack) in it.adds) {
-                if (slotId - HOTBAR_OFFSET == manager.hotbar) {
+                if (slotId - HOTBAR_OFFSET == items.hotbar) {
                     this.equipment[EquipmentSlots.MAIN_HAND] = stack
                     continue
                 }
@@ -71,35 +72,35 @@ class PlayerInventory(
     }
 
 
-    fun getHotbarSlot(slot: Int = manager.hotbar): ItemStack? {
-        assert(slot in 0..HOTBAR_SLOTS) { "Hotbar slot out of bounds!" }
-        return items[slot + HOTBAR_OFFSET]
-    }
-
-    fun setHotbarSlot(slot: Int = manager.hotbar, value: ItemStack?) {
-        assert(slot in 0..HOTBAR_SLOTS) { "Hotbar slot out of bounds!" }
-        items[slot + HOTBAR_OFFSET] = value
+    fun getHotbarSlot(hotbarSlot: Int = items.hotbar): ItemStack? {
+        check(hotbarSlot in 0..HOTBAR_SLOTS) { "Hotbar slot out of bounds!" }
+        return this[hotbarSlot + HOTBAR_OFFSET]
     }
 
     operator fun get(slot: EquipmentSlots): ItemStack? {
-        return items[slot.slot]
+        return this[slot.slot]
     }
 
     operator fun set(slot: EquipmentSlots, stack: ItemStack?) {
-        items[slot.slot] = stack
+        this[slot.slot] = stack
     }
 
-    operator fun get(hand: Hands) = this[hand.slot]
-
-    operator fun set(hand: Hands, stack: ItemStack?) {
-        this[hand.slot] = stack
+    operator fun get(hand: Hands): ItemStack? {
+        return this[(when (hand) {
+            Hands.MAIN -> EquipmentSlots.MAIN_HAND
+            Hands.OFF -> EquipmentSlots.OFF_HAND
+        })]
     }
 
     @JvmName("setEquipment")
     fun set(vararg slots: Pair<EquipmentSlots, ItemStack?>) {
+        val realSlots: MutableList<Pair<Int, ItemStack?>> = mutableListOf()
+
         for ((slot, stack) in slots) {
-            items[slot.slot] = stack
+            realSlots += Pair(slot.slot, stack)
         }
+
+        set(*realSlots.toTypedArray())
     }
 
     override fun onOpen() {
@@ -135,7 +136,7 @@ class PlayerInventory(
             EquipmentSlots.LEGS -> ARMOR_OFFSET + 2
             EquipmentSlots.FEET -> ARMOR_OFFSET + 3
 
-            EquipmentSlots.MAIN_HAND -> manager.hotbar + HOTBAR_OFFSET
+            EquipmentSlots.MAIN_HAND -> items.hotbar + HOTBAR_OFFSET
             EquipmentSlots.OFF_HAND -> OFFHAND_SLOT
         }
 
@@ -153,7 +154,7 @@ class PlayerInventory(
 
     companion object : ContainerFactory<PlayerInventory> {
         const val CONTAINER_ID = 0
-        override val identifier = minecraft("player_inventory")
+        override val identifier: ResourceLocation = "minecraft:player_inventory".toResourceLocation()
         val TYPE = ContainerType(
             identifier = identifier,
             factory = this,
@@ -176,7 +177,7 @@ class PlayerInventory(
             HotbarSection(HOTBAR_OFFSET, false),
         )
 
-        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int, id: Int): PlayerInventory {
+        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int): PlayerInventory {
             Broken("Can not create player inventory!")
         }
     }

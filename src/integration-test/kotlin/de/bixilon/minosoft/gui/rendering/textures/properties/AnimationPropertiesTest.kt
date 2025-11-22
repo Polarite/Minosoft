@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,11 @@
 
 package de.bixilon.minosoft.gui.rendering.textures.properties
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.assets.util.InputStreamUtil.readJson
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 import java.io.ByteArrayInputStream
-import kotlin.time.Duration.Companion.seconds
 
 @Test(groups = ["textures"])
 class AnimationPropertiesTest {
@@ -41,10 +40,10 @@ class AnimationPropertiesTest {
 
         val data = properties.animation!!.create(Vec2i(16, 64))
         assertEquals(data, AnimationProperties.FrameData(listOf(
-            AnimationProperties.Frame(0.1.seconds, 2),
-            AnimationProperties.Frame(0.2.seconds, 1),
-            AnimationProperties.Frame(0.2.seconds, 2),
-            AnimationProperties.Frame(0.2.seconds, 3),
+            AnimationProperties.Frame(0.1f, 2),
+            AnimationProperties.Frame(0.2f, 1),
+            AnimationProperties.Frame(0.2f, 2),
+            AnimationProperties.Frame(0.2f, 3),
         ), 4, Vec2i(16, 16)))
 
     }

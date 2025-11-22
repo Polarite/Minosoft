@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,12 @@
 
 package de.bixilon.minosoft.data.entities.entities.player.local
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.minosoft.data.Tickable
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.entities.Entity
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.physics.entities.living.player.local.LocalPlayerPhysics
 import de.bixilon.minosoft.protocol.packets.c2s.play.entity.EntityActionC2SP
 import de.bixilon.minosoft.protocol.packets.c2s.play.entity.move.GroundChangeC2SP
@@ -49,7 +50,7 @@ class MovementPacketSender(
         if (this.sprinting == sprinting) {
             return
         }
-        session.connection.send(EntityActionC2SP(player.id, if(sprinting) EntityActionC2SP.EntityActions.START_SPRINTING else EntityActionC2SP.EntityActions.STOP_SPRINTING))
+        session.connection.send(EntityActionC2SP(player, session, sprinting.decide(EntityActionC2SP.EntityActions.START_SPRINTING, EntityActionC2SP.EntityActions.STOP_SPRINTING)))
         this.sprinting = sprinting
     }
 
@@ -57,7 +58,7 @@ class MovementPacketSender(
         if (this.sneaking == sneaking) {
             return
         }
-        session.connection.send(EntityActionC2SP(player.id, if(sneaking) EntityActionC2SP.EntityActions.START_SNEAKING else EntityActionC2SP.EntityActions.STOP_SNEAKING))
+        session.connection.send(EntityActionC2SP(player, session, sneaking.decide(EntityActionC2SP.EntityActions.START_SNEAKING, EntityActionC2SP.EntityActions.STOP_SNEAKING)))
         this.sneaking = sneaking
     }
 
@@ -75,7 +76,7 @@ class MovementPacketSender(
     private fun sendMovement(position: Vec3d, rotation: EntityRotation, onGround: Boolean) {
         this.lastPacket++
 
-        val positionChange = Vec3dUtil.distance2(position, this.position) > MIN_MOVEMENT_SQUARED
+        val positionChange = (position - this.position).length2() > MIN_MOVEMENT_SQUARED
         val sendPosition = positionChange || this.lastPacket >= MAX_POSITION_PACKET_INTERVAL
         val sendRotation = rotation != this.rotation
 

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2022 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,11 +14,10 @@
 package de.bixilon.minosoft.gui.rendering.gui
 
 import de.bixilon.minosoft.gui.rendering.RenderContext
-import de.bixilon.minosoft.gui.rendering.gui.hud.Skippable
 import de.bixilon.minosoft.gui.rendering.gui.input.DraggableHandler
 import de.bixilon.minosoft.gui.rendering.input.InputHandler
 
-interface GUIElement : InputHandler, DraggableHandler, Skippable {
+interface GUIElement : InputHandler, DraggableHandler {
     val guiRenderer: GUIRenderer
     val context: RenderContext
     var enabled: Boolean
@@ -53,6 +52,4 @@ interface GUIElement : InputHandler, DraggableHandler, Skippable {
     fun onOpen() = Unit
     fun onHide() = Unit
     fun onClose() = Unit
-
-    fun unload() = Unit
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.sound
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.data.SoundCategories
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.modding.event.events.PlaySoundEvent
@@ -26,15 +26,12 @@ import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
-import org.jetbrains.annotations.NotNull
 
 class NamedSoundS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
     val soundEvent: ResourceLocation?
     val volume: Float
     val pitch: Float
-
-    @NotNull
-    var position: Vec3d? = null
+    lateinit var position: Vec3d
         private set
     var category: SoundCategories? = null
         private set
@@ -75,7 +72,6 @@ class NamedSoundS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
     }
 
     override fun log(reducedLog: Boolean) {
-        if (reducedLog) return
         Log.log(LogMessageType.NETWORK_IN, level = LogLevels.VERBOSE) { "Named sound event (sound=$soundEvent, volume=$volume, pitch=$pitch, position=$position, category=$category)" }
     }
 }

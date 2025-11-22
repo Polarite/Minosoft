@@ -23,7 +23,7 @@ import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.world.time.WorldTime
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.play.PlaySessionStates
-import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil.INTERVAL
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 class SessionTicker(private val session: PlaySession) {
     private val tasks: MutableSet<RepeatedTask> = mutableSetOf()
@@ -39,27 +39,27 @@ class SessionTicker(private val session: PlaySession) {
             } else {
                 // Ticks are postponed 10 ticks
                 // When joining/respawning the lock on chunks, etc is the performance bottleneck and makes the game laggy.
-                runLater(TickUtil.TIME_PER_TICK * 10) { register() }
+                runLater(10 * ProtocolDefinition.TICK_TIME) { register() }
             }
         }
     }
 
     private fun addDefault() {
-        tasks += RepeatedTask(INTERVAL) {
+        tasks += RepeatedTask(INTERVAL, maxDelay = MAX_DELAY) {
             session.world.entities.tick()
         }
-        tasks += RepeatedTask(INTERVAL) {
+        tasks += RepeatedTask(INTERVAL, maxDelay = MAX_DELAY) {
             session.world.tick()
         }
-        tasks += RepeatedTask(INTERVAL) {
+        tasks += RepeatedTask(INTERVAL, maxDelay = MAX_DELAY) {
             session.world.randomDisplayTick()
         }
 
         if (DebugOptions.LIGHT_DEBUG_MODE || DebugOptions.INFINITE_TORCHES) {
-            tasks += RepeatedTask(INTERVAL) { session.player.items.inventory.items[44] = ItemStack(session.registries.item["minecraft:torch"]!!, Int.MAX_VALUE) }
+            tasks += RepeatedTask(INTERVAL, maxDelay = MAX_DELAY) { session.player.items.inventory[44] = ItemStack(session.registries.item["minecraft:torch"]!!, Int.MAX_VALUE) }
         }
         if (DebugOptions.SIMULATE_TIME) {
-            tasks += RepeatedTask(INTERVAL) {
+            tasks += RepeatedTask(INTERVAL, maxDelay = MAX_DELAY) {
                 val time = session.world.time.time
                 val offset = if (time in 11800..13300 || (time < 300 || time > 22800)) {
                     20
@@ -105,7 +105,7 @@ class SessionTicker(private val session: PlaySession) {
 
     fun register(runnable: Runnable) {
         lock.lock()
-        val task = RepeatedTask(INTERVAL, runnable = runnable)
+        val task = RepeatedTask(INTERVAL, maxDelay = MAX_DELAY, runnable = runnable)
         this.tasks += task
         if (registered) {
             TaskScheduler += task
@@ -114,4 +114,9 @@ class SessionTicker(private val session: PlaySession) {
     }
 
     operator fun plusAssign(runnable: Runnable) = register(runnable)
+
+    private companion object {
+        const val INTERVAL = ProtocolDefinition.TICK_TIME
+        const val MAX_DELAY = INTERVAL / 2
+    }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -28,7 +28,6 @@ import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.InputStream
 import java.nio.file.Path
-import kotlin.io.path.div
 import kotlin.io.path.relativeTo
 
 
@@ -41,7 +40,7 @@ class DirectoryAssetsManager(
     private val canUnload: Boolean = true,
     val prefix: String = AssetsManager.DEFAULT_ASSETS_PREFIX,
 ) : AssetsManager {
-    private val basePath = rootPath / prefix
+    private val basePath = rootPath.resolve(prefix)
     private var assets: MutableSet<ResourceLocation> = ObjectOpenHashSet()
     override var loaded: Boolean = false
         private set
@@ -51,7 +50,7 @@ class DirectoryAssetsManager(
         private set
 
     private val ResourceLocation.filePath: Path
-        get() = basePath / namespace / path
+        get() = basePath.resolve(namespace).resolve(path)
 
     private fun scanDirectory(root: Boolean, directory: File) {
         for (file in directory.listFiles() ?: return) {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -17,7 +17,8 @@ import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedSetOf
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedSet
-import de.bixilon.kutil.concurrent.worker.unconditional.UnconditionalWorker
+import de.bixilon.kutil.concurrent.worker.task.TaskWorker
+import de.bixilon.kutil.concurrent.worker.task.WorkerTask
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.latch.AbstractLatch.Companion.child
@@ -46,7 +47,6 @@ import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.world.World
 import de.bixilon.minosoft.gui.eros.dialog.ErosErrorReport.Companion.report
 import de.bixilon.minosoft.gui.rendering.Rendering
-import de.bixilon.minosoft.gui.rendering.RenderingOptions
 import de.bixilon.minosoft.modding.event.events.chat.ChatMessageEvent
 import de.bixilon.minosoft.modding.event.events.loading.RegistriesLoadEvent
 import de.bixilon.minosoft.modding.event.events.session.play.PlaySessionCreateEvent
@@ -66,6 +66,7 @@ import de.bixilon.minosoft.protocol.packets.c2s.login.StartC2SP
 import de.bixilon.minosoft.protocol.protocol.ProtocolStates
 import de.bixilon.minosoft.protocol.versions.Version
 import de.bixilon.minosoft.tags.TagManager
+import de.bixilon.minosoft.terminal.RunConfiguration
 import de.bixilon.minosoft.terminal.cli.CLI
 import de.bixilon.minosoft.util.KUtil
 import de.bixilon.minosoft.util.KUtil.startInit
@@ -83,7 +84,7 @@ class PlaySession(
 ) : Session() {
     val sessionId = KUtil.secureRandomUUID()
     val settingsManager = ClientSettingsManager(this)
-    val registries = Registries(version = version)
+    val registries = Registries().apply { updateFlattened(version.flattened) }
     val world = World(this)
     val tabList = TabList()
     val scoreboard = ScoreboardManager(this)
@@ -118,9 +119,7 @@ class PlaySession(
     init {
         var errored = false
         this::error.observe(this) {
-            if (it == null) return@observe
-            Log.log(LogMessageType.GENERAL, LogLevels.FATAL) { it }
-            if (errored) return@observe
+            if (errored || it == null) return@observe
             ERRORED_CONNECTIONS += this
             cleanupErrors()
             state = PlaySessionStates.ERROR
@@ -162,7 +161,14 @@ class PlaySession(
                         connection.send(StartC2SP(this.player, this.sessionId))
                     }
 
-                    ProtocolStates.PLAY -> this.state = PlaySessionStates.JOINING
+                    ProtocolStates.PLAY -> {
+                        this.state = PlaySessionStates.JOINING
+
+                        if (CLI.session == null) {
+                            CLI.session = this
+                        }
+                    }
+
                     else -> Unit
                 }
             }
@@ -179,9 +185,6 @@ class PlaySession(
             }
             Log.log(LogMessageType.CHAT_IN, level = if (it.message.type.position == ChatTextPositions.HOTBAR) LogLevels.VERBOSE else LogLevels.INFO, prefix = ChatComponent.of(additionalPrefix)) { it.message.text }
         }
-        if (CLI.session == null) {
-            CLI.session = this
-        }
     }
 
 
@@ -193,8 +196,8 @@ class PlaySession(
 
             state = PlaySessionStates.LOADING_ASSETS
             var error: Throwable? = null
-            val worker = UnconditionalWorker(errorHandler = { exception -> if (error == null) error = exception })
-            worker += {
+            val taskWorker = TaskWorker(errorHandler = { _, exception -> if (error == null) error = exception })
+            taskWorker += {
                 events.fire(RegistriesLoadEvent(this, registries, RegistriesLoadEvent.States.PRE))
                 registries.parent = version.load(profiles.resources, latch.child(0))
                 registries.fluid.updateWaterLava()
@@ -202,7 +205,7 @@ class PlaySession(
                 this::legacyTags.forceSet(FallbackTags.map(registries))
             }
 
-            worker += {
+            taskWorker += {
                 Log.log(LogMessageType.ASSETS, LogLevels.INFO) { "Downloading and verifying assets. This might take a while..." }
                 assetsManager = AssetsLoader.create(profiles.resources, version, latch.child(0))
                 assetsManager.load(latch)
@@ -211,10 +214,10 @@ class PlaySession(
 
             val keyManagement = SignatureKeyManagement(this, account)
             if (version.requiresSignedChat && !profiles.session.signature.disableKeys && connection is NetworkConnection) {
-                worker += { keyManagement.init(latch) }
+                taskWorker += WorkerTask(optional = true) { keyManagement.init(latch) }
             }
 
-            worker.work(latch)
+            taskWorker.work(latch)
             error?.let { throw it }
 
             state = PlaySessionStates.LOADING
@@ -229,7 +232,7 @@ class PlaySession(
             camera.init()
 
 
-            if (RenderingOptions.disabled) {
+            if (RunConfiguration.DISABLE_RENDERING) {
                 establish(latch)
             } else {
                 establishRendering(latch)

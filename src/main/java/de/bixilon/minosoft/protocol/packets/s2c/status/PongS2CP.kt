@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,6 +12,7 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.status
 
+import de.bixilon.kutil.time.TimeUtil.nanos
 import de.bixilon.minosoft.protocol.network.session.status.StatusSession
 import de.bixilon.minosoft.protocol.network.session.status.StatusSessionStates
 import de.bixilon.minosoft.protocol.packets.s2c.StatusS2CPacket
@@ -20,7 +21,6 @@ import de.bixilon.minosoft.protocol.status.StatusPong
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
-import kotlin.time.TimeSource
 
 class PongS2CP(buffer: InByteBuffer) : StatusS2CPacket {
     val payload: Long = buffer.readLong()
@@ -28,7 +28,7 @@ class PongS2CP(buffer: InByteBuffer) : StatusS2CPacket {
     override fun handle(session: StatusSession) {
         val ping = session.ping ?: return
         session.address = session.connection?.address
-        val latency = TimeSource.Monotonic.markNow() - ping.send
+        val latency = nanos() - ping.nanos
         session.terminate()
         session.pong = StatusPong(latency)
         session.state = StatusSessionStates.PING_DONE

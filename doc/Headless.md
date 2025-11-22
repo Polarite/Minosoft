@@ -7,11 +7,11 @@ You can turn off both individually from each other.
 
 ### Eros
 
-To disable eros, just add `--no-eros` as start argument
+To disable eros, just add `--disable_eros` as start argument
 
 ### Rendering
 
-To disable rendering, just add `--no-rendering` as start argument.
+To disable rendering, just add `--disable_rendering` as start argument.
 
 ## Disable all gui
 
@@ -20,31 +20,17 @@ If present, eros and rendering will be disabled.
 
 ## Auto connect
 
-Common options:
+You can then (also if running with gui) use the `--auto_connect` argument to connect to servers automatically.
 
-| Argument             | Description                                                                                                                                                                      | Example  | Default              |
-|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------------------|
-| `--protocol-version` | Use a specific version to connect                                                                                                                                                | `1.20.4` | `automatic`          |
-| `--account`          | UUID of the account to use. You can create an account with the `account` cli command. If the account does not exist, a temporary account with that name is automatically created | `moritz` | Username of computer |
+The argument takes up to 3 parameters, split by comma:
 
-### Local
+| Index | Comment                                                                              |
+|-------|--------------------------------------------------------------------------------------|
+| 0     | Server address as string (required)                                                  |
+| 1     | Enforced version (optional, can be `automatic`)                                      |
+| 2     | Account uuid (optional, currently selected account in eros will be used as fallback) |
 
-| Argument            | Description                  | Example                 | Default  |
-|---------------------|------------------------------|-------------------------|----------|
-| `--local`           | Set connection mode to local | -                       | -        |
-| `--world-generator` | Type of the world generator  | `debug`, `flat`, `void` | `debug`  |
-| `--world-storage`   | Type of the world storage    | `debug`, `memory`       | `memory` |
-
-Example: `java -jar Minosoft.jar --local`
-
-### Server
-
-| Argument    | Description                                | Example       | Default |
-|-------------|--------------------------------------------|---------------|---------|
-| `--connect` | Set connection mode to server              | -             | -       |
-| `--address` | Address (with optional port) to connect to | `hypixel.net` | -       |
-
-Example: `java -jar Minosoft.jar --connect --address=hypixel.net --protocol-version=1.19.4 --account=9e6ce7c5-40d3-483e-8e5a-b6350987d65f`
+Example: `java -jar Minosoft.jar --auto_connect=hypixel.net,1.19.4,9e6ce7c5-40d3-483e-8e5a-b6350987d65f`
 
 ## CLI
 
@@ -75,4 +61,4 @@ Minosoft features a command line shell, that can be used to manage it. Auto comp
 
 - `say Moritz is the best developer ever!`
 
-There are way more commands, those are just examples.
+There are even more commands, those are just examples.

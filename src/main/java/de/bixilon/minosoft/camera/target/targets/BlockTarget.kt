@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,15 @@
 
 package de.bixilon.minosoft.camera.target.targets
 
-import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.block.BlockEntity
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.registries.blocks.state.PropertyBlockState
 import de.bixilon.minosoft.data.text.BaseComponent
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.formatting.TextFormattable
-import de.bixilon.minosoft.data.world.positions.BlockPosition
 import java.util.*
 
 class BlockTarget(
@@ -29,7 +30,7 @@ class BlockTarget(
     direction: Directions,
     val state: BlockState,
     val entity: BlockEntity?,
-    val blockPosition: BlockPosition,
+    val blockPosition: Vec3i,
     val inside: Boolean = false,
 ) : GenericTarget(position, distance, direction), TextFormattable {
     val cursor = position - blockPosition
@@ -48,7 +49,7 @@ class BlockTarget(
 
         text += "\n"
 
-        if (state.properties.isNotEmpty()) {
+        if (state is PropertyBlockState) {
             text += state.withProperties()
         }
 

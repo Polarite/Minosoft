@@ -13,19 +13,18 @@
 
 package de.bixilon.minosoft.local
 
-import de.bixilon.minosoft.data.world.chunk.ChunkUtil.isInViewDistance
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
-import de.bixilon.minosoft.local.generator.ChunkBuilder
 import de.bixilon.minosoft.local.generator.ChunkGenerator
 import de.bixilon.minosoft.local.storage.WorldStorage
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.protocol.packets.s2c.play.block.chunk.ChunkUtil.isInViewDistance
 
 class LocalChunkManager(
     val session: PlaySession,
     val storage: WorldStorage,
     val generator: ChunkGenerator,
 ) {
-    private var previous = ChunkPosition(-1, -1)
+    private var previous = ChunkPosition(Int.MAX_VALUE)
 
     fun update() {
         val position = session.player.physics.positionInfo.chunkPosition
@@ -58,16 +57,12 @@ class LocalChunkManager(
 
     private fun load(center: ChunkPosition, distance: Int) {
         for (x in center.x - distance..center.x + distance) {
-            for (z in center.z - distance..center.z + distance) {
+            for (z in center.y - distance..center.y + distance) {
                 val position = ChunkPosition(x, z)
-                val chunk = session.world.chunks[position]
+                var chunk = session.world.chunks[position]
                 if (chunk != null) continue
-
-                val builder = ChunkBuilder(session.world, position)
-
-                generator.generate(builder)
-
-                session.world.chunks.update(position, builder.toData(), false)
+                chunk = session.world.chunks.create(position)
+                generator.generate(chunk)
             }
         }
     }

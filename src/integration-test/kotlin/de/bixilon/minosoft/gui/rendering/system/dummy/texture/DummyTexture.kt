@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.system.dummy.texture
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureStates
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureTransparencies
@@ -26,7 +26,7 @@ import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.TextureRend
 import de.bixilon.minosoft.gui.rendering.textures.properties.ImageProperties
 
 class DummyTexture : Texture {
-    override var array = TextureArrayProperties(Vec2f(), 1, 1.0f)
+    override var array = TextureArrayProperties(Vec2(), 1, 1.0f)
     override var state: TextureStates = TextureStates.DECLARED
     override var size: Vec2i = Vec2i(1, 1)
     override val transparency: TextureTransparencies get() = TextureTransparencies.OPAQUE

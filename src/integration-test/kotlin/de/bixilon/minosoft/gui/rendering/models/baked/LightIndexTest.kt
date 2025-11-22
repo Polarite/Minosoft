@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.models.baked
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
@@ -50,8 +50,8 @@ class LightIndexTest {
     }
 
     fun cube() {
-        val from = Vec3f(0.0f)
-        val to = Vec3f(1.0f)
+        val from = Vec3(0.0f)
+        val to = Vec3(1.0f)
         val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces())), textures = mapOf("test" to minecraft("block/test").texture())))
 
         val baked = model.bake(createTextureManager("block/test"))!!
@@ -62,8 +62,8 @@ class LightIndexTest {
     }
 
     fun smallerCube() {
-        val from = Vec3f(0.1f)
-        val to = Vec3f(0.9f)
+        val from = Vec3(0.1f)
+        val to = Vec3(0.9f)
         val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces())), textures = mapOf("test" to minecraft("block/test").texture())))
 
         val baked = model.bake(createTextureManager("block/test"))!!
@@ -74,8 +74,8 @@ class LightIndexTest {
     }
 
     fun rotatedCube() {
-        val from = Vec3f(0.0f)
-        val to = Vec3f(1.0f)
+        val from = Vec3(0.0f)
+        val to = Vec3(1.0f)
         val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces())), textures = mapOf("test" to minecraft("block/test").texture())), x = 1, y = 1)
 
         val baked = model.bake(createTextureManager("block/test"))!!
@@ -86,8 +86,8 @@ class LightIndexTest {
     }
 
     fun smallerCubeOddSize() {
-        val from = Vec3f(0.1f, 0.0f, 0.0f)
-        val to = Vec3f(1.0f)
+        val from = Vec3(0.1f, 0.0f, 0.0f)
+        val to = Vec3(1.0f)
         val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces())), textures = mapOf("test" to minecraft("block/test").texture())))
 
         val baked = model.bake(createTextureManager("block/test"))!!
@@ -101,8 +101,8 @@ class LightIndexTest {
     }
 
     fun smallerCubeOddSizeRotated() {
-        val from = Vec3f(0.1f, 0.0f, 0.0f)
-        val to = Vec3f(1.0f)
+        val from = Vec3(0.1f, 0.0f, 0.0f)
+        val to = Vec3(1.0f)
         val model = SingleBlockStateApply(BlockModel(elements = listOf(ModelElement(from, to, faces = createFaces())), textures = mapOf("test" to minecraft("block/test").texture())), x = 1, y = 1)
 
         val baked = model.bake(createTextureManager("block/test"))!!

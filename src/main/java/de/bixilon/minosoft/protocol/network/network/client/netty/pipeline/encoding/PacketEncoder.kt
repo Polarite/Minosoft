@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,10 @@
 
 package de.bixilon.minosoft.protocol.network.network.client.netty.pipeline.encoding
 
-import de.bixilon.kutil.buffer.arbitrary.ArbitraryByteArray
 import de.bixilon.minosoft.protocol.network.network.client.netty.NettyClient
-import de.bixilon.minosoft.protocol.network.network.client.netty.NetworkAllocator
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.PacketNotAvailableException
 import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.WrongSessionTypeException
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.type.PacketNotAvailableException
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.type.PacketNotFoundException
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.unknown.UnknownPacketException
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.c2s.C2SPacket
 import de.bixilon.minosoft.protocol.packets.c2s.PlayC2SPacket
@@ -37,8 +35,6 @@ class PacketEncoder(
     private val client: NettyClient,
 ) : MessageToMessageEncoder<C2SPacket>() {
     private val version: Version? = client.session.version
-
-    // TODO: tests
 
     private fun PlayC2SPacket.write(): OutByteBuffer {
         if (client.session !is PlaySession) throw WrongSessionTypeException(PlaySession::class.java, client.session::class.java)
@@ -78,26 +74,23 @@ class PacketEncoder(
         throw PacketNotAvailableException(type, state, version)
     }
 
-    fun encode(packet: C2SPacket): ArbitraryByteArray? {
-        val state = client.connection.state ?: return null
+    private fun encode(packet: C2SPacket): ByteArray {
+        val state = client.connection.state!!
 
-        val type = DefaultPackets.C2S[state]?.get(packet::class) ?: throw PacketNotFoundException(packet::class)
+        val type = DefaultPackets.C2S[state]?.get(packet::class) ?: throw UnknownPacketException(packet::class.java)
         val id = getPacketId(version, state, type)
 
-        val packetData = packet.write().toArray() // TODO: remove toArray allocation
+        val packetData = packet.write()
 
-        val idData = OutByteBuffer().apply { writeVarInt(id) }.toArray()
-        val length = idData.size + packetData.size
-        val temporary = NetworkAllocator.allocate(length)
+        val data = OutByteBuffer()
+        data.writeVarInt(id)
+        data.writeBareByteArray(packetData.toArray())
 
-        System.arraycopy(idData, 0, temporary, 0, idData.size)
-        System.arraycopy(packetData, 0, temporary, idData.size, packetData.size)
-
-        return ArbitraryByteArray(0, length, temporary)
+        return data.toArray()
     }
 
-    override fun encode(context: ChannelHandlerContext?, packet: C2SPacket, out: MutableList<Any>) {
-        out += encode(packet) ?: return
+    override fun encode(context: ChannelHandlerContext, packet: C2SPacket, out: MutableList<Any>) {
+        out += encode(packet)
     }
 
     companion object {

@@ -13,115 +13,77 @@
 
 package de.bixilon.minosoft.data.world.container.block
 
-import de.bixilon.kutil.bit.set.ArrayBitSet
 import de.bixilon.kutil.concurrent.lock.Lock
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
+import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidHolder
+import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid.Companion.isWaterlogged
 import de.bixilon.minosoft.data.world.chunk.ChunkSection
-import de.bixilon.minosoft.data.world.chunk.ChunkSize
+import de.bixilon.minosoft.data.world.chunk.ChunkSection.Companion.getIndex
 import de.bixilon.minosoft.data.world.container.SectionDataProvider
-import de.bixilon.minosoft.data.world.container.block.occlusion.SectionOcclusion
-import de.bixilon.minosoft.data.world.container.block.occlusion.SectionOcclusionTracer.isFullyOpaque
-import de.bixilon.minosoft.data.world.positions.InSectionPosition
 
 class BlockSectionDataProvider(
     lock: Lock? = null,
     val section: ChunkSection,
-) : SectionDataProvider<BlockState>(lock, true) {
-    val fullOpaque = ArrayBitSet(ChunkSize.BLOCKS_PER_SECTION)
-    var fluidCount = 0
-        private set
-    var fullOpaqueCount = 0
-        private set
-    var entityCount = 0
-        private set
+) : SectionDataProvider<BlockState?>(lock, true) {
     val occlusion = SectionOcclusion(this)
+    var hasFluid = false
+        private set
 
     init {
         recalculate(false)
     }
 
-    override fun create() = arrayOfNulls<BlockState?>(ChunkSize.BLOCKS_PER_SECTION)
-
     override fun recalculate() {
         recalculate(true)
     }
 
-    private fun recalculateFlags() {
-        val data = data
-        fullOpaque.clear()
-        if (data == null || isEmpty) {
-            entityCount = 0
-            fluidCount = 0
-            fullOpaqueCount = 0
+    private fun recalculateFluid() {
+        val data: Array<Any?> = data ?: return
+        if (isEmpty) {
+            this.hasFluid = false
             return
         }
-        var fluid = 0
-        var opaque = 0
-        var entities = 0
-        for ((index, state) in data.withIndex()) {
-            if (state == null) continue
-            val flags = state.flags
 
-            if (BlockStateFlags.FLUID in flags) fluid++
-            if (BlockStateFlags.ENTITY in flags) entities++
-            if (BlockStateFlags.FULL_OPAQUE in flags) {
-                fullOpaque[index] = true
-                opaque++
+        var hasFluid = false
+        for (state in data) {
+            if (state !is BlockState?) continue
+            if (state.isFluid()) {
+                hasFluid = true
+                break
             }
         }
-        fluidCount = fluid
-        fullOpaqueCount = opaque
-        entityCount = entities
+        this.hasFluid = hasFluid
     }
 
     fun recalculate(notify: Boolean) {
         super.recalculate()
-        recalculateFlags()
-
-        occlusion.invalidate(notify)
-    }
-
-    private fun updateFluidCounter(previous: BlockState?, now: BlockState?) {
-        val previous = previous.isFluid()
-        val now = now.isFluid()
-
-        when {
-            previous == now -> Unit
-            now -> fluidCount++
-            !now -> fluidCount--
+        if (isEmpty) {
+            hasFluid = false
+            occlusion.clear(notify)
+            return
         }
-    }
-    private fun updateEntitiesCounter(previous: BlockState?, now: BlockState?) {
-        val previous = previous.isEntity()
-        val now = now.isEntity()
+        recalculateFluid()
 
-        when {
-            previous == now -> Unit
-            now -> entityCount++
-            !now -> entityCount--
+        occlusion.recalculate(notify)
+    }
+
+    fun noOcclusionSet(x: Int, y: Int, z: Int, value: BlockState?) = noOcclusionSet(getIndex(x, y, z), value)
+    fun noOcclusionSet(index: Int, value: BlockState?): BlockState? {
+        val previous = super.unsafeSet(index, value)
+        val previousFluid = previous.isFluid()
+        val valueFluid = value.isFluid()
+
+        if (!previousFluid && valueFluid) {
+            hasFluid = true
+        } else if (previousFluid && !valueFluid) {
+            recalculateFluid()
         }
+
+        return previous
     }
 
-    private fun updateFullOpaque(position: InSectionPosition, previous: BlockState?, now: BlockState?) {
-        val previous = previous.isFullyOpaque()
-        val now = now.isFullyOpaque()
-
-        fullOpaque[position.index] = now
-
-        when {
-            previous == now -> Unit
-            now -> fullOpaqueCount++
-            !now -> fullOpaqueCount--
-        }
-    }
-
-    override fun unsafeSet(position: InSectionPosition, value: BlockState?): BlockState? {
-        val previous = super.unsafeSet(position, value)
-
-        updateFluidCounter(previous, value)
-        updateEntitiesCounter(previous, value)
-        updateFullOpaque(position, previous, value)
+    override fun unsafeSet(index: Int, value: BlockState?): BlockState? {
+        val previous = noOcclusionSet(index, value)
 
         occlusion.onSet(previous, value)
 
@@ -130,11 +92,9 @@ class BlockSectionDataProvider(
 
     private fun BlockState?.isFluid(): Boolean {
         if (this == null) return false
-        return BlockStateFlags.FLUID in flags
-    }
-
-    private fun BlockState?.isEntity(): Boolean {
-        if (this == null) return false
-        return BlockStateFlags.ENTITY in flags
+        if (this.block is FluidHolder) {
+            return true
+        }
+        return this.isWaterlogged()
     }
 }

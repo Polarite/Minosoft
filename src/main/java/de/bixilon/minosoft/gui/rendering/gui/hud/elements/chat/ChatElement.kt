@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.chat
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.commands.nodes.ChatNode
 import de.bixilon.minosoft.config.key.KeyActions
 import de.bixilon.minosoft.config.key.KeyBinding
@@ -22,6 +22,7 @@ import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.chat.ChatTextPositions
 import de.bixilon.minosoft.data.chat.message.internal.InternalChatMessage
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -29,16 +30,16 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.LayoutedElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.GUIBuilder
 import de.bixilon.minosoft.gui.rendering.gui.gui.LayoutedGUIElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.elements.input.node.NodeTextInputElement
-import de.bixilon.minosoft.gui.rendering.gui.hud.Skippable
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.HUDBuilder
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
 import de.bixilon.minosoft.modding.event.events.chat.ChatMessageEvent
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.delegate.RenderingDelegate.observeRendering
 
-class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), LayoutedElement, Skippable {
+class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), LayoutedElement {
     private val chatProfile = profile.chat
     private val input = NodeTextInputElement(guiRenderer, ChatNode("", allowCLI = true), maxLength = session.version.maxChatMessageSize).apply { parent = this@ChatElement }
     private val internal = InternalChatElement(guiRenderer).apply { parent = this@ChatElement }
@@ -52,19 +53,23 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
             historyIndex = history.size + 1
             forceApply()
         }
-    override val skip // skips hud draw and draws it in gui stage
+    override var skipDraw: Boolean
+        // skips hud draw and draws it in gui stage
         get() = active || chatProfile.hidden
+        set(value) {
+            chatProfile.hidden = !value
+        }
     override val activeWhenHidden: Boolean
         get() = true
 
-    override val layoutOffset: Vec2f
-        get() = Vec2f(0.0f, guiRenderer.scaledSize.y - maxOf(messages.size.y, internal.size.y) - (LINES * TEXT_PROPERTIES.lineHeight) - CHAT_INPUT_MARGIN * 2)
+    override val layoutOffset: Vec2
+        get() = Vec2(0, guiRenderer.scaledSize.y - maxOf(messages.size.y, internal.size.y) - (LINES * TEXT_PROPERTIES.lineHeight) - CHAT_INPUT_MARGIN * 2)
 
 
     init {
-        messages.prefMaxSize = Vec2f(chatProfile.width, chatProfile.height)
-        chatProfile::width.observeRendering(this, context = context) { messages.prefMaxSize = Vec2f(it, messages.prefMaxSize.y) }
-        chatProfile::height.observeRendering(this, context = context) { messages.prefMaxSize = Vec2f(messages.prefMaxSize.x, it) }
+        messages.prefMaxSize = Vec2(chatProfile.width, chatProfile.height)
+        chatProfile::width.observeRendering(this, context = context) { messages.prefMaxSize = Vec2(it, messages.prefMaxSize.y) }
+        chatProfile::height.observeRendering(this, context = context) { messages.prefMaxSize = Vec2(messages.prefMaxSize.x, it) }
         forceSilentApply()
         input.onChangeCallback = {
             while (input._value.startsWith(' ')) {
@@ -90,7 +95,7 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
         }
 
         context.input.bindings.register(
-            minosoft("open_chat"), KeyBinding(
+            "minosoft:open_chat".toResourceLocation(), KeyBinding(
                 KeyActions.PRESS to setOf(KeyCodes.KEY_T),
             )
         ) { guiRenderer.gui.open(ChatElement) }
@@ -106,7 +111,7 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
         internal.postInit()
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         var messagesYStart = 0.0f
         val messagesSize = messages.size
         val size = size
@@ -114,25 +119,25 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
             val internalSize = internal.size
             val internalStart = if (internalSize.y > messagesSize.y) {
                 messagesYStart = internalSize.y - messagesSize.y
-                0.0f
+                0
             } else {
                 messagesSize.y - internalSize.y
             }
 
-            internal.render(offset + Vec2f(size.x - internal.size.x, internalStart), consumer, options)
+            internal.render(offset + Vec2(size.x - internal.size.x, internalStart), consumer, options)
         }
-        super.forceRender(offset + Vec2f(0f, messagesYStart), consumer, options)
+        super.forceRender(offset + Vec2(0, messagesYStart), consumer, options)
 
         if (active) {
-            input.render(offset + Vec2f(CHAT_INPUT_MARGIN, size.y - (CHAT_INPUT_MARGIN + (LINES * TEXT_PROPERTIES.lineHeight))), consumer, options)
+            input.render(offset + Vec2(CHAT_INPUT_MARGIN, size.y - (CHAT_INPUT_MARGIN + (LINES * TEXT_PROPERTIES.lineHeight))), consumer, options)
         }
     }
 
     override fun forceSilentApply() {
         messages.silentApply()
-        _size = Vec2f(guiRenderer.scaledSize.x, maxOf(messages.size.y, internal.size.y) + (LINES * TEXT_PROPERTIES.lineHeight) + CHAT_INPUT_MARGIN * 2)
+        _size = Vec2(guiRenderer.scaledSize.x, maxOf(messages.size.y, internal.size.y) + (LINES * TEXT_PROPERTIES.lineHeight) + CHAT_INPUT_MARGIN * 2)
         if (active) {
-            input.prefMaxSize = Vec2f(size.x - CHAT_INPUT_MARGIN * 2, (LINES * TEXT_PROPERTIES.lineHeight))
+            input.prefMaxSize = Vec2(size.x - CHAT_INPUT_MARGIN * 2, (LINES * TEXT_PROPERTIES.lineHeight))
             input.forceSilentApply()
         }
         internal.forceSilentApply()
@@ -221,18 +226,18 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
         return true
     }
 
-    override fun getAt(position: Vec2f): Pair<Element, Vec2f>? {
+    override fun getAt(position: Vec2): Pair<Element, Vec2>? {
         var messagesYStart = 0.0f
         val messagesSize = messages.size
         if (!chatProfile.internal.hidden) {
             val internalSize = internal.size
             val internalStart = if (internalSize.y > messagesSize.y) {
                 messagesYStart = internalSize.y - messagesSize.y
-                0.0f
+                0
             } else {
                 messagesSize.y - internalSize.y
             }
-            val internalPosition = position - Vec2f(size.x - internalSize.x, internalStart)
+            val internalPosition = position - Vec2i(size.x - internalSize.x, internalStart)
             if (internalPosition.x in 0.0f..internalSize.x && internalPosition.y in 0.0f..internalSize.y) {
                 return Pair(internal, internalPosition)
             }
@@ -241,7 +246,7 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
         if (position.x < CHAT_INPUT_MARGIN) {
             return null
         }
-        val offset = MVec2f(position)
+        val offset = Vec2(position)
         offset.y -= messagesYStart
         offset.x -= CHAT_INPUT_MARGIN
 
@@ -249,7 +254,7 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
             if (offset.x > messagesSize.x) {
                 return null
             }
-            return Pair(messages, offset.unsafe)
+            return Pair(messages, offset)
         }
         offset.y -= messagesSize.y
 
@@ -261,7 +266,7 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
             if (offset.x > inputSize.x) {
                 return null
             }
-            return Pair(input, offset.unsafe)
+            return Pair(input, offset)
         }
         return null
     }
@@ -278,10 +283,10 @@ class ChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), 
     }
 
     companion object : HUDBuilder<LayoutedGUIElement<ChatElement>>, GUIBuilder<LayoutedGUIElement<ChatElement>> {
-        override val identifier = minosoft("chat_hud")
+        override val identifier: ResourceLocation = "minosoft:chat_hud".toResourceLocation()
         private val TEXT_PROPERTIES = TextRenderProperties()
         const val LINES = 3
-        const val CHAT_INPUT_MARGIN = 2.0f
+        const val CHAT_INPUT_MARGIN = 2
 
         override fun build(guiRenderer: GUIRenderer): LayoutedGUIElement<ChatElement> {
             return LayoutedGUIElement(ChatElement(guiRenderer))

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.framebuffer.world.overlay.overlays.weather
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kutil.random.RandomUtil.nextFloat
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.data.registries.biomes.BiomePrecipitation
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.RenderContext
@@ -24,7 +26,7 @@ import de.bixilon.minosoft.gui.rendering.framebuffer.world.overlay.OverlayManage
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.texture
 import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
-import de.bixilon.minosoft.util.Backports.nextFloatPort
+import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import java.util.*
 
@@ -47,13 +49,16 @@ class WeatherOverlay(private val context: RenderContext) : Overlay {
             BiomePrecipitation.SNOW -> snow
         }
 
-    private val shader = context.system.shader.create(minosoft("weather/overlay")) { WeatherOverlayShader(it) }
-    private var mesh: Mesh? = null
-    private var windowSize = Vec2f.EMPTY
+    private val shader = context.system.createShader(minosoft("weather/overlay")) { WeatherOverlayShader(it) }
+    private var mesh = WeatherOverlayMesh(context)
+    private var windowSize = Vec2.EMPTY
 
 
-    private fun updateMesh(windowSize: Vec2f) {
-        val mesh = WeatherOverlayMeshBuilder(context)
+    private fun updateMesh(windowSize: Vec2) {
+        if (mesh.state == Mesh.MeshStates.LOADED) {
+            mesh.unload()
+        }
+        mesh = WeatherOverlayMesh(context)
 
         val texture = texture!!
         val scale = windowSize.y / texture.size.y
@@ -61,18 +66,16 @@ class WeatherOverlay(private val context: RenderContext) : Overlay {
         var offset = 0.0f
         val random = Random()
         while (true) {
-            val timeOffset = random.nextFloatPort(0.0f, 1.0f)
-            val offsetMultiplicator = random.nextFloatPort(0.8f, 1.2f)
-            val alpha = random.nextFloatPort(0.8f, 1.0f)
+            val timeOffset = random.nextFloat(0.0f, 1.0f)
+            val offsetMultiplicator = random.nextFloat(0.8f, 1.2f)
+            val alpha = random.nextFloat(0.8f, 1.0f)
             mesh.addZQuad(
-                Vec2f(offset, 0f), OVERLAY_Z, Vec2f(offset + step, windowSize.y), Vec2f.EMPTY, texture.array.uvEnd ?: Vec2f.ONE
+                Vec2(offset, 0), OVERLAY_Z, Vec2(offset + step, windowSize.y), Vec2(0.0f), texture.array.uvEnd ?: Vec2(1.0f)
             ) { position, uv ->
-                val transformed = Vec3f(
-                    position.x / (windowSize.x / 2) - 1.0f,
-                    position.y / (windowSize.y / 2) - 1.0f,
-                    OVERLAY_Z,
-                )
-                mesh.addVertex(transformed, uv, timeOffset, offsetMultiplicator, alpha)
+                val transformed = Vec2()
+                transformed.x = position.x / (windowSize.x / 2) - 1.0f
+                transformed.y = position.y / (windowSize.y / 2) - 1.0f
+                mesh.addVertex(Vec3(transformed.x, transformed.y, OVERLAY_Z), uv, timeOffset, offsetMultiplicator, alpha)
             }
             offset += step
             if (offset > windowSize.x) {
@@ -80,9 +83,7 @@ class WeatherOverlay(private val context: RenderContext) : Overlay {
             }
         }
         this.windowSize = windowSize
-
-        this.mesh = mesh.bake()
-        this.mesh?.load()
+        mesh.load()
     }
 
     override fun postInit() {
@@ -93,20 +94,19 @@ class WeatherOverlay(private val context: RenderContext) : Overlay {
 
     private fun updateShader() {
         shader.intensity = world.weather.rain
-        val offset = (System.currentTimeMillis() % 500.0f) / 500.0f
+        val offset = (millis() % 500L) / 500.0f
         shader.offset = -offset
         shader.textureIndexLayer = texture!!.shaderId
     }
 
     override fun draw() {
-        val windowSize = Vec2f(context.window.size)
+        val windowSize = context.window.sizef
         if (this.windowSize != windowSize) {
-            mesh?.unload()
             updateMesh(windowSize)
         }
         shader.use()
         updateShader()
-        mesh?.draw()
+        mesh.draw()
     }
 
     companion object : OverlayFactory<WeatherOverlay> {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.container
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.data.container.Container
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.atlas.AtlasArea
@@ -21,8 +21,8 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.items.ContainerItemsElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.AbstractLayout
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.Screen
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isGreater
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap
 
@@ -36,7 +36,7 @@ abstract class ContainerScreen<C : Container>(
     override var activeDragElement: Element? = null
     protected open val customRenderer: Boolean = false
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
         if (customRenderer) {
             return
@@ -44,7 +44,7 @@ abstract class ContainerScreen<C : Container>(
         forceRenderContainerScreen(offset, consumer, options)
     }
 
-    protected open fun forceRenderContainerScreen(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    protected open fun forceRenderContainerScreen(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         containerElement.render(offset, consumer, options)
     }
 
@@ -53,7 +53,7 @@ abstract class ContainerScreen<C : Container>(
         containerElement.apply()
     }
 
-    override fun getAt(position: Vec2f): Pair<Element, Vec2f>? {
+    override fun getAt(position: Vec2): Pair<Element, Vec2>? {
         if (position isGreater containerElement.size) {
             return null
         }

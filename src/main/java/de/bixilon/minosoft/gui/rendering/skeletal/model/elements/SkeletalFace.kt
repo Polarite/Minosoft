@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,17 +13,16 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal.model.elements
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec3.f.MVec3f
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.models.block.element.ModelElement.Companion.BLOCK_SIZE
 import de.bixilon.minosoft.gui.rendering.models.block.element.face.FaceUV
 import de.bixilon.minosoft.gui.rendering.models.util.CuboidUtil
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.SkeletalBakeContext
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3fUtil.rad
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3fUtil.rotateAssign
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.rad
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.rotateAssign
 
 data class SkeletalFace(
     val uv: FaceUV? = null,
@@ -41,32 +40,30 @@ data class SkeletalFace(
         val uv = this.uv ?: CuboidUtil.cubeUV(element.uv!!, element.from, element.to, direction)
 
         val uvData = FaceUV(
-            texture.texture.transformUV(Vec2f(uv.start.x, uv.end.y) / texture.properties.resolution),
-            texture.texture.transformUV(Vec2f(uv.end.x, uv.start.y) / texture.properties.resolution),
+            texture.texture.transformUV(Vec2(uv.start.x, uv.end.y) / texture.properties.resolution),
+            texture.texture.transformUV(Vec2(uv.end.x, uv.start.y) / texture.properties.resolution),
         ).toArray(direction, 0)
 
 
-        val normal = MVec3f(direction.vectorf)
+        val normal = Vec3(direction.vector)
 
         if (context.rotation != null) {
             val origin = context.rotation.origin?.div(BLOCK_SIZE) ?: ((to + from) / 2.0f)
 
             val rad = -context.rotation.value.rad
-
+            val vec = Vec3(0, positions)
             normal.rotateAssign(rad)
-            normal.normalizeAssign()
-
-            val vec = MVec3f()
 
             for (i in 0 until 4) {
-                vec.read(positions, i * Vec3f.LENGTH)
+                vec.ofs = i * Vec3.length
                 vec.rotateAssign(rad, origin, false)
-                vec.write(positions, i * Vec3f.LENGTH)
             }
         }
 
+        normal.normalizeAssign()
 
-        context.consumer.addQuad(positions, uvData, transform, normal.unsafe, texture.texture, path)
+
+        context.consumer.addQuad(positions, uvData, transform, normal, texture.texture, path)
     }
 
     companion object {

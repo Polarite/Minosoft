@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,34 +13,30 @@
 
 package de.bixilon.minosoft.gui.rendering.chunk.entities.renderer.storage
 
-import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kotlinglm.vec3.Vec3
 import de.bixilon.kutil.primitive.FloatUtil.matches
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalModel
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalTransform
-import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.AnimationResult
+import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.keyframe.instance.KeyframeInstance.Companion.NOT_OVER
+import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.keyframe.instance.KeyframeInstance.Companion.OVER
 import de.bixilon.minosoft.gui.rendering.skeletal.instance.SkeletalInstance
-import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
-import de.bixilon.minosoft.test.ITUtil.allocate
+import de.bixilon.minosoft.gui.rendering.skeletal.mesh.SkeletalMesh
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
+import de.bixilon.minosoft.test.IT
 import org.testng.Assert.*
 import org.testng.annotations.Test
-import kotlin.math.abs
-import kotlin.time.Duration.Companion.seconds
 
 @Test(groups = ["skeletal", "block_entity_rendering"])
 class OpenCloseAnimationTest {
 
     private fun create(): Animation {
-        val mesh = Mesh::class.java.allocate()
-        val context = RenderContext::class.java.allocate()
-        val model = BakedSkeletalModel(mesh, BakedSkeletalTransform(0, Vec3f.EMPTY, emptyMap()), 1, emptyMap())
+        val mesh = IT.OBJENESIS.newInstance(SkeletalMesh::class.java)
+        val context = IT.OBJENESIS.newInstance(RenderContext::class.java)
+        val model = BakedSkeletalModel(mesh, BakedSkeletalTransform(0, Vec3.EMPTY, emptyMap()), 1, emptyMap())
         val instance = model.createInstance(context)
 
         return Animation(instance)
-    }
-
-    private fun assertMatches(actual: Float, expected: Float) {
-        assertTrue(abs(actual - expected) < 0.003f, "Values don't match: actual=$actual, expected=$expected")
     }
 
     fun `create animation`() {
@@ -54,7 +50,7 @@ class OpenCloseAnimationTest {
         assertTrue(animation.getInstance().animation.isPlaying(animation))
         animation.close()
         assertTrue(animation.getInstance().animation.isPlaying(animation))
-        assertEquals(animation.draw(0.3.seconds), AnimationResult.ENDED)
+        assertEquals(animation.draw(0.3f), OVER)
         // assertFalse(animation.getInstance().animation.isPlaying(animation)) // animation is drawn directly, that is part of the animation manager
     }
 
@@ -62,28 +58,28 @@ class OpenCloseAnimationTest {
         val animation = create()
         animation.open()
 
-        assertMatches(animation.getProgress(), 0.0f)
-        assertEquals(animation.draw(0.1.seconds), AnimationResult.CONTINUE)
-        assertMatches(animation.getProgress(), 0.2f)
-        assertEquals(animation.draw(0.2.seconds), AnimationResult.CONTINUE)
-        assertMatches(animation.getProgress(), 0.6f)
-        assertEquals(animation.draw(0.3.seconds), AnimationResult.CONTINUE)
-        assertMatches(animation.getProgress(), 1.0f)
+        assertEquals(animation.getProgress(), 0.0f)
+        assertEquals(animation.draw(0.1f), NOT_OVER)
+        assertEquals(animation.getProgress(), 0.2f)
+        assertEquals(animation.draw(0.2f), NOT_OVER)
+        assertEquals(animation.getProgress(), 0.6f)
+        assertEquals(animation.draw(0.3f), NOT_OVER)
+        assertEquals(animation.getProgress(), 1.0f)
 
-        assertEquals(animation.draw(0.3.seconds), AnimationResult.CONTINUE)
-        assertMatches(animation.getProgress(), 1.0f)
+        assertEquals(animation.draw(0.3f), NOT_OVER)
+        assertEquals(animation.getProgress(), 1.0f)
 
         animation.close()
 
-        assertEquals(animation.draw(0.1.seconds), AnimationResult.CONTINUE)
-        assertMatches(animation.getProgress(), 2.0f / 3.0f)
-        assertEquals(animation.draw(0.1.seconds), AnimationResult.CONTINUE)
-        assertMatches(animation.getProgress(), 1.0f / 3.0f)
-        assertEquals(animation.draw(0.05.seconds), AnimationResult.CONTINUE)
-        assertMatches(animation.getProgress(), 1.0f / 6.0f)
+        assertEquals(animation.draw(0.1f), NOT_OVER)
+        assertEquals(animation.getProgress(), 2.0f / 3.0f)
+        assertEquals(animation.draw(0.1f), NOT_OVER)
+        assertTrue(animation.getProgress().matches(1.0f / 3.0f))
+        assertEquals(animation.draw(0.05f), NOT_OVER)
+        assertTrue(animation.getProgress().matches(1.0f / 6.0f))
 
-        assertEquals(animation.draw(0.06.seconds), AnimationResult.ENDED)
-        assertMatches(animation.getProgress(), 0.0f)
+        assertEquals(animation.draw(0.06f), OVER)
+        assertEquals(animation.getProgress(), 0.0f)
     }
 
     private class Animation(
@@ -93,8 +89,8 @@ class OpenCloseAnimationTest {
 
         override val name get() = "dummy"
 
-        override val closingDuration get() = 0.3.seconds
-        override val openingDuration get() = 0.5.seconds
+        override val closingDuration get() = 0.3f
+        override val openingDuration get() = 0.5f
 
 
         override fun transform() = Unit

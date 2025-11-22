@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,14 @@
 
 package de.bixilon.minosoft.physics.submersion
 
-import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.math.simple.DoubleMath.floor
-import de.bixilon.kutil.math.simple.IntMath.clamp
 import de.bixilon.minosoft.data.Tickable
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.entities.player.PlayerEntity
 import de.bixilon.minosoft.data.entities.entities.vehicle.boat.Boat
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidHolder
 import de.bixilon.minosoft.data.registries.fluid.Fluid
 import de.bixilon.minosoft.data.registries.fluid.fluids.LavaFluid
@@ -33,8 +32,10 @@ import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
 import de.bixilon.minosoft.data.world.iterator.WorldIterator
-import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.inChunkPosition
+import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.physics.VanillaMath.vanillaNormalizeAssign
 import de.bixilon.minosoft.physics.entities.EntityPhysics
 import de.bixilon.minosoft.physics.properties.SwimmingVehicle
@@ -55,7 +56,7 @@ class SubmersionState(private val physics: EntityPhysics<*>) : Tickable {
         private set
 
 
-    private fun getFluidHeight(position: BlockPosition, state: BlockState, fluid: Fluid): Float {
+    private fun getFluidHeight(position: Vec3i, state: BlockState, fluid: Fluid): Float {
         val top = world[position + Directions.UP]
         if (fluid.matches(top)) {
             return 1.0f
@@ -65,11 +66,10 @@ class SubmersionState(private val physics: EntityPhysics<*>) : Tickable {
 
     private fun getFluidUpdate(fluid: Fluid, aabb: AABB, pushable: Boolean): FluidUpdate? {
         var totalHeight = 0.0
-        val totalVelocity = MVec3d()
+        val totalVelocity = Vec3d.EMPTY
         var count = 0
 
-        val velocity = MVec3d()
-        for ((position, state, chunk) in WorldIterator(aabb, world, physics.positionInfo.chunk)) {
+        for ((position, state, chunk) in WorldIterator(aabb.positions(), world, physics.positionInfo.chunk)) {
             if (!fluid.matches(state)) continue // TODO: tags?
 
             val height = position.y + if (fluid.matches(chunk[position.inChunkPosition + Directions.UP])) 1.0f else fluid.getHeight(state)
@@ -79,8 +79,7 @@ class SubmersionState(private val physics: EntityPhysics<*>) : Tickable {
             totalHeight = maxOf(totalHeight, height - aabb.min.y)
             if (!pushable) continue
 
-            fluid.updateVelocity(state, position, chunk, velocity)
-            if (velocity.isEmpty()) continue
+            val velocity = fluid.getVelocity(state, position, chunk)
             if (totalHeight < 0.4) {
                 velocity *= totalHeight
             }
@@ -88,24 +87,23 @@ class SubmersionState(private val physics: EntityPhysics<*>) : Tickable {
         }
         if (count == 0) return null
 
-        return FluidUpdate(totalHeight, totalVelocity.unsafe, count)
+        return FluidUpdate(totalHeight, totalVelocity, count)
     }
 
     private fun updateVelocity(fluid: Fluid, update: FluidUpdate, normalize: Boolean) {
         if (update.velocity.length2() <= 0.0) return
         val speed = fluid.getVelocityMultiplier(physics.entity.session)
-        val velocity = update.velocity.unsafe
-        velocity *= 1.0 / update.count
+        update.velocity *= 1.0 / update.count
         if (normalize) {
-            velocity.vanillaNormalizeAssign()
+            update.velocity.vanillaNormalizeAssign()
         }
-        velocity *= speed
+        update.velocity *= speed
 
-        if (abs(physics.velocity.x) < Vec3dUtil.MARGIN && abs(physics.velocity.z) < Vec3dUtil.MARGIN && velocity.length2() < (FLUID_SPEED * FLUID_SPEED)) {
-            velocity.vanillaNormalizeAssign()
-            velocity *= FLUID_SPEED
+        if (abs(physics.velocity.x) < Vec3dUtil.MARGIN && abs(physics.velocity.z) < Vec3dUtil.MARGIN && update.velocity.length2() < (FLUID_SPEED * FLUID_SPEED)) {
+            update.velocity.vanillaNormalizeAssign()
+            update.velocity *= FLUID_SPEED
         }
-        physics.velocity += velocity
+        physics.velocity = physics.velocity + update.velocity
     }
 
     private fun update(fluid: Fluid?, aabb: AABB, pushable: Boolean, previousHeight: Double) {
@@ -151,10 +149,10 @@ class SubmersionState(private val physics: EntityPhysics<*>) : Tickable {
             // TODO
         }
         val position = physics.position
-        val eyePosition = BlockPosition(position.x.floor, eyeHeight.floor.clamp(BlockPosition.MIN_Y, BlockPosition.MAX_Y), position.z.floor)
+        val eyePosition = Vec3i(position.x.floor, eyeHeight.floor, position.z.floor)
 
-        val block = physics.positionInfo.chunk?.get(eyePosition.inChunkPosition) ?: return
-        if (BlockStateFlags.FLUID !in block.flags || block.block !is FluidHolder) {
+        val block = physics.positionInfo.chunk?.get(eyePosition.x and 0x0F, eyePosition.y, eyePosition.z and 0x0F) ?: return
+        if (block.block !is FluidHolder) {
             return
         }
 

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base.texture.texture.file
 
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.assets.AssetsManager
 import de.bixilon.minosoft.assets.util.InputStreamUtil.readJson
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
@@ -42,8 +42,7 @@ abstract class FileTexture(
 ) : Texture {
     override lateinit var renderData: TextureRenderData
     override lateinit var array: TextureArrayProperties
-    private var _size: Vec2i? = null
-    override val size: Vec2i get() = _size!!
+    override lateinit var size: Vec2i
     override lateinit var transparency: TextureTransparencies
     override lateinit var data: TextureData
 
@@ -73,7 +72,7 @@ abstract class FileTexture(
     private fun loadSprites(context: RenderContext, properties: AnimationProperties, buffer: TextureBuffer) {
         val (frames, animation) = context.textures.static.animator.create(this, buffer, properties)
         this.animation = animation
-        this._size = frames.size
+        this.size = frames.size
 
         var transparency = TextureTransparencies.OPAQUE
 
@@ -92,7 +91,7 @@ abstract class FileTexture(
     private fun load(buffer: TextureBuffer) {
         val data = createData(mipmaps, buffer)
 
-        this._size = data.size
+        this.size = data.size
         this.transparency = buffer.getTransparency()
         this.data = data
     }

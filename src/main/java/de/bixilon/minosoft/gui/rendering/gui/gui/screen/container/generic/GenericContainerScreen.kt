@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.generic
 
-import de.bixilon.kmath.vec.vec2.f.MVec2f
-import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.minosoft.data.container.types.generic.GenericContainer
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
@@ -27,8 +27,8 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElemen
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.ContainerGUIFactory
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.ContainerScreen
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.text.ContainerText
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isSmaller
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import kotlin.reflect.KClass
@@ -51,34 +51,34 @@ open class GenericContainerScreen(
 
     override val containerElement = ContainerItemsElement(guiRenderer, container, calculateSlots()).apply { parent = this@GenericContainerScreen }
     override val customRenderer: Boolean get() = true
-    private val containerSize = Vec2f(maxOf(header.size.x, slotRow.size.x, footer.size.x), header.size.y + slotRow.size.y * container.rows + footer.size.y)
+    private val containerSize = Vec2i(maxOf(header.size.x, slotRow.size.x, footer.size.x), header.size.y + slotRow.size.y * container.rows + footer.size.y)
 
     private val title = ContainerText.of(guiRenderer, headerAtlas?.areas?.get("text"), container.title)
     private val inventoryTitle = ContainerText.createInventoryTitle(guiRenderer, footerAtlas?.areas?.get("text"))
 
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
-        val centerOffset = MVec2f((size - containerSize) / 2)
-        val initialOffset = centerOffset.final()
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+        val centerOffset = (size - containerSize) / 2
+        val initialOffset = Vec2(centerOffset)
 
-        super.forceRender(centerOffset.unsafe, consumer, options)
+        super.forceRender(centerOffset, consumer, options)
 
-        header.render(centerOffset.unsafe, consumer, options)
+        header.render(centerOffset, consumer, options)
         if (container.title != null) {
-            title?.render(centerOffset.unsafe, consumer, options)
+            title?.render(centerOffset, consumer, options)
         }
         centerOffset.y += header.size.y
         for (i in 0 until container.rows) {
-            slotRow.render(centerOffset.unsafe, consumer, options)
+            slotRow.render(centerOffset, consumer, options)
             centerOffset.y += slotRow.size.y
         }
-        footer.render(centerOffset.unsafe, consumer, options)
-        inventoryTitle?.render(centerOffset.unsafe, consumer, options)
+        footer.render(centerOffset, consumer, options)
+        inventoryTitle?.render(centerOffset, consumer, options)
 
         forceRenderContainerScreen(initialOffset, consumer, options)
     }
 
-    override fun getAt(position: Vec2f): Pair<Element, Vec2f>? {
+    override fun getAt(position: Vec2): Pair<Element, Vec2>? {
         val centerOffset = (size - containerSize) / 2
         if (position isSmaller centerOffset) {
             return null
@@ -89,7 +89,7 @@ open class GenericContainerScreen(
     private fun calculateSlots(): Int2ObjectOpenHashMap<AtlasArea> {
         val slots: Int2ObjectOpenHashMap<AtlasArea> = Int2ObjectOpenHashMap()
         var slotOffset = 0
-        val offset = MVec2f(0, 0)
+        val offset = Vec2i(0, 0)
 
         fun pushElement(atlasElement: AtlasElement) {
             if (atlasElement.slots != null) {

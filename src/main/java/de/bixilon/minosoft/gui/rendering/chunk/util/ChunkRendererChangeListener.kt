@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,20 +15,25 @@ package de.bixilon.minosoft.gui.rendering.chunk.util
 
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.minosoft.data.direction.Directions
-import de.bixilon.minosoft.data.world.chunk.ChunkSize
 import de.bixilon.minosoft.data.world.chunk.update.AbstractWorldUpdate
 import de.bixilon.minosoft.data.world.chunk.update.WorldUpdateEvent
 import de.bixilon.minosoft.data.world.chunk.update.block.ChunkLocalBlockUpdate
+import de.bixilon.minosoft.data.world.chunk.update.block.SingleBlockDataUpdate
 import de.bixilon.minosoft.data.world.chunk.update.block.SingleBlockUpdate
-import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkDataUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkCreateUpdate
 import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkLightUpdate
 import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkUnloadUpdate
-import de.bixilon.minosoft.data.world.chunk.update.chunk.NeighbourSetUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.NeighbourChangeUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.prototype.PrototypeChangeUpdate
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.inChunkSectionPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.sectionHeight
 import de.bixilon.minosoft.gui.rendering.RenderingStates
 import de.bixilon.minosoft.gui.rendering.chunk.ChunkRenderer
 import de.bixilon.minosoft.gui.rendering.util.VecUtil.inSectionHeight
+import de.bixilon.minosoft.modding.event.events.DimensionChangeEvent
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.network.session.play.PlaySessionStates
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
@@ -37,108 +42,114 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 object ChunkRendererChangeListener {
 
     private fun ChunkRenderer.handle(update: SingleBlockUpdate) {
-        if (!update.chunk.neighbours.complete) return
-        val neighbours = update.chunk.neighbours
+        val neighbours = update.chunk.neighbours.get() ?: return
         val sectionHeight = update.position.sectionHeight
 
-        invalidate(update.chunk, sectionHeight)
-        val inPosition = update.position.inSectionPosition
+        master.tryQueue(update.chunk, sectionHeight)
+        val inPosition = update.position.inChunkSectionPosition
 
         if (inPosition.y == 0) {
-            invalidate(update.chunk, sectionHeight - 1)
-        } else if (inPosition.y == ChunkSize.SECTION_MAX_Y) {
-            invalidate(update.chunk, sectionHeight + 1)
+            master.tryQueue(update.chunk, sectionHeight - 1)
+        } else if (inPosition.y == ProtocolDefinition.SECTION_MAX_Y) {
+            master.tryQueue(update.chunk, sectionHeight + 1)
         }
         if (inPosition.z == 0) {
-            invalidate(neighbours[Directions.NORTH], sectionHeight)
-        } else if (inPosition.z == ChunkSize.SECTION_MAX_Z) {
-            invalidate(neighbours[Directions.SOUTH], sectionHeight)
+            master.tryQueue(chunk = neighbours[3], sectionHeight)
+        } else if (inPosition.z == ProtocolDefinition.SECTION_MAX_Z) {
+            master.tryQueue(chunk = neighbours[4], sectionHeight)
         }
         if (inPosition.x == 0) {
-            invalidate(neighbours[Directions.WEST], sectionHeight)
-        } else if (inPosition.x == ChunkSize.SECTION_MAX_X) {
-            invalidate(neighbours[Directions.EAST], sectionHeight)
+            master.tryQueue(chunk = neighbours[1], sectionHeight)
+        } else if (inPosition.x == ProtocolDefinition.SECTION_MAX_X) {
+            master.tryQueue(chunk = neighbours[6], sectionHeight)
         }
     }
 
+    private fun ChunkRenderer.handle(update: SingleBlockDataUpdate) {
+        master.tryQueue(update.chunk, update.position.sectionHeight)
+    }
+
     private fun ChunkRenderer.handle(update: ChunkLocalBlockUpdate) {
-        if (!update.chunk.neighbours.complete) return
+        val neighbours = update.chunk.neighbours.get() ?: return
         val sectionHeights: Int2ObjectOpenHashMap<BooleanArray> = Int2ObjectOpenHashMap()
-        for ((position, _) in update.change) {
+        for ((position, state) in update.updates) {
             val neighbours = sectionHeights.getOrPut(position.sectionHeight) { BooleanArray(Directions.SIZE) }
             val inSectionHeight = position.y.inSectionHeight
             if (inSectionHeight == 0) {
-                neighbours[Directions.O_DOWN] = true
-            } else if (inSectionHeight == ChunkSize.SECTION_MAX_Y) {
-                neighbours[Directions.O_UP] = true
+                neighbours[0] = true
+            } else if (inSectionHeight == ProtocolDefinition.SECTION_MAX_Y) {
+                neighbours[1] = true
             }
             if (position.z == 0) {
-                neighbours[Directions.O_NORTH] = true
-            } else if (position.z == ChunkSize.SECTION_MAX_Z) {
-                neighbours[Directions.O_SOUTH] = true
+                neighbours[2] = true
+            } else if (position.z == ProtocolDefinition.SECTION_MAX_Z) {
+                neighbours[3] = true
             }
             if (position.x == 0) {
-                neighbours[Directions.O_WEST] = true
-            } else if (position.x == ChunkSize.SECTION_MAX_X) {
-                neighbours[Directions.O_EAST] = true
+                neighbours[4] = true
+            } else if (position.x == ProtocolDefinition.SECTION_MAX_X) {
+                neighbours[5] = true
             }
         }
-        val neighbours = update.chunk.neighbours
         for ((sectionHeight, neighbourUpdates) in sectionHeights) {
-            invalidate(update.chunk, sectionHeight)
+            master.tryQueue(update.chunk, sectionHeight)
 
             if (neighbourUpdates[0]) {
-                invalidate(update.chunk, sectionHeight - 1)
+                master.tryQueue(update.chunk, sectionHeight - 1)
             }
             if (neighbourUpdates[1]) {
-                invalidate(update.chunk, sectionHeight + 1)
+                master.tryQueue(update.chunk, sectionHeight + 1)
             }
             if (neighbourUpdates[2]) {
-                invalidate(neighbours[Directions.NORTH], sectionHeight)
+                master.tryQueue(neighbours[3], sectionHeight)
             }
             if (neighbourUpdates[3]) {
-                invalidate(neighbours[Directions.SOUTH], sectionHeight)
+                master.tryQueue(neighbours[4], sectionHeight)
             }
             if (neighbourUpdates[4]) {
-                invalidate(neighbours[Directions.WEST], sectionHeight)
+                master.tryQueue(neighbours[1], sectionHeight)
             }
             if (neighbourUpdates[5]) {
-                invalidate(neighbours[Directions.EAST], sectionHeight)
+                master.tryQueue(neighbours[6], sectionHeight)
             }
         }
     }
 
     private fun ChunkRenderer.handle(update: ChunkLightUpdate) {
-        if (update.cause == ChunkLightUpdate.Causes.BLOCK_CHANGE) return // change is already covered
-        // TODO: Enqueue neighbour sections (light level from cullface)
-        invalidate(update.section)
+        if (update.blockChange) return // change is already covered
+        master.tryQueue(update.chunk, update.sectionHeight)
     }
 
+    private fun ChunkRenderer.handle(update: ChunkCreateUpdate) {
+        master.tryQueue(update.chunk)
+    }
 
     private fun ChunkRenderer.handle(update: ChunkUnloadUpdate) {
-        unload(update.chunk)
+        unloadChunk(update.chunkPosition)
     }
 
-    private fun ChunkRenderer.handle(update: NeighbourSetUpdate) {
-        invalidate(update.chunk)
+    private fun ChunkRenderer.handle(update: NeighbourChangeUpdate) {
+        master.tryQueue(update.chunk)
     }
 
-    private fun ChunkRenderer.handle(update: ChunkDataUpdate) {
-        for (section in update.sections) {
-            invalidate(section)
+    private fun ChunkRenderer.handle(update: PrototypeChangeUpdate) {
+        for (height in update.affected.intIterator()) {
+            master.tryQueue(update.chunk, height)
         }
     }
 
 
     private fun ChunkRenderer.handle(update: AbstractWorldUpdate) {
-        if (context.state == RenderingStates.PAUSED || context.state == RenderingStates.QUITTING || context.state == RenderingStates.STOPPED) return
+        if (context.state == RenderingStates.PAUSED) return
         when (update) {
-            is NeighbourSetUpdate -> handle(update)
             is SingleBlockUpdate -> handle(update)
+            is SingleBlockDataUpdate -> handle(update)
             is ChunkLocalBlockUpdate -> handle(update)
             is ChunkLightUpdate -> handle(update)
+            is ChunkCreateUpdate -> handle(update)
             is ChunkUnloadUpdate -> handle(update)
-            is ChunkDataUpdate -> handle(update)
+            is NeighbourChangeUpdate -> handle(update)
+            is PrototypeChangeUpdate -> handle(update)
             else -> Log.log(LogMessageType.OTHER, LogLevels.WARN) { "Unknown world update happened: $update" }
         }
     }
@@ -146,8 +157,9 @@ object ChunkRendererChangeListener {
     fun register(renderer: ChunkRenderer) {
         val events = renderer.session.events
 
+        events.listen<DimensionChangeEvent> { renderer.unloadWorld() }
         events.listen<WorldUpdateEvent> { renderer.handle(it.update) }
 
-        renderer.session::state.observe(this) { if (it == PlaySessionStates.DISCONNECTED) renderer.unload(renderer.world) }
+        renderer.session::state.observe(this) { if (it == PlaySessionStates.DISCONNECTED) renderer.unloadWorld() }
     }
 }

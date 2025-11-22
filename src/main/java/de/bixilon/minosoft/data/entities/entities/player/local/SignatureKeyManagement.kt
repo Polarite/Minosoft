@@ -17,7 +17,7 @@ import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.kutil.concurrent.lock.RWLock
 import de.bixilon.kutil.concurrent.schedule.TaskScheduler.runLater
 import de.bixilon.kutil.latch.AbstractLatch
-import de.bixilon.kutil.time.Interval
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.data.accounts.Account
 import de.bixilon.minosoft.data.chat.message.internal.InternalChatMessage
 import de.bixilon.minosoft.data.chat.signature.ChatSignatureProperties
@@ -31,8 +31,6 @@ import de.bixilon.minosoft.protocol.protocol.ProtocolStates
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions
 import de.bixilon.minosoft.util.account.minecraft.MinecraftPrivateKey
 import java.time.Instant
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
 
 class SignatureKeyManagement(
     val session: PlaySession,
@@ -48,8 +46,8 @@ class SignatureKeyManagement(
         fetchKey(latch)
     }
 
-    private fun registerRefresh(interval: Interval) {
-        runLater(interval) {
+    private fun registerRefresh(millis: Int) {
+        runLater(millis) {
             val connection = session.connection.nullCast<NetworkConnection>() ?: return@runLater
             if (session.error != null || (session.established && !connection.active) || (connection.active && !connection.client!!.encrypted)) {
                 // session is dead
@@ -59,7 +57,7 @@ class SignatureKeyManagement(
                 fetchKey(null)
             } catch (error: Throwable) {
                 session.events.fire(ChatMessageEvent(session, InternalChatMessage(TextComponent("Failed to refresh private key. Trying again in 60s: $error"))))
-                registerRefresh(60.seconds)
+                registerRefresh(60 * 1000)
             }
         }
     }
@@ -72,8 +70,7 @@ class SignatureKeyManagement(
             private = key.pair.private,
             public = key.pair.public,
         )
-        val refreshInterval = maxOf((key.refreshedAfter.toEpochMilli() - System.currentTimeMillis()).milliseconds, 100.milliseconds) // TODO: kotlin instant
-        registerRefresh(refreshInterval)
+        registerRefresh(maxOf((key.refreshedAfter.toEpochMilli() - millis()).toInt(), 100))
         sendSession()
     }
 

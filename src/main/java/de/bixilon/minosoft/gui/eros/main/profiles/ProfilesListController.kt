@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,25 +14,24 @@
 package de.bixilon.minosoft.gui.eros.main.profiles
 
 import de.bixilon.kutil.observer.map.MapChange.Companion.values
+import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.minosoft.config.profile.profiles.Profile
 import de.bixilon.minosoft.config.profile.storage.StorageProfileManager
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.TranslatableComponents
-import de.bixilon.minosoft.data.text.events.click.OpenFileClickEvent
 import de.bixilon.minosoft.gui.eros.controller.EmbeddedJavaFXController
 import de.bixilon.minosoft.gui.eros.dialog.profiles.ProfileCreateDialog
 import de.bixilon.minosoft.gui.eros.dialog.simple.ConfirmationDialog
 import de.bixilon.minosoft.gui.eros.main.InfoPane
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.ctext
+import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.delegate.JavaFXDelegate.observeBiMapFX
 import javafx.fxml.FXML
 import javafx.scene.control.Button
 import javafx.scene.control.ListView
 import javafx.scene.layout.Pane
-import kotlin.io.path.toPath
 
 
 class ProfilesListController : EmbeddedJavaFXController<Pane>() {
@@ -93,7 +92,7 @@ class ProfilesListController : EmbeddedJavaFXController<Pane>() {
             updateProfile(profile)
         }
 
-        selected.takeIf { selected in profilesListViewFX.items }.let {
+        profilesListViewFX.items.contains(selected).decide(selected, null).let {
             profilesListViewFX.selectionModel.select(it)
 
             profilesListViewFX.scrollTo(it)
@@ -105,7 +104,7 @@ class ProfilesListController : EmbeddedJavaFXController<Pane>() {
         // Platform.runLater {serverListViewFX.items.remove(card)}
 
 
-        if (profile !in profilesListViewFX.items) {
+        if (!profilesListViewFX.items.contains(profile)) {
             profilesListViewFX.items.add(profile)
         }
 
@@ -126,7 +125,7 @@ class ProfilesListController : EmbeddedJavaFXController<Pane>() {
             Button("Delete").apply {
                 isDisable = manager.selected == profile
                 setOnAction {
-                    ConfirmationDialog(confirmButtonText = minosoft("general.delete"), onConfirm = {
+                    ConfirmationDialog(confirmButtonText = "minosoft:general.delete".toResourceLocation(), onConfirm = {
                         manager.delete(profile)
                         JavaFXUtil.runLater {
                             profilesListViewFX.items.remove(profile)
@@ -167,20 +166,20 @@ class ProfilesListController : EmbeddedJavaFXController<Pane>() {
 
 
     companion object {
-        val LAYOUT = minosoft("eros/main/profiles/profiles_list.fxml")
+        val LAYOUT = "minosoft:eros/main/profiles/profiles_list.fxml".toResourceLocation()
 
-        private val EDIT = minosoft("profiles.profile.list.button.edit")
-        private val SET_PRIMARY = minosoft("profiles.profile.list.button.set_primary")
-        private val CREATE = minosoft("profiles.profile.list.button.create")
+        private val EDIT = "minosoft:profiles.profile.list.button.edit".toResourceLocation()
+        private val SET_PRIMARY = "minosoft:profiles.profile.list.button.set_primary".toResourceLocation()
+        private val CREATE = "minosoft:profiles.profile.list.button.create".toResourceLocation()
 
         private val PROFILE_INFO_PROPERTIES: List<Pair<ResourceLocation, (Profile) -> Any?>> = listOf(
-            minosoft("profiles.profile.name") to { it.storage?.name },
+            "minosoft:profiles.profile.name".toResourceLocation() to { it.storage?.name },
 
             TranslatableComponents.GENERAL_EMPTY to { " " },
 
-            minosoft("profiles.profile.disk_path") to a@{
+            "minosoft:profiles.profile.disk_path".toResourceLocation() to a@{
                 val path = it.storage?.url ?: return@a null
-                TextComponent(path, clickEvent = OpenFileClickEvent(path.toPath()))
+                TextComponent(path/* clickEvent = OpenFileClickEvent(path)*/) // TODO
             },
         )
     }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,16 +14,15 @@
 package de.bixilon.minosoft.gui.eros.crash
 
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedSet
+import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.exception.ExceptionUtil.catchAll
 import de.bixilon.kutil.exception.ExceptionUtil.toStackTrace
-import de.bixilon.kutil.file.FileUtil.div
-import de.bixilon.kutil.file.PathUtil.div
+import de.bixilon.kutil.file.FileUtil.slashPath
 import de.bixilon.kutil.file.watcher.FileWatcherService
 import de.bixilon.kutil.shutdown.AbstractShutdownReason
 import de.bixilon.kutil.shutdown.ShutdownManager
-import de.bixilon.kutil.time.TimeUtil.format1
+import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.kutil.unsafe.UnsafeUtil
-import de.bixilon.minosoft.gui.eros.ErosOptions
 import de.bixilon.minosoft.gui.eros.controller.JavaFXWindowController
 import de.bixilon.minosoft.gui.eros.util.JavaFXInitializer
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil
@@ -43,12 +42,9 @@ import javafx.scene.text.TextFlow
 import javafx.stage.Modality
 import javafx.stage.Stage
 import javafx.stage.Window
-import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 
 
 class ErosCrashReport : JavaFXWindowController() {
@@ -57,13 +53,13 @@ class ErosCrashReport : JavaFXWindowController() {
     @FXML private lateinit var detailsFX: TextArea
 
 
-    var crashReportPath: File? = null
+    var crashReportPath: String? = null
         set(value) {
             field = value
             JavaFXUtil.runLater {
                 crashReportPathDescriptionFX.isVisible = value != null
                 if (value != null) {
-                    crashReportPathFX.text = value.path
+                    crashReportPathFX.text = value
                 }
             }
         }
@@ -84,46 +80,47 @@ class ErosCrashReport : JavaFXWindowController() {
         UnsafeUtil.hardCrash()
     }
 
-    @OptIn(ExperimentalTime::class)
     companion object {
+        var alreadyCrashed = false
+            private set
+
 
         /**
          * Kills all connections, closes all windows, creates and saves a crash report
          * Special: Does not use any general functions/translations/..., because when a crash happens, you can't rely on anything.
          */
         fun Throwable?.crash(notes: String = "-/-") {
-            if (CrashReportState.crashed) {
+            if (alreadyCrashed) {
                 return
             }
-            CrashReportState.crashed = true
+            alreadyCrashed = true
             val details = try {
                 CrashReportUtil.createCrashReport(this, notes)
             } catch (error: Throwable) {
                 error.toStackTrace()
             }
 
-            catchAll {
-                for (session in PlaySession.ACTIVE_CONNECTIONS.toSynchronizedSet()) {
-                    session.terminate()
-                    session?.rendering?.context?.window?.destroy()
-                }
-            }
-            catchAll {
+            // Kill some stuff
+            catchAll(executor = { DefaultThreadPool.shutdownNow() })
+            catchAll(executor = { FileWatcherService.stop() })
+            catchAll(executor = {
                 for (window in Window.getWindows().toSynchronizedSet()) {
                     JavaFXUtil.runLater { window.hide() }
                 }
-            }
+            })
+            catchAll(executor = {
+                for (session in PlaySession.ACTIVE_CONNECTIONS.toSynchronizedSet()) {
+                    session.terminate()
+                }
+            })
 
-            // Kill some stuff
-            catchAll { FileWatcherService.stop() }
 
-
-            var crashReportPath: File?
+            var crashReportPath: String?
             try {
-                val crashReportFolder = (RunConfiguration.home / "crash-reports").toFile()
+                val crashReportFolder = RunConfiguration.HOME_DIRECTORY.resolve("crash-reports").toFile()
                 crashReportFolder.mkdirs()
 
-                crashReportPath = crashReportFolder / "crash-${SimpleDateFormat("yyyy-MM-dd-HH.mm.ss").format1(Clock.System.now())}.txt"
+                crashReportPath = "${crashReportFolder.slashPath}/crash-${SimpleDateFormat("yyyy-MM-dd-HH.mm.ss").format(millis())}.txt"
 
                 val stream = FileOutputStream(crashReportPath)
 
@@ -134,7 +131,7 @@ class ErosCrashReport : JavaFXWindowController() {
                 crashReportPath = null
             }
 
-            if (ErosOptions.disabled) {
+            if (RunConfiguration.DISABLE_EROS) {
                 this?.printStackTrace()
                 ShutdownManager.shutdown(this?.message, AbstractShutdownReason.CRASH)
                 return

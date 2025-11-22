@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2024 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,20 +16,21 @@ package de.bixilon.minosoft.gui.rendering.sky.box
 import de.bixilon.kutil.hash.HashUtil.murmur64
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.kutil.observer.set.SetObserver.Companion.observeSet
+import de.bixilon.kutil.random.RandomUtil.nextFloat
 import de.bixilon.minosoft.data.entities.entities.LightningBolt
 import de.bixilon.minosoft.data.registries.dimension.effects.DefaultDimensionEffects
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asColor
 import de.bixilon.minosoft.data.world.chunk.update.WorldUpdateEvent
-import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkDataUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkCreateUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.NeighbourChangeUpdate
 import de.bixilon.minosoft.data.world.time.WorldTime
 import de.bixilon.minosoft.gui.rendering.events.CameraPositionChangeEvent
 import de.bixilon.minosoft.gui.rendering.sky.SkyChildRenderer
 import de.bixilon.minosoft.gui.rendering.sky.SkyRenderer
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
-import de.bixilon.minosoft.util.Backports.nextFloatPort
 import java.util.*
 
 class SkyboxRenderer(
@@ -37,10 +38,10 @@ class SkyboxRenderer(
 ) : SkyChildRenderer {
     val color = SkyboxColor(sky)
     private val textureCache: MutableMap<ResourceLocation, Texture> = mutableMapOf()
-    private val colorShader = sky.context.system.shader.create(minosoft("sky/skybox")) { SkyboxColorShader(it) }
-    private val textureShader = sky.context.system.shader.create(minosoft("sky/skybox/texture")) { SkyboxTextureShader(it) }
-    private val colorMesh = SkyboxMeshBuilder(sky.context).bake()
-    private val textureMesh = SkyboxTextureMeshBuilder(sky.context).bake()
+    private val colorShader = sky.renderSystem.createShader(minosoft("sky/skybox")) { SkyboxColorShader(it) }
+    private val textureShader = sky.renderSystem.createShader(minosoft("sky/skybox/texture")) { SkyboxTextureShader(it) }
+    private val colorMesh = SkyboxMesh(sky.context)
+    private val textureMesh = SkyboxTextureMesh(sky.context)
     private var updateTexture = true
     private var updateMatrix = true
 
@@ -60,11 +61,11 @@ class SkyboxRenderer(
         sky.context.session.world.entities::entities.observeSet(this) {
             val lightnings = it.adds.filterIsInstance<LightningBolt>()
             if (lightnings.isEmpty()) return@observeSet
-            color.onStrike(lightnings.maxOf { it.duration.duration })
+            color.onStrike(lightnings.maxOf(LightningBolt::duration))
         }
 
         sky.context.session.events.listen<WorldUpdateEvent> {
-            if (it.update !is ChunkDataUpdate) return@listen
+            if (it.update !is NeighbourChangeUpdate && it.update !is ChunkCreateUpdate) return@listen
             if (!it.update.chunk.neighbours.complete) return@listen
             color.updateBase()
         }
@@ -77,7 +78,7 @@ class SkyboxRenderer(
         this.time = time
         if (day != time.day) {
             this.day = time.day
-            this.intensity = Random(time.day.murmur64()).nextFloatPort(0.3f, 1.0f)
+            this.intensity = Random(time.day.murmur64()).nextFloat(0.3f, 1.0f)
         }
     }
 
@@ -98,7 +99,7 @@ class SkyboxRenderer(
     }
 
     private fun updateColorShader() {
-        colorShader.skyColor = (color.color ?: DEFAULT_SKY_COLOR).rgba()
+        colorShader.skyColor = color.color ?: DEFAULT_SKY_COLOR
         if (updateMatrix) {
             colorShader.skyViewProjectionMatrix = sky.matrix
             updateMatrix = false
@@ -139,6 +140,6 @@ class SkyboxRenderer(
     }
 
     companion object {
-        private val DEFAULT_SKY_COLOR = "#ecff89".rgb()
+        private val DEFAULT_SKY_COLOR = "#ecff89".asColor()
     }
 }

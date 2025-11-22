@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,22 +13,19 @@
 package de.bixilon.minosoft.protocol.protocol
 
 import de.bixilon.minosoft.data.registries.identified.Namespaces
-import de.bixilon.minosoft.data.world.chunk.ChunkSize
-import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.milliseconds
 
 internal class ProtocolDefinitionTest {
 
     @Test
     fun testTickTime() {
-        assertEquals(TickUtil.INTERVAL, 50.milliseconds)
+        assertEquals(ProtocolDefinition.TICK_TIME, 50)
     }
 
     @Test
     fun testTicksPerSecond() {
-        assertEquals(TickUtil.TICKS_PER_SECOND, 20)
+        assertEquals(ProtocolDefinition.TICKS_PER_SECOND, 20)
     }
 
     @Test
@@ -38,6 +35,6 @@ internal class ProtocolDefinitionTest {
 
     @Test
     fun testSectionSize() {
-        assertEquals(ChunkSize.BLOCKS_PER_SECTION, 4096)
+        assertEquals(ProtocolDefinition.BLOCKS_PER_SECTION, 4096)
     }
 }

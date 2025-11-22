@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2025 Moritz Zwerger
+ * Copyright (C) 2020-2023 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,7 +16,6 @@ package de.bixilon.minosoft.gui.rendering.input.key.manager.binding.actions
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
-import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.config.key.KeyActions
 import de.bixilon.minosoft.config.key.KeyBinding
 import de.bixilon.minosoft.config.key.KeyCodes
@@ -26,30 +25,28 @@ import de.bixilon.minosoft.gui.rendering.input.key.manager.InputManager
 import de.bixilon.minosoft.gui.rendering.input.key.manager.binding.BindingsManager
 import de.bixilon.minosoft.gui.rendering.input.key.manager.binding.KeyBindingFilterState
 import de.bixilon.minosoft.gui.rendering.input.key.manager.binding.KeyBindingState
-import de.bixilon.minosoft.test.ITUtil.allocate
+import de.bixilon.minosoft.test.IT.OBJENESIS
+import it.unimi.dsi.fastutil.objects.Object2LongMap
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap
 import org.testng.Assert.assertFalse
 import org.testng.Assert.assertTrue
 import org.testng.annotations.Test
-import java.util.*
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 
-val TIMES = InputManager::class.java.getFieldOrNull("times")!!
+val times = InputManager::class.java.getFieldOrNull("times")!!
 val keysPressed = InputManager::class.java.getFieldOrNull("pressed")!!
 val bindingsPressed = BindingsManager::class.java.getFieldOrNull("pressed")!!
 val name = minosoft("dummy")
 
-val InputManager.times: EnumMap<KeyCodes, ValueTimeMark> get() = TIMES.get(this).unsafeCast()
+val InputManager.times: Object2LongMap<KeyCodes> get() = de.bixilon.minosoft.gui.rendering.input.key.manager.binding.actions.times.get(this).unsafeCast()
 
 
 fun input(): InputManager {
-    val manager = InputManager::class.java.allocate()
-    val bindings = BindingsManager::class.java.allocate()
+    val manager = OBJENESIS.newInstance(InputManager::class.java)
+    val bindings = OBJENESIS.newInstance(BindingsManager::class.java)
     bindingsPressed[bindings] = mutableSetOf<ResourceLocation>()
     manager::bindings.forceSet(bindings)
-    TIMES[manager] = EnumMap<KeyCodes, ValueTimeMark>(KeyCodes::class.java)
+    times[manager] = Object2LongOpenHashMap<KeyCodes>()
 
     keysPressed[manager] = KeyCodes.set()
 
@@ -66,7 +63,7 @@ class Press {
             KeyBindingState(KeyBinding(mapOf(KeyActions.PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -79,7 +76,7 @@ class Press {
             KeyBindingState(KeyBinding(mapOf(KeyActions.PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -92,7 +89,7 @@ class Press {
             KeyBindingState(KeyBinding(mapOf(KeyActions.PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.result)
@@ -105,7 +102,7 @@ class Press {
             KeyBindingState(KeyBinding(mapOf(KeyActions.PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -122,7 +119,7 @@ class Release {
             KeyBindingState(KeyBinding(mapOf(KeyActions.RELEASE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertTrue(state.result)
@@ -136,7 +133,7 @@ class Release {
             KeyBindingState(KeyBinding(mapOf(KeyActions.RELEASE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -149,7 +146,7 @@ class Release {
             KeyBindingState(KeyBinding(mapOf(KeyActions.RELEASE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -162,7 +159,7 @@ class Release {
             KeyBindingState(KeyBinding(mapOf(KeyActions.RELEASE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -179,7 +176,7 @@ class Change {
             KeyBindingState(KeyBinding(mapOf(KeyActions.CHANGE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -192,7 +189,7 @@ class Change {
             KeyBindingState(KeyBinding(mapOf(KeyActions.CHANGE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -205,7 +202,7 @@ class Change {
             KeyBindingState(KeyBinding(mapOf(KeyActions.CHANGE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -218,7 +215,7 @@ class Change {
             KeyBindingState(KeyBinding(mapOf(KeyActions.CHANGE to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -235,7 +232,7 @@ class Modifier {
             KeyBindingState(KeyBinding(mapOf(KeyActions.MODIFIER to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -248,7 +245,7 @@ class Modifier {
             KeyBindingState(KeyBinding(mapOf(KeyActions.MODIFIER to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -261,7 +258,7 @@ class Modifier {
             KeyBindingState(KeyBinding(mapOf(KeyActions.MODIFIER to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -274,7 +271,7 @@ class Modifier {
             KeyBindingState(KeyBinding(mapOf(KeyActions.MODIFIER to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -293,7 +290,7 @@ class Modifier {
             KeyBindingState(KeyBinding(mapOf(KeyActions.MODIFIER to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_1,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.satisfied)
@@ -310,7 +307,7 @@ class Sticky {
             KeyBindingState(KeyBinding(mapOf(KeyActions.STICKY to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertTrue(state.result)
@@ -324,7 +321,7 @@ class Sticky {
             KeyBindingState(KeyBinding(mapOf(KeyActions.STICKY to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = false,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -337,7 +334,7 @@ class Sticky {
             KeyBindingState(KeyBinding(mapOf(KeyActions.STICKY to setOf(KeyCodes.KEY_1)))),
             KeyCodes.KEY_0,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -356,7 +353,7 @@ class Sticky {
             KeyBindingState(binding),
             KeyCodes.KEY_0,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertFalse(state.result)
@@ -375,7 +372,7 @@ class DoublePress {
             KeyBindingState(KeyBinding(mapOf(KeyActions.DOUBLE_PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            now(),
+            0L,
         )
 
         assertFalse(state.satisfied)
@@ -384,15 +381,14 @@ class DoublePress {
     fun `double press`() {
         val state = KeyBindingFilterState(false)
         val input = input()
-        val start = now()
-        input.times[KeyCodes.KEY_0] = start
+        input.times.put(KeyCodes.KEY_0, 1000L)
 
         KeyActionFilter.DoublePress.check(
             state, setOf(KeyCodes.KEY_0), input, name,
             KeyBindingState(KeyBinding(mapOf(KeyActions.DOUBLE_PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            start + 10.milliseconds,
+            1100L,
         )
 
         assertTrue(state.satisfied)
@@ -403,19 +399,18 @@ class DoublePress {
     fun `double press second time`() {
         val state = KeyBindingFilterState(false)
         val input = input()
-        val start = now()
 
         val pressed = bindingsPressed[input.bindings].unsafeCast<MutableSet<ResourceLocation>>()
         pressed += name
 
-        input.times[KeyCodes.KEY_0] = start
+        input.times.put(KeyCodes.KEY_0, 1000L)
 
         KeyActionFilter.DoublePress.check(
             state, setOf(KeyCodes.KEY_0), input, name,
             KeyBindingState(KeyBinding(mapOf(KeyActions.DOUBLE_PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            start + 10.milliseconds,
+            1100L,
         )
 
         assertTrue(state.satisfied)
@@ -426,39 +421,32 @@ class DoublePress {
     fun `too long ago press`() {
         val state = KeyBindingFilterState(false)
         val input = input()
-        val start = now()
-
-        input.times.put(KeyCodes.KEY_0, start)
+        input.times.put(KeyCodes.KEY_0, 1000L)
 
         KeyActionFilter.DoublePress.check(
             state, setOf(KeyCodes.KEY_0), input, name,
             KeyBindingState(KeyBinding(mapOf(KeyActions.DOUBLE_PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            start + 1.seconds,
+            10000L,
         )
 
         assertFalse(state.satisfied)
     }
 
     fun `delay between`() {
-        val filter = KeyBindingFilterState(false)
+        val state = KeyBindingFilterState(false)
         val input = input()
-        val start = now()
-
-        input.times[KeyCodes.KEY_0] = start
-        val state = KeyBindingState(KeyBinding(mapOf(KeyActions.DOUBLE_PRESS to setOf(KeyCodes.KEY_0))))
-        state.lastChange = start + 10.milliseconds
-
+        input.times.put(KeyCodes.KEY_0, 10L)
 
         KeyActionFilter.DoublePress.check(
-            filter, setOf(KeyCodes.KEY_0), input, name,
-            state,
+            state, setOf(KeyCodes.KEY_0), input, name,
+            KeyBindingState(KeyBinding(mapOf(KeyActions.DOUBLE_PRESS to setOf(KeyCodes.KEY_0)))),
             KeyCodes.KEY_0,
             pressed = true,
-            start + 100.milliseconds,
+            100L,
         )
 
-        assertFalse(filter.satisfied)
+        assertFalse(state.satisfied)
     }
 }
