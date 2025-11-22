@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.input.slider
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -23,7 +22,7 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import kotlin.math.roundToInt
 
 class SliderElement(
@@ -55,7 +54,7 @@ class SliderElement(
         textElement = TextElement(guiRenderer, getDisplayText(), background = null, parent = this)
         updateText()
         // Set initial size based on text element size plus padding (similar to ButtonElement)
-        size = Vec2f(textElement.size.x + TEXT_PADDING * 2, 20.0f)
+        size = Vec2(textElement.size.x + TEXT_PADDING * 2, 20.0f)
     }
 
     private fun getDisplayText(): String {
@@ -67,7 +66,7 @@ class SliderElement(
         textElement.silentApply()
         // Update size when text changes
         if (_size.x == 0.0f) {
-            _size = Vec2f(textElement.size.x + TEXT_PADDING * 2, 20.0f)
+            _size = Vec2(textElement.size.x + TEXT_PADDING * 2, 20.0f)
         }
     }
 
@@ -76,7 +75,7 @@ class SliderElement(
         cacheUpToDate = false
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         val size = size
         val sliderHeight = 20.0f
 
@@ -93,17 +92,17 @@ class SliderElement(
 
         // Render slider handle as a raised button (hovered state for popped-out look)
         val slider = AtlasImageElement(guiRenderer, buttonAtlas?.get("hovered") ?: guiRenderer.context.textures.whiteTexture)
-        slider.size = Vec2f(sliderWidth, sliderHeight)
-        slider.render(offset + Vec2f(sliderX, 0.0f), consumer, options)
+        slider.size = Vec2(sliderWidth, sliderHeight)
+        slider.render(offset + Vec2(sliderX, 0.0f), consumer, options)
 
         // Render text centered
         val textSize = textElement.size
         val textX = (size.x - textSize.x) / 2
         val textY = (size.y - textSize.y) / 2
-        textElement.render(offset + Vec2f(textX, textY), consumer, options)
+        textElement.render(offset + Vec2(textX, textY), consumer, options)
     }
 
-    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         if (button != MouseButtons.LEFT) {
             return true
         }
@@ -121,7 +120,7 @@ class SliderElement(
         return true
     }
 
-    override fun onMouseMove(position: Vec2f, absolute: Vec2f): Boolean {
+    override fun onMouseMove(position: Vec2, absolute: Vec2): Boolean {
         if (isDragging) {
             updateValueFromPosition(position.x)
         }
