@@ -38,7 +38,7 @@ abstract class AbstractButtonElement(
     text: Any,
     disabled: Boolean = false,
 ) : Element(guiRenderer) {
-    val textElement = TextElement(guiRenderer, text, background = null, parent = this)
+    protected val textElement = TextElement(guiRenderer, text, background = null, parent = this)
     protected abstract val disabledAtlas: AtlasElement?
     protected abstract val normalAtlas: AtlasElement?
     protected abstract val hoveredAtlas: AtlasElement?
@@ -81,7 +81,7 @@ abstract class AbstractButtonElement(
             if (_disabled == value) {
                 return
             }
-            _disabled = value
+            _disabled = disabled
             forceApply()
         }
 
@@ -114,11 +114,8 @@ abstract class AbstractButtonElement(
         background.size = size
         val textSize = textElement.size
 
-        // Apply reduced opacity when disabled
-        val renderOptions = if (disabled) GUIVertexOptions(alpha = 0.4f) else options
-
-        background.render(offset, consumer, renderOptions)
-        textElement.render(offset + Vec2(HorizontalAlignments.CENTER.getOffset(size.x, textSize.x), VerticalAlignments.CENTER.getOffset(size.y, textSize.y)), consumer, renderOptions)
+        background.render(offset, consumer, options)
+        textElement.render(offset + Vec2(HorizontalAlignments.CENTER.getOffset(size.x, textSize.x), VerticalAlignments.CENTER.getOffset(size.y, textSize.y)), consumer, options)
     }
 
     override fun forceSilentApply() {
