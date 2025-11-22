@@ -66,8 +66,8 @@ class SliderElement(
         textElement.text = getDisplayText()
         textElement.silentApply()
         // Update size when text changes
-        if (_size.x == 0.0f) {
-            _size = Vec2f(textElement.size.x + TEXT_PADDING * 2, 20.0f)
+        if (size.x == 0.0f) {
+            size = Vec2f(textElement.size.x + TEXT_PADDING * 2, 20.0f)
         }
     }
 
