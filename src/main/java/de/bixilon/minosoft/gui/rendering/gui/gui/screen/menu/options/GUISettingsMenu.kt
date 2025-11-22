@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.menu.options
 
-import de.bixilon.kmath.vec.vec2.f.Vec2f
-import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kotlinglm.vec2.Vec2
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments
@@ -29,7 +28,7 @@ import de.bixilon.minosoft.gui.rendering.gui.gui.screen.Screen
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 
 class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
     private val guiProfile = guiRenderer.context.session.profiles.gui
@@ -139,20 +138,20 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         super.forceSilentApply()
         title.forceSilentApply()
         for (slider in sliders) {
-            slider.size = Vec2f(buttonWidth, slider.size.y)
+            slider.size = Vec2(buttonWidth, slider.size.y)
             slider.forceSilentApply()
         }
         for (button in buttons) {
-            button.size = Vec2f(buttonWidth, button.size.y)
+            button.size = Vec2(buttonWidth, button.size.y)
             button.forceSilentApply()
         }
-        doneButton.size = Vec2f(buttonWidth, doneButton.size.y)
+        doneButton.size = Vec2(buttonWidth, doneButton.size.y)
         doneButton.forceSilentApply()
         tooltipElement?.forceSilentApply()
         cacheUpToDate = false
     }
 
-    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
         val size = size
         val titleHeight = title.size.y
@@ -169,14 +168,14 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         
         // Render title
         val titleX = (size.x - title.size.x) / 2
-        title.render(offset + Vec2f(titleX, currentY), consumer, options)
+        title.render(offset + Vec2(titleX, currentY), consumer, options)
         currentY += titleHeight + 20.0f
         
         // Render sliders and buttons
         val elementX = (size.x - buttonWidth) / 2
         
         for (slider in sliders) {
-            slider.render(offset + Vec2f(elementX, currentY), consumer, options)
+            slider.render(offset + Vec2(elementX, currentY), consumer, options)
             currentY += slider.size.y + buttonSpacing
         }
         
@@ -188,7 +187,7 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
             } else {
                 options
             }
-            button.render(offset + Vec2f(elementX, currentY), consumer, buttonOptions)
+            button.render(offset + Vec2(elementX, currentY), consumer, buttonOptions)
             currentY += button.size.y + buttonSpacing
         }
         
@@ -196,14 +195,14 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         
         // Render done button
         val doneX = (size.x - doneButton.size.x) / 2
-        doneButton.render(offset + Vec2f(doneX, currentY), consumer, options)
+        doneButton.render(offset + Vec2(doneX, currentY), consumer, options)
 
         // Render tooltip
         tooltipElement?.let { tooltip ->
             val mousePos = guiRenderer.currentMousePosition
             val tooltipX = (mousePos.x + 10).coerceIn(0f, size.x - tooltip.size.x)
             val tooltipY = (mousePos.y + 10).coerceIn(0f, size.y - tooltip.size.y)
-            tooltip.render(offset + Vec2f(tooltipX, tooltipY), consumer, options)
+            tooltip.render(offset + Vec2(tooltipX, tooltipY), consumer, options)
         }
     }
 
@@ -241,7 +240,7 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         }
     }
 
-    private fun updateTooltip(tooltip: String?, mousePos: Vec2f) {
+    private fun updateTooltip(tooltip: String?, mousePos: Vec2) {
         if (tooltip != currentTooltip) {
             tooltipElement?.parent = null
             tooltipElement = null
@@ -260,7 +259,7 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         }
     }
 
-    private fun getElementAt(position: Vec2f): Pair<Element, Vec2f>? {
+    private fun getElementAt(position: Vec2): Pair<Element, Vec2>? {
         val size = size
         val titleHeight = title.size.y
         
@@ -280,7 +279,7 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         for (slider in sliders) {
             if (position.x >= elementX && position.x < elementX + buttonWidth &&
                 position.y >= currentY && position.y < currentY + slider.size.y) {
-                return Pair(slider, Vec2f(position.x - elementX, position.y - currentY))
+                return Pair(slider, Vec2(position.x - elementX, position.y - currentY))
             }
             currentY += slider.size.y + buttonSpacing
         }
@@ -292,7 +291,7 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
                 position.y >= currentY && position.y < currentY + button.size.y) {
                 // Skip disabled buttons
                 if (!button.disabled) {
-                    return Pair(button, Vec2f(position.x - elementX, position.y - currentY))
+                    return Pair(button, Vec2(position.x - elementX, position.y - currentY))
                 }
             }
             currentY += button.size.y + buttonSpacing
@@ -304,19 +303,19 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         val doneX = (size.x - doneButton.size.x) / 2
         if (position.x >= doneX && position.x < doneX + buttonWidth &&
             position.y >= currentY && position.y < currentY + buttonHeight) {
-            return Pair(doneButton, Vec2f(position.x - doneX, position.y - currentY))
+            return Pair(doneButton, Vec2(position.x - doneX, position.y - currentY))
         }
         
         return null
     }
 
-    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         val (element, localPos) = getElementAt(position) ?: return true
         element.onMouseAction(localPos, button, action, count)
         return true
     }
 
-    override fun onMouseMove(position: Vec2f, absolute: Vec2f): Boolean {
+    override fun onMouseMove(position: Vec2, absolute: Vec2): Boolean {
         val pair = getElementAt(position)
 
         if (activeElement != pair?.first) {
@@ -339,7 +338,7 @@ class GUISettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         val oldElement = activeElement
         activeElement = null
         oldElement?.onMouseLeave()
-        updateTooltip(null, Vec2f(0, 0))
+        updateTooltip(null, Vec2(0, 0))
         return super.onMouseLeave()
     }
 
