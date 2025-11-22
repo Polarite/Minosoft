@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.menu.options
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments
@@ -28,7 +29,7 @@ import de.bixilon.minosoft.gui.rendering.gui.gui.screen.Screen
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
     private val guiProfile = guiRenderer.context.session.profiles.gui
@@ -71,7 +72,7 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         widthInput = TextInputElement(guiRenderer, chatProfile.width.toString(), maxLength = 3, onChangeCallback = {
             widthInput.value.toIntOrNull()?.let { value ->
                 if (value in 100..500) {
-                    chatProfile.width = value
+                    chatProfile.width = value.toFloat()
                 }
             }
         })
@@ -82,9 +83,9 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         heightLabel.parent = this
         
         heightInput = TextInputElement(guiRenderer, chatProfile.height.toString(), maxLength = 3, onChangeCallback = {
-            heightInput.value.toIntOrNull()?.let { value ->
+            widthInput.value.toIntOrNull()?.let { value ->
                 if (value in 40..500) {
-                    chatProfile.height = value
+                    chatProfile.height = value.toFloat()
                 }
             }
         })
@@ -142,7 +143,7 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         }
     }
 
-    private fun updateTooltip(tooltip: String?, mousePos: Vec2) {
+    private fun updateTooltip(tooltip: String?, mousePos: Vec2f) {
         if (tooltip == currentTooltip) return
         
         currentTooltip = tooltip
@@ -166,26 +167,26 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         super.forceSilentApply()
         title.forceSilentApply()
         widthLabel.forceSilentApply()
-        widthInput.prefMaxSize = Vec2(inputWidth, widthInput.size.y)
+        widthInput.prefMaxSize = Vec2f(inputWidth, widthInput.size.y)
         widthInput.forceSilentApply()
         heightLabel.forceSilentApply()
-        heightInput.prefMaxSize = Vec2(inputWidth, heightInput.size.y)
+        heightInput.prefMaxSize = Vec2f(inputWidth, heightInput.size.y)
         heightInput.forceSilentApply()
-        hiddenButton.size = Vec2(buttonWidth, hiddenButton.size.y)
+        hiddenButton.size = Vec2f(buttonWidth, hiddenButton.size.y)
         hiddenButton.forceSilentApply()
-        textFilteringButton.size = Vec2(buttonWidth, textFilteringButton.size.y)
+        textFilteringButton.size = Vec2f(buttonWidth, textFilteringButton.size.y)
         textFilteringButton.forceSilentApply()
-        chatColorsButton.size = Vec2(buttonWidth, chatColorsButton.size.y)
+        chatColorsButton.size = Vec2f(buttonWidth, chatColorsButton.size.y)
         chatColorsButton.forceSilentApply()
-        chatModeButton.size = Vec2(buttonWidth, chatModeButton.size.y)
+        chatModeButton.size = Vec2f(buttonWidth, chatModeButton.size.y)
         chatModeButton.forceSilentApply()
-        doneButton.size = Vec2(buttonWidth, doneButton.size.y)
+        doneButton.size = Vec2f(buttonWidth, doneButton.size.y)
         doneButton.forceSilentApply()
         tooltipElement?.forceSilentApply()
         cacheUpToDate = false
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
         val size = size
 
@@ -200,49 +201,49 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
 
         // Title
         val titleX = (size.x - title.size.x) / 2
-        title.render(offset + Vec2(titleX, currentY), consumer, options)
+        title.render(offset + Vec2f(titleX, currentY), consumer, options)
         currentY += titleHeight + 20.0f
 
         // Width row (centered as a group)
         val widthRowWidth = widthLabel.size.x + labelSpacing + inputWidth
         val widthRowStartX = (size.x - widthRowWidth) / 2
         val widthLabelY = currentY + (widthRowHeight - widthLabel.size.y) / 2
-        widthLabel.render(offset + Vec2(widthRowStartX, widthLabelY), consumer, options)
+        widthLabel.render(offset + Vec2f(widthRowStartX, widthLabelY), consumer, options)
         val widthInputX = widthRowStartX + widthLabel.size.x + labelSpacing
         val widthInputY = currentY + (widthRowHeight - widthInput.size.y) / 2
-        widthInput.render(offset + Vec2(widthInputX, widthInputY), consumer, options)
+        widthInput.render(offset + Vec2f(widthInputX, widthInputY), consumer, options)
         currentY += widthRowHeight + rowSpacing
 
         // Height row (centered as a group)
         val heightRowWidth = heightLabel.size.x + labelSpacing + inputWidth
         val heightRowStartX = (size.x - heightRowWidth) / 2
         val heightLabelY = currentY + (heightRowHeight - heightLabel.size.y) / 2
-        heightLabel.render(offset + Vec2(heightRowStartX, heightLabelY), consumer, options)
+        heightLabel.render(offset + Vec2f(heightRowStartX, heightLabelY), consumer, options)
         val heightInputX = heightRowStartX + heightLabel.size.x + labelSpacing
         val heightInputY = currentY + (heightRowHeight - heightInput.size.y) / 2
-        heightInput.render(offset + Vec2(heightInputX, heightInputY), consumer, options)
+        heightInput.render(offset + Vec2f(heightInputX, heightInputY), consumer, options)
         currentY += heightRowHeight + 20.0f
 
         // Buttons (centered)
         val buttonX = (size.x - buttonWidth) / 2
-        hiddenButton.render(offset + Vec2(buttonX, currentY), consumer, options)
+        hiddenButton.render(offset + Vec2f(buttonX, currentY), consumer, options)
         currentY += buttonHeight + rowSpacing
-        textFilteringButton.render(offset + Vec2(buttonX, currentY), consumer, options)
+        textFilteringButton.render(offset + Vec2f(buttonX, currentY), consumer, options)
         currentY += buttonHeight + rowSpacing
-        chatColorsButton.render(offset + Vec2(buttonX, currentY), consumer, options)
+        chatColorsButton.render(offset + Vec2f(buttonX, currentY), consumer, options)
         currentY += buttonHeight + rowSpacing
-        chatModeButton.render(offset + Vec2(buttonX, currentY), consumer, options)
+        chatModeButton.render(offset + Vec2f(buttonX, currentY), consumer, options)
         currentY += buttonHeight + rowSpacing
 
         // Done button
-        doneButton.render(offset + Vec2(buttonX, currentY), consumer, options)
+        doneButton.render(offset + Vec2f(buttonX, currentY), consumer, options)
 
         // Render tooltip if present
         tooltipElement?.let { tooltip ->
             val mousePos = guiRenderer.currentMousePosition
             val tooltipX = (mousePos.x + 10.0f).coerceIn(0.0f, size.x - tooltip.size.x)
             val tooltipY = (mousePos.y + 10.0f).coerceIn(0.0f, size.y - tooltip.size.y)
-            tooltip.render(offset + Vec2(tooltipX, tooltipY), consumer, options)
+            tooltip.render(offset + Vec2f(tooltipX, tooltipY), consumer, options)
         }
     }
 
@@ -261,7 +262,7 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         tooltipElement?.tick()
     }
 
-    private fun getElementAt(position: Vec2): Pair<Element, Vec2>? {
+    private fun getElementAt(position: Vec2f): Pair<Element, Vec2f>? {
         val size = size
 
         val titleHeight = title.size.y
@@ -281,7 +282,7 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         val widthInputY = currentY + (widthRowHeight - widthInput.size.y) / 2
         if (position.x >= widthInputX && position.x < widthInputX + inputWidth &&
             position.y >= widthInputY && position.y < widthInputY + widthInput.size.y) {
-            return Pair(widthInput, Vec2(position.x - widthInputX, position.y - widthInputY))
+            return Pair(widthInput, Vec2f(position.x - widthInputX, position.y - widthInputY))
         }
         currentY += widthRowHeight + rowSpacing
 
@@ -292,7 +293,7 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         val heightInputY = currentY + (heightRowHeight - heightInput.size.y) / 2
         if (position.x >= heightInputX && position.x < heightInputX + inputWidth &&
             position.y >= heightInputY && position.y < heightInputY + heightInput.size.y) {
-            return Pair(heightInput, Vec2(position.x - heightInputX, position.y - heightInputY))
+            return Pair(heightInput, Vec2f(position.x - heightInputX, position.y - heightInputY))
         }
         currentY += heightRowHeight + 20.0f
 
@@ -302,47 +303,47 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         // Hidden button
         if (position.x >= buttonX && position.x < buttonX + buttonWidth &&
             position.y >= currentY && position.y < currentY + buttonHeight) {
-            return Pair(hiddenButton, Vec2(position.x - buttonX, position.y - currentY))
+            return Pair(hiddenButton, Vec2f(position.x - buttonX, position.y - currentY))
         }
         currentY += buttonHeight + rowSpacing
         
         // Text Filtering button
         if (position.x >= buttonX && position.x < buttonX + buttonWidth &&
             position.y >= currentY && position.y < currentY + buttonHeight) {
-            return Pair(textFilteringButton, Vec2(position.x - buttonX, position.y - currentY))
+            return Pair(textFilteringButton, Vec2f(position.x - buttonX, position.y - currentY))
         }
         currentY += buttonHeight + rowSpacing
         
         // Chat Colors button
         if (position.x >= buttonX && position.x < buttonX + buttonWidth &&
             position.y >= currentY && position.y < currentY + buttonHeight) {
-            return Pair(chatColorsButton, Vec2(position.x - buttonX, position.y - currentY))
+            return Pair(chatColorsButton, Vec2f(position.x - buttonX, position.y - currentY))
         }
         currentY += buttonHeight + rowSpacing
         
         // Chat Mode button
         if (position.x >= buttonX && position.x < buttonX + buttonWidth &&
             position.y >= currentY && position.y < currentY + buttonHeight) {
-            return Pair(chatModeButton, Vec2(position.x - buttonX, position.y - currentY))
+            return Pair(chatModeButton, Vec2f(position.x - buttonX, position.y - currentY))
         }
         currentY += buttonHeight + rowSpacing
 
         // Done button
         if (position.x >= buttonX && position.x < buttonX + buttonWidth &&
             position.y >= currentY && position.y < currentY + buttonHeight) {
-            return Pair(doneButton, Vec2(position.x - buttonX, position.y - currentY))
+            return Pair(doneButton, Vec2f(position.x - buttonX, position.y - currentY))
         }
 
         return null
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         val (element, localPos) = getElementAt(position) ?: return true
         element.onMouseAction(localPos, button, action, count)
         return true
     }
 
-    override fun onMouseMove(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseMove(position: Vec2f, absolute: Vec2f): Boolean {
         val pair = getElementAt(position)
 
         if (activeElement != pair?.first) {
@@ -366,7 +367,7 @@ class ChatSettingsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         val oldElement = activeElement
         activeElement = null
         oldElement?.onMouseLeave()
-        updateTooltip(null, Vec2(0.0f, 0.0f))
+        updateTooltip(null, Vec2f(0.0f, 0.0f))
         return super.onMouseLeave()
     }
 

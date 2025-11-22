@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.menu.options
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.minosoft.data.language.LanguageUtil.i18n
 import de.bixilon.minosoft.gui.eros.Eros
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil
@@ -30,7 +31,7 @@ import de.bixilon.minosoft.gui.rendering.gui.gui.screen.Screen
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
     private val title: TextElement
@@ -120,30 +121,30 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         title.forceSilentApply()
 
         // Set size for FOV slider
-        fovSlider.size = Vec2(buttonWidth, fovSlider.size.y)
+        fovSlider.size = Vec2f(buttonWidth, fovSlider.size.y)
         fovSlider.forceSilentApply()
 
         // Set size for master volume slider
-        masterVolumeSlider.size = Vec2(buttonWidth, masterVolumeSlider.size.y)
+        masterVolumeSlider.size = Vec2f(buttonWidth, masterVolumeSlider.size.y)
         masterVolumeSlider.forceSilentApply()
 
         // Set size for all buttons
         for (button in leftColumnButtons) {
-            button.size = Vec2(buttonWidth, button.size.y)
+            button.size = Vec2f(buttonWidth, button.size.y)
             button.forceSilentApply()
         }
         for (button in rightColumnButtons) {
-            button.size = Vec2(buttonWidth, button.size.y)
+            button.size = Vec2f(buttonWidth, button.size.y)
             button.forceSilentApply()
         }
 
-        doneButton.size = Vec2(buttonWidth, doneButton.size.y)
+        doneButton.size = Vec2f(buttonWidth, doneButton.size.y)
         doneButton.forceSilentApply()
 
         cacheUpToDate = false
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
 
         val size = size
@@ -173,7 +174,7 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
 
         // Render title centered
         val titleX = (size.x - title.size.x) / 2
-        title.render(offset + Vec2(titleX, currentY), consumer, options)
+        title.render(offset + Vec2f(titleX, currentY), consumer, options)
         currentY += titleHeight + 20.0f
 
         // Calculate starting X positions for both columns (centered together)
@@ -184,21 +185,21 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
 
         // Render left column (FOV slider first, then buttons)
         var leftY = currentY
-        fovSlider.render(offset + Vec2(leftColumnX, leftY), consumer, options)
+        fovSlider.render(offset + Vec2f(leftColumnX, leftY), consumer, options)
         leftY += fovSlider.size.y + buttonSpacing
 
         for (button in leftColumnButtons) {
-            button.render(offset + Vec2(leftColumnX, leftY), consumer, options)
+            button.render(offset + Vec2f(leftColumnX, leftY), consumer, options)
             leftY += button.size.y + buttonSpacing
         }
 
         // Render right column (master volume slider first, then buttons)
         var rightY = currentY
-        masterVolumeSlider.render(offset + Vec2(rightColumnX, rightY), consumer, options)
+        masterVolumeSlider.render(offset + Vec2f(rightColumnX, rightY), consumer, options)
         rightY += masterVolumeSlider.size.y + buttonSpacing
 
         for (button in rightColumnButtons) {
-            button.render(offset + Vec2(rightColumnX, rightY), consumer, options)
+            button.render(offset + Vec2f(rightColumnX, rightY), consumer, options)
             rightY += button.size.y + buttonSpacing
         }
 
@@ -206,7 +207,7 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
 
         // Render done button centered
         val doneX = (size.x - doneButton.size.x) / 2
-        doneButton.render(offset + Vec2(doneX, currentY), consumer, options)
+        doneButton.render(offset + Vec2f(doneX, currentY), consumer, options)
     }
 
     override fun tick() {
@@ -223,7 +224,7 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         doneButton.tick()
     }
 
-    private fun getElementAt(position: Vec2): Pair<Element, Vec2>? {
+    private fun getElementAt(position: Vec2f): Pair<Element, Vec2f>? {
         val size = size
         val titleHeight = title.size.y
 
@@ -256,7 +257,7 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         var leftY = currentY
         if (position.x >= leftColumnX && position.x < leftColumnX + buttonWidth &&
             position.y >= leftY && position.y < leftY + fovSlider.size.y) {
-            return Pair(fovSlider, Vec2(position.x - leftColumnX, position.y - leftY))
+            return Pair(fovSlider, Vec2f(position.x - leftColumnX, position.y - leftY))
         }
         leftY += fovSlider.size.y + buttonSpacing
 
@@ -264,7 +265,7 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         for (button in leftColumnButtons) {
             if (position.x >= leftColumnX && position.x < leftColumnX + buttonWidth &&
                 position.y >= leftY && position.y < leftY + button.size.y) {
-                return Pair(button, Vec2(position.x - leftColumnX, position.y - leftY))
+                return Pair(button, Vec2f(position.x - leftColumnX, position.y - leftY))
             }
             leftY += button.size.y + buttonSpacing
         }
@@ -273,7 +274,7 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         var rightY = currentY
         if (position.x >= rightColumnX && position.x < rightColumnX + buttonWidth &&
             position.y >= rightY && position.y < rightY + masterVolumeSlider.size.y) {
-            return Pair(masterVolumeSlider, Vec2(position.x - rightColumnX, position.y - rightY))
+            return Pair(masterVolumeSlider, Vec2f(position.x - rightColumnX, position.y - rightY))
         }
         rightY += masterVolumeSlider.size.y + buttonSpacing
 
@@ -281,7 +282,7 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         for (button in rightColumnButtons) {
             if (position.x >= rightColumnX && position.x < rightColumnX + buttonWidth &&
                 position.y >= rightY && position.y < rightY + button.size.y) {
-                return Pair(button, Vec2(position.x - rightColumnX, position.y - rightY))
+                return Pair(button, Vec2f(position.x - rightColumnX, position.y - rightY))
             }
             rightY += button.size.y + buttonSpacing
         }
@@ -291,19 +292,19 @@ class OptionsMenu(guiRenderer: GUIRenderer) : Screen(guiRenderer) {
         val doneX = (size.x - doneButton.size.x) / 2
         if (position.x >= doneX && position.x < doneX + buttonWidth &&
             position.y >= currentY && position.y < currentY + buttonHeight) {
-            return Pair(doneButton, Vec2(position.x - doneX, position.y - currentY))
+            return Pair(doneButton, Vec2f(position.x - doneX, position.y - currentY))
         }
 
         return null
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         val (element, localPos) = getElementAt(position) ?: return true
         element.onMouseAction(localPos, button, action, count)
         return true
     }
 
-    override fun onMouseMove(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseMove(position: Vec2f, absolute: Vec2f): Boolean {
         val pair = getElementAt(position)
 
         if (activeElement != pair?.first) {
