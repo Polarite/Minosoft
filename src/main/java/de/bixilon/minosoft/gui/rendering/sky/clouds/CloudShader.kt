@@ -32,4 +32,5 @@ class CloudShader(
     var cloudsColor by uniform("uCloudsColor", Vec3.EMPTY)
     var offset by uniform("uOffset", 0.0f)
     var yOffset by uniform("uYOffset", 0.0f)
+    var fullbright by uniform("uFullbright", false)
 }
