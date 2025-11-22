@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,9 +12,7 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.block
 
-import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.minosoft.data.entities.block.BlockActionEntity
-import de.bixilon.minosoft.data.registries.blocks.types.Block
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.s2c.PlayS2CPacket
 import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition.FLATTENING_VERSION
@@ -25,23 +23,20 @@ import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
 
 class BlockActionS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
-    val position: Vec3i = if (buffer.versionId < ProtocolVersions.V_14W03B) {
-        buffer.readShortBlockPosition()
-    } else {
-        buffer.readBlockPosition()
-    }
+    val position = if (buffer.versionId < ProtocolVersions.V_14W03B) buffer.readShortBlockPosition() else buffer.readBlockPosition()
     val type = buffer.readByte().toInt()
     val data = buffer.readByte().toInt()
-    val block: Block = if (buffer.versionId < FLATTENING_VERSION) buffer.readRegistryItem(buffer.session.registries.blockState)!!.block else buffer.readRegistryItem(buffer.session.registries.block)
+    val block = if (buffer.versionId < FLATTENING_VERSION) buffer.readRegistryItem(buffer.session.registries.blockState)?.block else buffer.readRegistryItem(buffer.session.registries.block)
 
     override fun handle(session: PlaySession) {
-        val blockEntity = session.world.getOrPutBlockEntity(position) ?: return
+        val entity = session.world.getBlockEntity(position) ?: return
 
-        if (blockEntity !is BlockActionEntity) {
-            Log.log(LogMessageType.NETWORK_IN, LogLevels.WARN) { "Block entity $blockEntity can not accept block entity actions!" }
+        if (entity !is BlockActionEntity) {
+            Log.log(LogMessageType.NETWORK_IN, LogLevels.WARN) { "Block entity $entity can not accept block entity actions (type=$type, data=$data)!" }
             return
         }
-        blockEntity.setBlockActionData(type, data)
+
+        entity.setBlockActionData(type, data)
     }
 
     override fun log(reducedLog: Boolean) {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.elements.input.node
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.commands.errors.ReaderError
 import de.bixilon.minosoft.commands.nodes.CommandNode
 import de.bixilon.minosoft.commands.stack.CommandStack
@@ -24,17 +24,16 @@ import de.bixilon.minosoft.commands.util.CommandReader
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.RenderConstants
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.mark.TextCursorStyles
 import de.bixilon.minosoft.gui.rendering.gui.gui.elements.input.TextInputElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
@@ -47,21 +46,21 @@ class NodeTextInputElement(
     cursorStyles: TextCursorStyles = TextCursorStyles.CLICKED,
     editable: Boolean = true,
     onChange: () -> Unit = {},
-    background: RGBColor? = RenderConstants.TEXT_BACKGROUND_COLOR,
+    background: RGBAColor? = RenderConstants.TEXT_BACKGROUND_COLOR,
     cutAtSize: Boolean = false,
     parent: Element? = null,
     properties: TextRenderProperties = TextRenderProperties.DEFAULT,
 ) : TextInputElement(guiRenderer, value, maxLength, cursorStyles, editable, onChange, background, properties, cutAtSize, parent) {
     private var showError = false
-    private val errorElement = NodeErrorElement(guiRenderer, Vec2.EMPTY)
-    private val suggestions = NodeSuggestionsElement(guiRenderer, Vec2.EMPTY, this)
+    private val errorElement = NodeErrorElement(guiRenderer, Vec2f.EMPTY)
+    private val suggestions = NodeSuggestionsElement(guiRenderer, Vec2f.EMPTY, this)
 
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
 
         errorElement.position = offset
-        suggestions.position = offset + Vec2(cursorOffset.x, 0)
+        suggestions.position = offset + Vec2f(cursorOffset.x, 0f)
     }
 
 

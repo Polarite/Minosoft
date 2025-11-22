@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2022 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,14 @@
 
 package de.bixilon.minosoft.data.text.events.click
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
 
 class ClickCallbackClickEvent(val callback: () -> Unit) : ClickEvent {
 
-    override fun onClick(guiRenderer: GUIRenderer, position: Vec2, button: MouseButtons, action: MouseActions) {
+    override fun onClick(guiRenderer: GUIRenderer, position: Vec2f, button: MouseButtons, action: MouseActions) {
         if (button != MouseButtons.LEFT || action != MouseActions.PRESS) {
             return
         }

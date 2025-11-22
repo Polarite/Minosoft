@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.enchanting
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kutil.observer.DataObserver.Companion.observe
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kutil.observer.array.ArrayObserver.Companion.observeArray
 import de.bixilon.minosoft.data.container.types.EnchantingContainer
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
@@ -23,8 +23,8 @@ import de.bixilon.minosoft.gui.rendering.gui.atlas.Atlas.Companion.get
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.ContainerGUIFactory
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.LabeledContainerScreen
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isGreater
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isSmaller
 import kotlin.reflect.KClass
@@ -35,11 +35,12 @@ class EnchantingContainerScreen(guiRenderer: GUIRenderer, container: EnchantingC
 
 
     init {
-        container::propertiesRevision.observe(this) { forceApply() }
-        container::revision.observe(this) { forceApply() }
+        container::enchantments.observeArray(this) { forceApply() }
+        container::enchantmentLevels.observeArray(this) { forceApply() }
+        container::costs.observeArray(this) { forceApply() }
     }
 
-    override fun forceRenderContainerScreen(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRenderContainerScreen(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         super.forceRenderContainerScreen(offset, consumer, options)
 
         for ((index, card) in cards.withIndex()) {
@@ -48,7 +49,7 @@ class EnchantingContainerScreen(guiRenderer: GUIRenderer, container: EnchantingC
         }
     }
 
-    override fun getContainerAt(position: Vec2): Pair<Element, Vec2>? {
+    override fun getContainerAt(position: Vec2f): Pair<Element, Vec2f>? {
         for ((index, area) in cardAreas.withIndex()) {
             if (area == null) {
                 continue

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,13 @@
 
 package de.bixilon.minosoft.physics.parts
 
-import de.bixilon.kotlinglm.vec2.Vec2d
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec2.d.Vec2d
+import de.bixilon.kutil.math.simple.DoubleMath.floor
+import de.bixilon.kutil.math.simple.IntMath.clamp
 import de.bixilon.minosoft.data.Axes
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.get
 import de.bixilon.minosoft.physics.entities.living.player.local.LocalPlayerPhysics
 
 object OutOfBlockPusher {
@@ -31,7 +30,7 @@ object OutOfBlockPusher {
     }
 
     private fun LocalPlayerPhysics.pushOutOfBlocks(x: Double, z: Double) {
-        val position = BlockPosition(x, this.position.y, z)
+        val position = BlockPosition(x.floor, this.position.y.floor.clamp(BlockPosition.MIN_Y, BlockPosition.MAX_Y), z.floor)
         if (!wouldCollidePushable(position)) {
             return
         }
@@ -55,9 +54,9 @@ object OutOfBlockPusher {
 
         val velocity = this.velocity
         if (pushed.axis == Axes.X) {
-            this.velocity = Vec3d(0.1 * pushed.vectord.x, velocity.y, velocity.z)
-        } else { // z
-            this.velocity = Vec3d(velocity.x, velocity.y, 0.1 * pushed.vectord.z)
+            this.velocity.x = 0.1 * pushed.vectord.x
+        } else {
+            this.velocity.z = 0.1 * pushed.vectord.z
         }
     }
 
@@ -67,9 +66,12 @@ object OutOfBlockPusher {
         }
         val dimensions = Vec2d(entity.dimensions)
 
-        pushOutOfBlocks(position.x - dimensions.x * 0.35, position.z + dimensions.y * 0.35)
-        pushOutOfBlocks(position.x - dimensions.x * 0.35, position.z - dimensions.y * 0.35)
-        pushOutOfBlocks(position.x + dimensions.x * 0.35, position.z - dimensions.y * 0.35)
-        pushOutOfBlocks(position.x + dimensions.x * 0.35, position.z + dimensions.y * 0.35)
+        val dimensionsX = dimensions.x * 0.35
+        val dimensionsY = dimensions.y * 0.35
+
+        pushOutOfBlocks(position.x - dimensionsX, position.z + dimensionsY)
+        pushOutOfBlocks(position.x - dimensionsX, position.z - dimensionsY)
+        pushOutOfBlocks(position.x + dimensionsX, position.z - dimensionsY)
+        pushOutOfBlocks(position.x + dimensionsX, position.z + dimensionsY)
     }
 }

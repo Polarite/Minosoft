@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,15 +12,13 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.block.chunk
 
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kutil.cast.CastUtil.cast
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.world.biome.source.SpatialBiomeArray
-import de.bixilon.minosoft.data.world.container.palette.PalettedContainer
 import de.bixilon.minosoft.data.world.container.palette.PalettedContainerReader
 import de.bixilon.minosoft.data.world.container.palette.palettes.BiomePaletteFactory
+import de.bixilon.minosoft.data.world.positions.ChunkPosition
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.s2c.PlayS2CPacket
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
@@ -33,7 +31,7 @@ class ChunkBiomeS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
 
 
     data class ChunkBiomeData(
-        val position: Vec2i,
+        val position: ChunkPosition,
         val data: ByteArray,
     )
 
@@ -45,14 +43,11 @@ class ChunkBiomeS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
             val chunk = session.world.chunks[position] ?: continue
             val source = chunk.biomeSource.nullCast<SpatialBiomeArray>() ?: continue
             val buffer = PlayInByteBuffer(data, session)
-            for (sectionIndex in (0 until chunk.sections.size)) {
-                val biomeContainer: PalettedContainer<Biome?> = PalettedContainerReader.read(buffer, buffer.session.registries.biome.unsafeCast(), paletteFactory = BiomePaletteFactory)
 
-                if (biomeContainer.isEmpty) continue
-                source.data[sectionIndex] = biomeContainer.unpack<Biome>().cast()
-            }
+            source.data = PalettedContainerReader.unpack<Biome?>(buffer, buffer.session.registries.biome.unsafeCast(), factory = BiomePaletteFactory) ?: continue
         }
-        session.world.biomes.resetCache()
+
+        session.world.biomes.resetCache() // TODO (performance): Only for potentially affected chunks
     }
 
     override fun log(reducedLog: Boolean) {

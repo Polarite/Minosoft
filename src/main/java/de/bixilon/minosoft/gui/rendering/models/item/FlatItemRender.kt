@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,20 +13,21 @@
 
 package de.bixilon.minosoft.gui.rendering.models.item
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.Colors
+import de.bixilon.minosoft.data.text.formatting.color.RGBArray
 import de.bixilon.minosoft.gui.rendering.chunk.mesh.BlockVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ImageElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
+import de.bixilon.minosoft.gui.rendering.light.ao.AmbientOcclusionUtil
 import de.bixilon.minosoft.gui.rendering.models.block.element.face.FaceUV
 import de.bixilon.minosoft.gui.rendering.models.util.CuboidUtil
-import de.bixilon.minosoft.gui.rendering.system.base.MeshUtil.buffer
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.Texture
 
 class FlatItemRender(
@@ -34,24 +35,24 @@ class FlatItemRender(
     override val particle: Texture?,
 ) : ItemRender {
 
-    override fun render(gui: GUIRenderer, offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?, size: Vec2, stack: ItemStack, tints: IntArray?) {
+    override fun render(gui: GUIRenderer, offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?, size: Vec2f, stack: ItemStack, tints: RGBArray?) {
         for ((index, layer) in layers.withIndex()) {
-            val tint = tints?.get(index)?.let { RGBColor(it shl 8) } ?: ChatColors.WHITE
+            val tint = tints?.get(index)?.rgba() ?: ChatColors.WHITE
             ImageElement(gui, layer, size = size, tint = tint).render(offset, consumer, options)
         }
     }
 
-    override fun render(mesh: BlockVertexConsumer, stack: ItemStack, tints: IntArray?) {
+    override fun render(offset: Vec3f, consumer: BlockVertexConsumer, stack: ItemStack, tints: RGBArray?) {
         for ((index, layer) in layers.withIndex()) {
-            mesh.addQuad(POSITIONS, UV, layer.shaderId.buffer(), (tints?.get(index) ?: 0xFFFFFF).buffer())
+            val tint = tints?.get(index) ?: Colors.WHITE_RGB
+            consumer.addQuad(offset, POSITIONS, UV, layer, 0xFF, tint, AmbientOcclusionUtil.EMPTY)
         }
         // TODO: items have depth
-        // TODO: light, ...
     }
 
 
     private companion object {
-        val POSITIONS = CuboidUtil.positions(Directions.NORTH, Vec3(0.3f, 0.0f, 0.5f), Vec3(0.6f, 0.3f, 0.5f))
-        val UV = FaceUV(Vec2(0.0f), Vec2(1.0f)).toArray(Directions.NORTH, 2)
+        val POSITIONS = CuboidUtil.positions(Directions.NORTH, Vec3f(0.3f, 0.0f, 0.5f), Vec3f(0.6f, 0.3f, 0.5f))
+        val UV = FaceUV(Vec2f(0.0f), Vec2f(1.0f)).toArray(Directions.NORTH, 2).pack()
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.player.local
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
 import de.bixilon.minosoft.data.abilities.Gamemodes
@@ -30,13 +30,13 @@ import de.bixilon.minosoft.data.registries.effects.attributes.integrated.Integra
 import de.bixilon.minosoft.gui.rendering.entities.EntitiesRenderer
 import de.bixilon.minosoft.gui.rendering.entities.factory.EntityModelFactory
 import de.bixilon.minosoft.gui.rendering.entities.renderer.living.player.LocalPlayerRenderer
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.input.camera.MovementInputActions
 import de.bixilon.minosoft.input.camera.PlayerMovementInput
 import de.bixilon.minosoft.physics.ItemUsing
 import de.bixilon.minosoft.physics.entities.living.player.local.LocalPlayerPhysics
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import java.util.*
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class LocalPlayerEntity(
     account: Account,
@@ -58,6 +58,7 @@ class LocalPlayerEntity(
     var inputActions = MovementInputActions()
 
     override val clientControlled get() = true
+    override val canRaycast get() = false
 
     override var pose: Poses? = Poses.STANDING
 
@@ -67,6 +68,8 @@ class LocalPlayerEntity(
 
     override val uuid: UUID
         get() = super.uuid ?: session.account.uuid
+
+    override var id: Int = -1
 
     override var isSprinting: Boolean = false
         set(value) {
@@ -95,9 +98,9 @@ class LocalPlayerEntity(
         super.tick()
     }
 
-    override fun draw(time: Long) = Unit
+    override fun draw(time: ValueTimeMark) = Unit
 
-    fun _draw(time: Long) {
+    fun _draw(time: ValueTimeMark) {
         super.draw(time)
     }
 

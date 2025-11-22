@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,6 +14,8 @@
 package de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.water
 
 import de.bixilon.minosoft.data.registries.blocks.factory.PixLyzerBlockFactory
+import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
+import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidBlock
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidFilled
 import de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.PixLyzerBlock
 import de.bixilon.minosoft.data.registries.factory.clazz.MultiClassFactory
@@ -22,14 +24,19 @@ import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.Registries
 
-open class SeagrassBlock(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>) : PixLyzerBlock(resourceLocation, registries, data), FluidFilled {
+open class SeagrassBlock(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>) : PixLyzerBlock(identifier, registries, data), FluidFilled {
     override val fluid: Fluid = registries.fluid[WaterFluid]!!
+
+    override val lightProperties get() = FluidBlock.LIGHT_PROPERTIES
+
+    override val flags get() = super.flags + BlockStateFlags.MINOR_VISUAL_IMPACT
+
 
     companion object : PixLyzerBlockFactory<SeagrassBlock>, MultiClassFactory<SeagrassBlock> {
         override val ALIASES: Set<String> = setOf("TallSeagrassBlock")
 
-        override fun build(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>): SeagrassBlock {
-            return SeagrassBlock(resourceLocation, registries, data)
+        override fun build(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>): SeagrassBlock {
+            return SeagrassBlock(identifier, registries, data)
         }
     }
 }

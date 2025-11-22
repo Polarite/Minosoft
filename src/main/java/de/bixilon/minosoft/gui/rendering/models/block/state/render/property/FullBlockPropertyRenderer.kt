@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.models.block.state.render.property
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.cull.side.FaceProperties
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.cull.side.SideProperties
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureTransparencies
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 
 object FullBlockPropertyRenderer : PropertyOnlyBlockRender {
-    private val properties = SideProperties(arrayOf(FaceProperties(Vec2.EMPTY, Vec2(1.0f), TextureTransparencies.OPAQUE)), TextureTransparencies.OPAQUE)
+    private val properties = SideProperties(arrayOf(FaceProperties(Vec2f.EMPTY, Vec2f(1.0f), TextureTransparencies.OPAQUE)), TextureTransparencies.OPAQUE)
 
     override fun getProperties(direction: Directions) = this.properties
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,12 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.scoreboard
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.kutil.collections.CollectionUtil.lockMapOf
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedMap
 import de.bixilon.kutil.collections.map.LockMap
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.scoreboard.ScoreboardObjective
 import de.bixilon.minosoft.data.scoreboard.ScoreboardPositions
 import de.bixilon.minosoft.data.scoreboard.ScoreboardScore
@@ -31,27 +32,25 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.LayoutedElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ColorElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.LayoutedGUIElement
+import de.bixilon.minosoft.gui.rendering.gui.hud.Skippable
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.HUDBuilder
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 import de.bixilon.minosoft.modding.event.events.scoreboard.*
 import de.bixilon.minosoft.modding.event.events.scoreboard.team.TeamUpdateEvent
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.util.Initializable
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
-class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedElement, Initializable, AsyncDrawable {
-    private val backgroundElement = ColorElement(guiRenderer, size = Vec2.EMPTY, color = RenderConstants.TEXT_BACKGROUND_COLOR)
-    private val nameBackgroundElement = ColorElement(guiRenderer, size = Vec2.EMPTY, color = RenderConstants.TEXT_BACKGROUND_COLOR)
+class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedElement, Initializable, AsyncDrawable, Skippable {
+    private val backgroundElement = ColorElement(guiRenderer, size = Vec2f.EMPTY, color = RenderConstants.TEXT_BACKGROUND_COLOR)
+    private val nameBackgroundElement = ColorElement(guiRenderer, size = Vec2f.EMPTY, color = RenderConstants.TEXT_BACKGROUND_COLOR)
     private val nameElement = TextElement(guiRenderer, "", background = null, parent = this)
     private val scores: LockMap<String, ScoreboardScoreElement> = lockMapOf()
 
-    override val layoutOffset: Vec2
-        get() = super.size.let { return@let Vec2(guiRenderer.scaledSize.x - it.x, (guiRenderer.scaledSize.y - it.y) / 2) }
-    override val skipDraw: Boolean
-        get() = objective == null
+    override val layoutOffset: Vec2f
+        get() = super.size.let { return@let Vec2f(guiRenderer.scaledSize.x - it.x, (guiRenderer.scaledSize.y - it.y) / 2) }
+    override val skip get() = objective == null
 
     var objective: ScoreboardObjective? = null
         set(value) {
@@ -64,15 +63,16 @@ class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), La
         }
 
     init {
-        _prefMaxSize = Vec2(MAX_SCOREBOARD_WIDTH, -1)
+        _prefMaxSize = Vec2f(MAX_SCOREBOARD_WIDTH, -1f)
         forceSilentApply()
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         backgroundElement.render(offset, consumer, options)
         nameBackgroundElement.render(offset, consumer, options)
 
-        nameElement.render(offset + Vec2(HorizontalAlignments.CENTER.getOffset(size.x, nameElement.size.x), 0), consumer, options)
+        nameElement.render(offset + Vec2f(HorizontalAlignments.CENTER.getOffset(size.x, nameElement.size.x), 0.0f), consumer, options)
+        val offset = MVec2f(offset)
         offset.y += TEXT_PROPERTIES.lineHeight
 
         this.scores.lock.acquire()
@@ -81,7 +81,7 @@ class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), La
 
         var index = 0
         for ((_, score) in scores) {
-            score.render(offset, consumer, options)
+            score.render(offset.unsafe, consumer, options)
             offset.y += TEXT_PROPERTIES.lineHeight
 
             if (++index >= MAX_SCORES) {
@@ -93,7 +93,7 @@ class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), La
     override fun forceSilentApply() {
         val objective = objective
         if (objective == null) {
-            _size = Vec2.EMPTY
+            _size = Vec2f.EMPTY
             return
         }
 
@@ -114,10 +114,10 @@ class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), La
     fun recalculateSize() {
         val objective = objective
         if (objective == null) {
-            _size = Vec2.EMPTY
+            _size = Vec2f.EMPTY
             return
         }
-        val size = Vec2(MIN_WIDTH, TEXT_PROPERTIES.lineHeight)
+        val size = MVec2f(MIN_WIDTH, TEXT_PROPERTIES.lineHeight)
         size.x = maxOf(size.x, nameElement.size.x)
 
         val scores = scores.toSynchronizedMap()
@@ -132,9 +132,9 @@ class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), La
 
 
 
-        _size = size
-        nameBackgroundElement.size = Vec2(size.x, TEXT_PROPERTIES.lineHeight)
-        backgroundElement.size = size
+        _size = size.unsafe
+        nameBackgroundElement.size = Vec2f(size.x, TEXT_PROPERTIES.lineHeight)
+        backgroundElement.size = size.unsafe
 
 
         for ((_, element) in scores) {
@@ -213,11 +213,11 @@ class ScoreboardSideElement(guiRenderer: GUIRenderer) : Element(guiRenderer), La
     }
 
     companion object : HUDBuilder<LayoutedGUIElement<ScoreboardSideElement>> {
-        override val identifier: ResourceLocation = "minosoft:scoreboard".toResourceLocation()
+        override val identifier = minosoft("scoreboard")
         val TEXT_PROPERTIES = TextRenderProperties()
         const val MAX_SCORES = 15
-        const val MIN_WIDTH = 30
-        const val MAX_SCOREBOARD_WIDTH = 200
+        const val MIN_WIDTH = 30.0f
+        const val MAX_SCOREBOARD_WIDTH = 200.0f
 
         override fun build(guiRenderer: GUIRenderer): LayoutedGUIElement<ScoreboardSideElement> {
             return LayoutedGUIElement(ScoreboardSideElement(guiRenderer))

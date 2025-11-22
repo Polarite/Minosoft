@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,18 +14,14 @@
 package de.bixilon.minosoft.data.registries.blocks.types.building
 
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
-import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.registries.blocks.light.DirectedProperty
 import de.bixilon.minosoft.data.registries.blocks.light.OpaqueProperty
 import de.bixilon.minosoft.data.registries.blocks.properties.EnumProperty
 import de.bixilon.minosoft.data.registries.blocks.properties.Halves
 import de.bixilon.minosoft.data.registries.blocks.properties.list.MapPropertyList
 import de.bixilon.minosoft.data.registries.blocks.settings.BlockSettings
-import de.bixilon.minosoft.data.registries.blocks.state.AdvancedBlockState
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.PropertyBlockState
 import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateBuilder
-import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateSettings
 import de.bixilon.minosoft.data.registries.blocks.types.Block
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.water.WaterloggableBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.item.BlockWithItem
@@ -35,8 +31,8 @@ import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.item.items.Item
 import de.bixilon.minosoft.data.registries.item.items.tool.axe.AxeRequirement
 import de.bixilon.minosoft.data.registries.item.items.tool.pickaxe.PickaxeRequirement
-import de.bixilon.minosoft.data.registries.shapes.voxel.AbstractVoxelShape
-import de.bixilon.minosoft.data.registries.shapes.voxel.VoxelShape
+import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
+import de.bixilon.minosoft.data.registries.shapes.shape.Shape
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.models.block.BlockModelPrototype
 import de.bixilon.minosoft.gui.rendering.models.block.state.DirectBlockModel
@@ -49,10 +45,10 @@ import de.bixilon.minosoft.gui.rendering.models.loader.legacy.CustomModel
 import de.bixilon.minosoft.gui.rendering.models.loader.legacy.ModelChooser
 import de.bixilon.minosoft.protocol.versions.Version
 
-abstract class SlabBlock(identifier: ResourceLocation, settings: BlockSettings) : Block(identifier, settings), BlockStateBuilder, OutlinedBlock, CollidableBlock, BlockWithItem<Item>, WaterloggableBlock, CustomModel, ModelChooser {
+abstract class SlabBlock(identifier: ResourceLocation, settings: BlockSettings) : Block(identifier, settings), OutlinedBlock, CollidableBlock, BlockWithItem<Item>, WaterloggableBlock, CustomModel, ModelChooser {
     override val item: Item = this::item.inject(identifier)
 
-    override fun register(version: Version, list: MapPropertyList) {
+    override fun registerProperties(version: Version, list: MapPropertyList) {
         list += TYPE
         if (!version.flattened) {
             list += HALF
@@ -61,9 +57,9 @@ abstract class SlabBlock(identifier: ResourceLocation, settings: BlockSettings) 
 
     override fun loadModel(loader: BlockLoader, version: Version): BlockModelPrototype? {
         if (version.flattened) return super.loadModel(loader, version)
-        val doubleFile = ResourceLocation(identifier.namespace, identifier.path.removeSuffix("_slab") + "_double_slab")
+        val doubleFile = ResourceLocation(identifier.namespace, identifier.path.removeSuffix("_slab") + "_double_slab").blockState()
 
-        val double = loader.loadState(this, doubleFile.blockState()) ?: return null
+        val double = loader.loadState(this, doubleFile) ?: return null
         val single = super.loadModel(loader, version) ?: return null
 
         return StonePrototype(single.model, double.model)
@@ -74,7 +70,7 @@ abstract class SlabBlock(identifier: ResourceLocation, settings: BlockSettings) 
 
         // type was renamed to half
         for (state in states) {
-            val properties = if (state is PropertyBlockState) state.properties else emptyMap()
+            val properties = state.properties
             val patched = properties.toMutableMap()
             patched.remove(TYPE)?.let { patched.put(HALF, it) }
 
@@ -83,21 +79,21 @@ abstract class SlabBlock(identifier: ResourceLocation, settings: BlockSettings) 
         }
     }
 
-    override fun buildState(version: Version, settings: BlockStateSettings): BlockState {
-        val half = settings.properties?.get(TYPE) ?: throw IllegalArgumentException("Half not set!")
+    override fun buildState(version: Version, settings: BlockStateBuilder): BlockState {
+        val half = settings.properties[TYPE]?.unsafeCast<Halves>() ?: throw IllegalArgumentException("Half not set!")
         val shape = when (half) {
             Halves.LOWER -> BOTTOM_SHAPE
             Halves.UPPER -> TOP_SHAPE
-            Halves.DOUBLE -> AbstractVoxelShape.FULL
-            else -> Broken()
+            Halves.DOUBLE -> Shape.FULL
         }
         val light = if (half == Halves.DOUBLE) OpaqueProperty else DirectedProperty.of(shape)
-        return AdvancedBlockState(this, settings.properties, settings.luminance, shape, shape, light)
+
+        return settings.build(this, collisionShape = shape, outlineShape = shape, lightProperties = light)
     }
 
     companion object {
-        private val BOTTOM_SHAPE = VoxelShape(0.0, 0.0, 0.0, 1.0, 0.5, 1.0)
-        private val TOP_SHAPE = VoxelShape(0.0, 0.5, 0.0, 1.0, 1.0, 1.0)
+        private val BOTTOM_SHAPE = AABB(0.0, 0.0, 0.0, 1.0, 0.5, 1.0)
+        private val TOP_SHAPE = AABB(0.0, 0.5, 0.0, 1.0, 1.0, 1.0)
         val TYPE = EnumProperty("type", Halves)
         val HALF = EnumProperty("half", Halves) // <1.13
     }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal
 
-import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kmath.mat.mat4.f.Mat4f
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.skeletal.instance.SkeletalInstance
@@ -24,9 +24,9 @@ import org.lwjgl.system.MemoryUtil.memAllocFloat
 class SkeletalManager(
     val context: RenderContext,
 ) {
-    val buffer = context.system.createFloatUniformBuffer(memAllocFloat(MAX_TRANSFORMS * Mat4.length))
-    val shader = context.system.createShader(minosoft("skeletal/normal")) { SkeletalShader(it, buffer) }
-    val lightmapShader = context.system.createShader(minosoft("skeletal/lightmap")) { LightmapSkeletalShader(it, buffer) }
+    val buffer = context.system.createFloatUniformBuffer(memAllocFloat(MAX_TRANSFORMS * Mat4f.LENGTH))
+    val shader = context.system.shader.create(minosoft("skeletal/normal")) { SkeletalShader(it, buffer) }
+    val lightmapShader = context.system.shader.create(minosoft("skeletal/lightmap")) { LightmapSkeletalShader(it, buffer) }
 
     fun init() {
         buffer.init()
@@ -38,8 +38,12 @@ class SkeletalManager(
     }
 
     fun upload(instance: SkeletalInstance) {
-        instance.transform.pack(buffer.buffer)
-        buffer.upload(0, instance.model.transformCount * Mat4.length)
+        instance.transform.pack(buffer.data)
+        buffer.upload(0, instance.model.transformCount * Mat4f.LENGTH)
+    }
+
+    fun unload() {
+        buffer.unload()
     }
 
     companion object {

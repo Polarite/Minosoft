@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.animal
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
 import de.bixilon.minosoft.data.entities.data.EntityDataField
@@ -21,7 +21,6 @@ import de.bixilon.minosoft.data.entities.entities.TamableAnimal
 import de.bixilon.minosoft.data.registries.entities.EntityFactory
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -35,7 +34,7 @@ class Wolf(session: PlaySession, entityType: EntityType, data: EntityData, posit
 
     @get:SynchronizedEntityData
     val collarColor: RGBColor
-        get() = ChatColors.VALUES.getOrNull(data.get(COLLAR_COLOR_DATA, 0)) ?: ChatColors.WHITE
+        get() = ChatColors.VALUES.getOrNull(data.get(COLLAR_COLOR_DATA, 0))?.rgb() ?: ChatColors.WHITE.rgb()
 
     // ToDo
     @get:SynchronizedEntityData
@@ -56,7 +55,7 @@ class Wolf(session: PlaySession, entityType: EntityType, data: EntityData, posit
         }
 
     companion object : EntityFactory<Wolf> {
-        override val identifier: ResourceLocation = minecraft("wolf")
+        override val identifier = minecraft("wolf")
         private val IS_BEGGING_DATA = EntityDataField("WOLF_IS_BEGGING")
         private val COLLAR_COLOR_DATA = EntityDataField("WOLF_COLLAR_COLOR")
         private val ANGER_TIME_DATA = EntityDataField("WOLF_ANGER_TIME")

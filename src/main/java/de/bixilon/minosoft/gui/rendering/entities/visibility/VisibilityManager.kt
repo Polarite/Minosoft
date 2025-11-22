@@ -13,99 +13,55 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.visibility
 
-import de.bixilon.kutil.concurrent.lock.Lock
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
+import de.bixilon.minosoft.data.world.chunk.ChunkSize
 import de.bixilon.minosoft.data.world.view.ViewDistanceChangeEvent
 import de.bixilon.minosoft.gui.rendering.entities.EntitiesRenderer
-import de.bixilon.minosoft.gui.rendering.entities.feature.EntityRenderFeature
-import de.bixilon.minosoft.gui.rendering.entities.feature.properties.InvisibleFeature.Companion.isInvisible
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
 import de.bixilon.minosoft.gui.rendering.events.VisibilityGraphChangeEvent
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 class VisibilityManager(val renderer: EntitiesRenderer) {
-    private var update = false
-    private var _size = 0
-    var size: Int = 0
-        private set
-    var opaqueSize = 0
-        private set
-    var translucentSize = 0
-        private set
-
-    val opaque: ArrayList<EntityRenderFeature> = ArrayList(1000)
-    val translucent: ArrayList<EntityRenderFeature> = ArrayList(1000)
-    private val lock = Lock.lock()
-    private val graph = renderer.context.camera.visibilityGraph
-    private val frustum = renderer.context.camera.matrixHandler.frustum
+    private var invalid = false
+    private val graph = renderer.context.camera.occlusion
+    private val frustum = renderer.context.camera.frustum
     private var renderDistance = 0
+    private var eyePosition = renderer.session.camera.entity.physics.positionInfo.eyePosition
 
     fun init() {
-        renderer.session.events.listen<VisibilityGraphChangeEvent> { update = true }
+        renderer.session.events.listen<VisibilityGraphChangeEvent> { invalidate() }
         renderer.session.events.listen<ViewDistanceChangeEvent> { updateViewDistance(server = it.viewDistance) }
         renderer.profile.general::renderDistance.observe(this, true) { updateViewDistance(entity = it) }
     }
 
     private fun updateViewDistance(entity: Int = renderer.profile.general.renderDistance, server: Int = renderer.session.world.view.serverViewDistance) {
         var distance = if (entity < 0) (server - 1) else entity
-        distance *= ProtocolDefinition.SECTION_LENGTH
+        distance *= ChunkSize.SECTION_LENGTH
         this.renderDistance = distance * distance // length^2
+        invalidate()
     }
 
-
-    fun reset() {
-        opaque.clear()
-        translucent.clear()
-        _size = 0
+    private fun invalidate() {
+        invalid = true // TODO: Use
     }
 
-    private fun EntityRenderer<*>.isInRenderDistance(): Boolean {
-        return renderDistance < 0 || distance <= renderDistance
+    fun update() {
+        eyePosition = renderer.session.camera.entity.physics.positionInfo.eyePosition
     }
 
-    fun update(renderer: EntityRenderer<*>, millis: Long) {
-        if (!renderer.isInRenderDistance()) {
-            // distance is only updated if the renderer is visible, so force update
-            renderer.updateRenderInfo(millis)
-        }
-        if (!renderer.isInRenderDistance()) {
-            return renderer.updateVisibility(true, false)
-        }
-        val aabb = renderer.entity.renderInfo.cameraAABB
-        val visible = aabb in frustum
-        if (!visible) {
+    fun getVisibilityLevel(renderer: EntityRenderer<*>): EntityVisibilityLevels {
+        val distance = Vec3iUtil.distance2(renderer.entity.physics.positionInfo.eyePosition, eyePosition).toDouble()
+        if (distance >= renderDistance) return EntityVisibilityLevels.OUT_OF_VIEW_DISTANCE
+
+        val entity = renderer.entity
+        val aabb = if (!renderer.isVisible()) entity.physics.aabb else entity.renderInfo.cameraAABB // cameraAABB is only updated if entity is visible
+
+        return when {
             // TODO: renderer/features: renderOccluded -> occlusion culling is faster than frustum culling
-            return renderer.updateVisibility(true, false)
+            aabb !in frustum -> EntityVisibilityLevels.OUT_OF_FRUSTUM
+            graph.isAABBOccluded(aabb) -> EntityVisibilityLevels.OCCLUDED
+            else -> EntityVisibilityLevels.VISIBLE
         }
-        val occluded = graph.isAABBOccluded(aabb)
-        renderer.updateVisibility(occluded, true)
-    }
-
-    fun collect(renderer: EntityRenderer<*>) {
-        if (!renderer.visible) return
-        lock.lock()
-        _size++
-        for (feature in renderer.features) {
-            if (!feature.enabled || !feature.visible || feature.isInvisible()) continue
-            feature.collect(this)
-        }
-        lock.unlock()
-    }
-
-    fun finish() {
-        // TODO: Optimize it (pre create array, just work with array?)
-        this.opaque.sort()
-        this.translucent.sort()
-        this.update = false
-        size = _size
-        opaqueSize = opaque.size
-        translucentSize = translucent.size
-    }
-
-    operator fun get(layer: EntityLayer) = when (layer) {
-        EntityLayer.Opaque -> opaque
-        EntityLayer.Translucent -> translucent
-        else -> throw IllegalStateException("Unknown entity layer: $layer")
     }
 }

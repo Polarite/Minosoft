@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,45 +13,45 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types
 
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kutil.time.TimeUtil
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.data.physics.PhysicsEntity
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.ParticleCollisionContext
 import de.bixilon.minosoft.data.registries.particle.data.ParticleData
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
+import de.bixilon.minosoft.data.registries.shapes.collision.CollisionShape
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
 import de.bixilon.minosoft.gui.rendering.particle.ParticleFactory
-import de.bixilon.minosoft.gui.rendering.particle.ParticleMesh
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.plusAssign
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
+import de.bixilon.minosoft.gui.rendering.particle.mesh.ParticleMeshBuilder
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.blockPosition
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.interpolateLinear
-import de.bixilon.minosoft.physics.parts.CollisionMovementPhysics.collectCollisions
 import de.bixilon.minosoft.physics.parts.CollisionMovementPhysics.collide
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
+import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
 import java.util.*
 import kotlin.math.abs
 import kotlin.reflect.full.companionObjectInstance
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 abstract class Particle(
     protected val session: PlaySession,
-    final override val position: Vec3d,
-    velocity: Vec3d = Vec3d.EMPTY,
+    override var position: Vec3d,
+    override val velocity: MVec3d = MVec3d(),
     data: ParticleData? = null,
 ) : PhysicsEntity {
     protected val data: ParticleData by lazy {
         data ?: let {
-            val resourceLocation = this::class.companionObjectInstance as ParticleFactory<*>
-            session.registries.particleType[resourceLocation]!!.default()
+            val identifier = this::class.companionObjectInstance as ParticleFactory<*>
+            session.registries.particleType[identifier]!!.default()
         }
     }
-    var chunkPosition = Vec2i(position.x.toInt() shr 4, position.z.toInt() shr 4)
+    var chunkPosition = position.blockPosition.chunkPosition
         private set
     protected val random = Random()
-    private var lastTickTime = -1L
+    private var lastTickTime = TimeUtil.NULL
 
     private var chunk: Chunk? = null
     private var chunkRevision = -1
@@ -66,9 +66,8 @@ abstract class Particle(
 
     // moving
     val cameraPosition: Vec3d
-        get() = getCameraPosition(millis())
+        get() = getCameraPosition(now())
 
-    final override val velocity: Vec3d = Vec3d(velocity)
     var previousPosition = position
     var movement: Boolean = true
     var physics: Boolean = true
@@ -79,8 +78,8 @@ abstract class Particle(
     override var onGround: Boolean = true
     var alreadyCollided = false
     var accelerateIfYBlocked = false
-    override var aabb: AABB = AABB.EMPTY
-    var spacing: Vec3 = Vec3.EMPTY
+    override var aabb: AABB = AABB.INVALID
+    var spacing: Vec3f = Vec3f.EMPTY
         set(value) {
             if (field == value) {
                 return
@@ -98,8 +97,8 @@ abstract class Particle(
         var chunk = this.chunk
 
         if (chunk != null) {
-            if (chunk.chunkPosition == this.chunkPosition) return chunk
-            chunk = chunk.neighbours.trace(chunkPosition - chunk.chunkPosition)
+            if (chunk.position == this.chunkPosition) return chunk
+            chunk = chunk.neighbours.traceChunk(chunkPosition - chunk.position)
         }
         if (chunk == null && revision != this.chunkRevision) {
             chunk = session.world.chunks[chunkPosition]
@@ -112,7 +111,9 @@ abstract class Particle(
 
 
     init {
-        this.velocity += { (random.nextDouble() * 2.0 - 1.0) * MAGIC_VELOCITY_CONSTANT }
+        this.velocity.x += (random.nextDouble() * 2.0 - 1.0) * MAGIC_VELOCITY_CONSTANT
+        this.velocity.y += (random.nextDouble() * 2.0 - 1.0) * MAGIC_VELOCITY_CONSTANT
+        this.velocity.z += (random.nextDouble() * 2.0 - 1.0) * MAGIC_VELOCITY_CONSTANT
         val modifier = (random.nextFloat() + random.nextFloat() + 1.0f) * 0.15
         val divider = this.velocity.length()
 
@@ -122,12 +123,12 @@ abstract class Particle(
         spacing = DEFAULT_SPACING
     }
 
-    fun getCameraPosition(time: Long): Vec3d {
-        return interpolateLinear((time - lastTickTime) / ProtocolDefinition.TICK_TIMEd, previousPosition, position)
+    fun getCameraPosition(time: ValueTimeMark): Vec3d {
+        return interpolateLinear((time - lastTickTime) / TickUtil.TIME_PER_TICK, previousPosition, position)
     }
 
-    open fun forceMove(delta: Vec3d) {
-        this.previousPosition = Vec3d(position)
+    open fun forceMove(delta: Vec3d = this.velocity.unsafe) {
+        this.previousPosition = position
         position += delta
     }
 
@@ -138,7 +139,7 @@ abstract class Particle(
     private fun collide(movement: Vec3d): Vec3d {
         val aabb = aabb + movement
         val context = ParticleCollisionContext(this)
-        val collisions = session.world.collectCollisions(context, movement, aabb, getChunk())
+        val collisions = CollisionShape(session.world, context, aabb, movement, getChunk())
         val adjusted = collide(movement, aabb, collisions)
         if (adjusted.y != movement.y) {
             onGround = true
@@ -152,54 +153,52 @@ abstract class Particle(
         }
 
 
-        return adjusted
+        return adjusted.unsafe
     }
 
-    open fun move(velocity: Vec3d) {
+    open fun move(velocity: Vec3d = this.velocity.unsafe) {
         if (alreadyCollided) {
-            this.previousPosition = Vec3d(position)
+            this.previousPosition = position
             return
         }
-        var newVelocity = Vec3d(velocity)
-        if (this.physics && newVelocity != Vec3d.EMPTY) {
-            newVelocity = collide(velocity)
+        val previousY = velocity.y
+        if (this.physics && velocity != Vec3d.EMPTY) {
+            velocity(collide(velocity))
         }
 
-        forceMove(newVelocity)
+        forceMove(velocity)
 
-        if (abs(newVelocity.y) >= Y_VELOCITY_TO_CHECK && abs(velocity.y) < Y_VELOCITY_TO_CHECK) {
+        if (abs(velocity.y) >= Y_VELOCITY_TO_CHECK && abs(previousY) < Y_VELOCITY_TO_CHECK) {
             this.alreadyCollided = true
         }
     }
 
-    private fun move() {
+    private fun tryMove() {
         if (!movement) {
             return
         }
 
-        forceMove(velocity)
+        forceMove()
     }
 
-    open fun tryTick(time: Long) {
+    open fun tryTick(time: ValueTimeMark) {
         if (dead) {
             return
         }
 
-        if (lastTickTime == -1L) {
+        if (lastTickTime == TimeUtil.NULL) {
             lastTickTime = time
             return
         }
-        if (time - lastTickTime < ProtocolDefinition.TICK_TIME) {
-            return
-        }
+        if (time - lastTickTime < TickUtil.INTERVAL) return
         tick()
-        chunkPosition = Vec2i(position.x.toInt() shr 4, position.z.toInt() shr 4)
+        chunkPosition = position.blockPosition.chunkPosition
 
         if (dead) {
             return
         }
 
-        move()
+        tryMove()
         postTick()
         lastTickTime = time
     }
@@ -236,12 +235,12 @@ abstract class Particle(
         }
     }
 
-    abstract fun addVertex(mesh: ParticleMesh, translucentMesh: ParticleMesh, time: Long)
+    abstract fun addVertex(mesh: ParticleMeshBuilder, translucentMesh: ParticleMeshBuilder, time: ValueTimeMark)
 
     companion object {
         private const val MAGIC_VELOCITY_CONSTANT = 0.4
         private const val MAGIC_VELOCITY_CONSTANTf = MAGIC_VELOCITY_CONSTANT.toFloat()
         private const val Y_VELOCITY_TO_CHECK = 9.999999747378752E-6f
-        private val DEFAULT_SPACING = Vec3(0.2)
+        private val DEFAULT_SPACING = Vec3f(0.2f)
     }
 }

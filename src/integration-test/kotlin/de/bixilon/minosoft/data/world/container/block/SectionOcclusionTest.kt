@@ -13,32 +13,34 @@
 
 package de.bixilon.minosoft.data.world.container.block
 
-import de.bixilon.kutil.cast.CastUtil.unsafeCast
+import de.bixilon.kutil.benchmark.BenchmarkUtil
+import de.bixilon.kutil.bit.set.ArrayBitSet
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
-import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
-import de.bixilon.minosoft.data.registries.blocks.GlassTest0
+import de.bixilon.kutil.stream.InputStreamUtil.readAsString
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.types.stone.StoneTest0
+import de.bixilon.minosoft.data.registries.blocks.state.TestBlockStates
+import de.bixilon.minosoft.data.world.chunk.ChunkSize
+import de.bixilon.minosoft.data.world.container.block.occlusion.SectionOcclusion
+import de.bixilon.minosoft.data.world.container.block.occlusion.SectionOcclusionTracer
+import de.bixilon.minosoft.data.world.positions.InSectionPosition
+import de.bixilon.minosoft.test.IT
 import de.bixilon.minosoft.test.ITUtil.allocate
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
+import kotlin.random.Random
 
-@Test(groups = ["occlusion"], dependsOnGroups = ["block"])
+@Test(groups = ["occlusion"])
 class SectionOcclusionTest {
-    private val OCCLUSION = SectionOcclusion::class.java.getFieldOrNull("occlusion")!!
-    private val CALCULATE = SectionOcclusion::class.java.getFieldOrNull("calculate")!!
-    private val opaque by lazy { StoneTest0.block.states.default }
-    private val transparent by lazy { GlassTest0.block.states.default }
 
     private fun create(): SectionOcclusion {
         val blocks = BlockSectionDataProvider::class.java.allocate()
         val occlusion = SectionOcclusion(blocks)
         blocks::occlusion.forceSet(occlusion)
+        blocks::fullOpaque.forceSet(ArrayBitSet(ChunkSize.BLOCKS_PER_SECTION))
         return occlusion
     }
 
     private operator fun SectionOcclusion.set(minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int, state: BlockState?) {
-        CALCULATE.setBoolean(this, false)
         for (y in minY..maxY) {
             for (z in minZ..maxZ) {
                 for (x in minX..maxX) {
@@ -46,70 +48,103 @@ class SectionOcclusionTest {
                 }
             }
         }
-        CALCULATE.setBoolean(this, true)
     }
 
-    private val SectionOcclusion.occlusion: BooleanArray
-        get() {
-            recalculate(false)
-            return OCCLUSION[this].unsafeCast()
-        }
+    private val SectionOcclusion.occlusion get() = SectionOcclusionTracer.calculate(provider)
 
     fun `empty section`() {
         val occlusion = create()
         assertEquals(occlusion.occlusion, BooleanArray(15) { false })
     }
 
+    fun `one block set section`() {
+        val occlusion = create()
+        occlusion.provider[0, 0, 0] = TestBlockStates.OPAQUE1
+        assertEquals(occlusion.occlusion, BooleanArray(15) { false })
+    }
+
     fun `full opaque section`() {
         val occlusion = create()
-        occlusion[0, 0, 0, 15, 15, 15] = opaque
+        occlusion[0, 0, 0, 15, 15, 15] = TestBlockStates.OPAQUE1
         assertEquals(occlusion.occlusion, BooleanArray(15) { true })
     }
 
     fun `full transparent section`() {
         val occlusion = create()
-        occlusion[0, 0, 0, 15, 15, 15] = transparent
+        occlusion[0, 0, 0, 15, 15, 15] = TestBlockStates.TEST1
         assertEquals(occlusion.occlusion, BooleanArray(15) { false })
     }
 
     fun `bottom line filled opaque`() {
         val occlusion = create()
-        occlusion[0, 0, 0, 15, 0, 15] = opaque
+        occlusion[0, 0, 0, 15, 0, 15] = TestBlockStates.OPAQUE1
         assertEquals(occlusion.occlusion, BooleanArray(15) { if (it <= 4) true else false })
+    }
+
+    fun `everything except bottom line filled opaque`() {
+        val occlusion = create()
+        occlusion[0, 1, 0, 15, 15, 15] = TestBlockStates.OPAQUE1
+        assertEquals(occlusion.occlusion, booleanArrayOf(true, false, false, false, false, true, true, true, true, false, false, false, false, false, false))
     }
 
     fun `y=1 line filled opaque`() {
         val occlusion = create()
-        occlusion[0, 1, 0, 15, 1, 15] = opaque
+        occlusion[0, 1, 0, 15, 1, 15] = TestBlockStates.OPAQUE1
         assertEquals(occlusion.occlusion, BooleanArray(15) { if (it == 0) true else false })
     }
 
     fun `opaque bottom line filled opaque with one transparent`() {
         val occlusion = create()
-        occlusion[0, 0, 0, 15, 0, 15] = opaque
-        occlusion[4, 0, 4, 4, 0, 4] = transparent
+        occlusion[0, 0, 0, 15, 0, 15] = TestBlockStates.OPAQUE1
+        occlusion[4, 0, 4, 4, 0, 4] = TestBlockStates.TEST1
         assertEquals(occlusion.occlusion, BooleanArray(15) { false })
     }
 
+    fun `stack overflow error`() {
+        val occlusion = create()
+        val data = SectionOcclusionTest::class.java.getResourceAsStream("/chunk/occlusion_stack_overflow.txt")!!.readAsString().split(';').map { IT.REGISTRIES.block[it]?.states?.default }
+        for ((index, state) in data.withIndex()) {
+            occlusion.provider[InSectionPosition(index)] = state
+        }
+        assertEquals(occlusion.occlusion, BooleanArray(15) { false })
+    }
+
+    fun `magic occlusion chunk`() {
+        val occlusion = create()
+        val data = SectionOcclusionTest::class.java.getResourceAsStream("/chunk/magic_occlusion_chunk.txt")!!.readAsString().split(';').map { IT.REGISTRIES.block[it]?.states?.default }
+        for ((index, state) in data.withIndex()) {
+            occlusion.provider[InSectionPosition(index)] = state
+        }
+
+        // only down is filled with solid bedrock, rest are just random blocks
+        val expected = booleanArrayOf(true, true, true, true, true, false, false, false, false, false, false, false, false, false, false)
+
+        assertEquals(occlusion.occlusion, expected)
+    }
+
     /*
+     *
+     * Restore with:
+     *
+     *             val array = a.split(';').map { context.session.registries.block[it]?.states?.default }.toTypedArray()
+     *             context.session.world.chunks[32, -14]!!.getOrPut(10)!!.blocks.setData(array)
+     */
+
+    @Test(enabled = false)
     fun benchmark() {
         val occlusion = create()
-        val stone = StoneTest0.state
         val random = Random(12)
-        for (i in 0 until ProtocolDefinition.BLOCKS_PER_SECTION) {
+        for (i in 0 until ChunkSize.BLOCKS_PER_SECTION) {
             if (random.nextBoolean()) {
-                occlusion.provider[i] = stone
+                occlusion.provider[InSectionPosition(i)] = TestBlockStates.OPAQUE1
             }
         }
-        CALCULATE.setBoolean(occlusion, true)
-        val time = measureTime {
-            for (i in 0 until 1999_99) {
-                occlusion.recalculate(false)
+        BenchmarkUtil.benchmark(1000) {
+            for (i in 0 until 100) {
+                SectionOcclusionTracer.calculate(occlusion.provider)
             }
-        }
-        println("Took: ${time.inWholeNanoseconds.formatNanos()}")
+        }.println()
     }
-     */
 
     // TODO: Test more possible cases
 }

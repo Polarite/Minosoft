@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,43 +13,37 @@
 
 package de.bixilon.minosoft.data.registries.blocks.types.bee
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.data.registries.blocks.factory.BlockFactory
 import de.bixilon.minosoft.data.registries.blocks.handler.entity.EntityCollisionHandler
+import de.bixilon.minosoft.data.registries.blocks.light.CustomLightProperties
 import de.bixilon.minosoft.data.registries.blocks.settings.BlockSettings
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateBuilder
-import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateSettings
 import de.bixilon.minosoft.data.registries.blocks.types.Block
 import de.bixilon.minosoft.data.registries.blocks.types.properties.hardness.InstantBreakableBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.item.BlockWithItem
 import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.JumpBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.VelocityBlock
-import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.collision.fixed.StatelessCollidable
-import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.outline.FullOutlinedBlock
-import de.bixilon.minosoft.data.registries.blocks.types.properties.transparency.TranslucentBlock
+import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.collision.CollidableBlock
+import de.bixilon.minosoft.data.registries.blocks.types.properties.shape.outline.OutlinedBlock
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.item.items.Item
 import de.bixilon.minosoft.data.registries.registries.Registries
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
-import de.bixilon.minosoft.data.registries.shapes.voxel.AbstractVoxelShape
-import de.bixilon.minosoft.data.registries.shapes.voxel.VoxelShape
 import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.physics.PhysicsConstants
 import de.bixilon.minosoft.physics.entities.EntityPhysics
-import de.bixilon.minosoft.protocol.versions.Version
 import kotlin.math.abs
 
-open class HoneyBlock(identifier: ResourceLocation = Companion.identifier, settings: BlockSettings) : Block(identifier, settings), EntityCollisionHandler, JumpBlock, VelocityBlock, BeeBlock, TranslucentBlock, InstantBreakableBlock, StatelessCollidable, FullOutlinedBlock, BlockWithItem<Item>, BlockStateBuilder {
+open class HoneyBlock(identifier: ResourceLocation = Companion.identifier, settings: BlockSettings) : Block(identifier, settings), EntityCollisionHandler, CollidableBlock, JumpBlock, VelocityBlock, BeeBlock, OutlinedBlock, InstantBreakableBlock, BlockWithItem<Item> {
     override val item: Item = this::item.inject(identifier)
     override val velocity: Float get() = 0.4f
     override val jumpBoost: Float get() = 0.5f
-    override val collisionShape: AbstractVoxelShape get() = COLLISION_BOX
 
-    override fun buildState(version: Version, settings: BlockStateSettings) = BlockState(this, settings)
+    override val lightProperties get() = LIGHT_PROPERTIES
+    override val collisionShape get() = SHAPE
+    override val outlineShape get() = AABB.BLOCK
 
     private fun isSliding(position: BlockPosition, physics: EntityPhysics<*>): Boolean {
         if (physics.onGround) {
@@ -71,11 +65,13 @@ open class HoneyBlock(identifier: ResourceLocation = Companion.identifier, setti
     private fun slide(physics: EntityPhysics<*>) {
         val velocity = physics.velocity
         val speed = if (velocity.y < -0.13) (-SLIDE_GRAVITY) / velocity.y else 1.0
-        physics.velocity = Vec3d(velocity.x * speed, -SLIDE_GRAVITY, velocity.z * speed)
+        physics.velocity.x *= speed
+        physics.velocity.y = -SLIDE_GRAVITY
+        physics.velocity.z *= speed
         physics.fallDistance = 0.0f
     }
 
-    override fun onEntityCollision(entity: Entity, physics: EntityPhysics<*>, position: Vec3i, state: BlockState) {
+    override fun onEntityCollision(entity: Entity, physics: EntityPhysics<*>, position: BlockPosition, state: BlockState) {
         if (!isSliding(position, physics)) {
             return
         }
@@ -85,7 +81,8 @@ open class HoneyBlock(identifier: ResourceLocation = Companion.identifier, setti
 
     companion object : BlockFactory<HoneyBlock> {
         override val identifier = minecraft("honey_block")
-        private val COLLISION_BOX = VoxelShape(AABB(0.0625, 0.0, 0.0625, 0.9375, 0.9375, 0.9375))
+        private val SHAPE = AABB(0.0625, 0.0, 0.0625, 0.9375, 0.9375, 0.9375)
+        private val LIGHT_PROPERTIES = CustomLightProperties(true, false, true)
         const val MAX_Y = 0.9375
         const val SLIDE_GRAVITY = 0.05
 

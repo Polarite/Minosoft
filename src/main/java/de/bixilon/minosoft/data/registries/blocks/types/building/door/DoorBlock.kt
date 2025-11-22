@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,6 @@
 
 package de.bixilon.minosoft.data.registries.blocks.types.building.door
 
-import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.primitive.BooleanUtil.toBoolean
@@ -21,7 +20,6 @@ import de.bixilon.minosoft.camera.target.targets.BlockTarget
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.direction.DirectionUtil.rotateY
 import de.bixilon.minosoft.data.direction.Directions
-import de.bixilon.minosoft.data.entities.block.BlockEntity
 import de.bixilon.minosoft.data.entities.entities.player.Hands
 import de.bixilon.minosoft.data.registries.blocks.factory.BlockFactory
 import de.bixilon.minosoft.data.registries.blocks.light.TransparentProperty
@@ -30,11 +28,8 @@ import de.bixilon.minosoft.data.registries.blocks.properties.list.MapPropertyLis
 import de.bixilon.minosoft.data.registries.blocks.properties.primitives.BooleanProperty
 import de.bixilon.minosoft.data.registries.blocks.settings.BlockSettings
 import de.bixilon.minosoft.data.registries.blocks.shapes.collision.context.CollisionContext
-import de.bixilon.minosoft.data.registries.blocks.state.AdvancedBlockState
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.PropertyBlockState
 import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateBuilder
-import de.bixilon.minosoft.data.registries.blocks.state.builder.BlockStateSettings
 import de.bixilon.minosoft.data.registries.blocks.types.Block
 import de.bixilon.minosoft.data.registries.blocks.types.properties.InteractBlockHandler
 import de.bixilon.minosoft.data.registries.blocks.types.properties.LightedBlock
@@ -48,47 +43,47 @@ import de.bixilon.minosoft.data.registries.item.items.Item
 import de.bixilon.minosoft.data.registries.item.items.tool.axe.AxeRequirement
 import de.bixilon.minosoft.data.registries.item.items.tool.pickaxe.PickaxeRequirement
 import de.bixilon.minosoft.data.registries.registries.Registries
-import de.bixilon.minosoft.data.registries.shapes.voxel.AbstractVoxelShape
-import de.bixilon.minosoft.data.registries.shapes.voxel.VoxelShape
+import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
+import de.bixilon.minosoft.data.registries.shapes.shape.Shape
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
 import de.bixilon.minosoft.data.world.chunk.update.block.ChunkLocalBlockUpdate
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.chunkPosition
-import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.inChunkPosition
 import de.bixilon.minosoft.data.world.positions.InChunkPosition
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.models.block.state.DirectBlockModel
 import de.bixilon.minosoft.gui.rendering.models.block.state.render.BlockRender
 import de.bixilon.minosoft.gui.rendering.models.block.state.render.PickedBlockRender
 import de.bixilon.minosoft.gui.rendering.models.loader.legacy.ModelChooser
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
 import de.bixilon.minosoft.input.interaction.InteractionResults
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.versions.Version
 
-abstract class DoorBlock(identifier: ResourceLocation, settings: BlockSettings) : Block(identifier, settings), BlockWithItem<Item>, ModelChooser, DoubleSizeBlock, InteractBlockHandler, OutlinedBlock, CollidableBlock, BlockStateBuilder, LightedBlock {
+abstract class DoorBlock(identifier: ResourceLocation, settings: BlockSettings) : Block(identifier, settings), BlockWithItem<Item>, ModelChooser, DoubleSizeBlock, InteractBlockHandler, OutlinedBlock, CollidableBlock, LightedBlock {
     override val item: Item = this::item.inject(identifier)
 
-    override fun getLightProperties(blockState: BlockState) = TransparentProperty
+    override val lightProperties get() = TransparentProperty
 
-    override fun register(version: Version, list: MapPropertyList) {
-        super<Block>.register(version, list)
+    override fun registerProperties(version: Version, list: MapPropertyList) {
+        super<Block>.registerProperties(version, list)
         list += HALF; list += HINGE; list += POWERED; list += FACING; list += OPEN
     }
 
-    override fun buildState(version: Version, settings: BlockStateSettings): BlockState {
-        if (!version.flattened) return PropertyBlockState(this, settings)
+    override fun buildState(version: Version, settings: BlockStateBuilder): BlockState {
+        if (!version.flattened) return super<Block>.buildState(version, settings) // they depend on the other block in <1.13
 
-        val hinge = settings.properties!![HINGE].unsafeCast<Sides>()
+        val hinge = settings.properties[HINGE].unsafeCast<Sides>()
         val open = settings.properties[OPEN].toBoolean()
         val facing = settings.properties[FACING].unsafeCast<Directions>()
+
         val shape = getShape(hinge, open, facing)
 
-        return AdvancedBlockState(this, settings.properties, 0, shape, shape, settings.lightProperties, settings.solidRenderer)
+        return settings.build(this, collisionShape = shape, outlineShape = shape)
     }
 
     private fun legacyCycleOpen(chunk: Chunk, inChunk: InChunkPosition, state: BlockState) {
-        chunk.apply(ChunkLocalBlockUpdate.LocalUpdate(inChunk, state.withProperties(OPEN to !state[OPEN])))
+        val next = state.withProperties(OPEN to !state[OPEN])
+
+        chunk[inChunk] = next
     }
 
     fun cycleOpen(session: PlaySession, position: BlockPosition, state: BlockState) {
@@ -104,29 +99,33 @@ abstract class DoorBlock(identifier: ResourceLocation, settings: BlockSettings) 
         if (otherState.block !is DoorBlock) return
 
 
-        if (!session.version.flattened) return legacyCycleOpen(chunk, if (top) otherPosition else inChunk, if (top) otherState else state)
+        if (!session.version.flattened) {
+            legacyCycleOpen(chunk, if (top) otherPosition else inChunk, if (top) otherState else state)
+            return
+        }
 
         val nextOpen = !state[OPEN]
-        chunk.apply(listOf(
-            ChunkLocalBlockUpdate.LocalUpdate(inChunk, state.withProperties(OPEN to nextOpen)),
-            ChunkLocalBlockUpdate.LocalUpdate(otherPosition, otherState.withProperties(OPEN to nextOpen)),
-        ))
+
+        chunk.apply(
+            ChunkLocalBlockUpdate.Change(inChunk, state.withProperties(OPEN to nextOpen)),
+            ChunkLocalBlockUpdate.Change(otherPosition, otherState.withProperties(OPEN to nextOpen)),
+        )
     }
 
-    private fun getShape(hinge: Sides, open: Boolean, facing: Directions): VoxelShape {
+    private fun getShape(hinge: Sides, open: Boolean, facing: Directions): AABB {
         val direction = when {
             !open -> facing.inverted
             hinge == Sides.LEFT -> facing.rotateY(-1)
             hinge == Sides.RIGHT -> facing.rotateY(1)
-            else -> Broken()
+            else -> Broken("Hinge: $hinge, open: $open, facing: $facing")
         }
         return SHAPES[direction.ordinal - Directions.SIDE_OFFSET]
     }
 
-    private fun getLegacyShape(session: PlaySession, position: BlockPosition, state: BlockState): VoxelShape? {
+    private fun getLegacyShape(session: PlaySession, position: BlockPosition, state: BlockState): Shape? {
         val isTop = isTop(state, session)
         val other = session.world[position + if (isTop) Directions.DOWN else Directions.UP]
-        if (other !is PropertyBlockState || other.block !is DoorBlock) return null
+        if (other == null || other.block !is DoorBlock) return null
         if (isTop(other, session) == isTop) return null  // impossible
 
 
@@ -141,14 +140,15 @@ abstract class DoorBlock(identifier: ResourceLocation, settings: BlockSettings) 
         return getShape(hinge, open, facing)
     }
 
-    override fun getOutlineShape(session: PlaySession, position: BlockPosition, state: BlockState): AbstractVoxelShape? {
+    override fun getOutlineShape(session: PlaySession, position: BlockPosition, state: BlockState): Shape? {
         if (session.version.flattened) return super.getOutlineShape(session, position, state)
 
         return getLegacyShape(session, position, state)
     }
 
-    override fun getCollisionShape(session: PlaySession, context: CollisionContext, position: Vec3i, state: BlockState, blockEntity: BlockEntity?): AbstractVoxelShape? {
-        if (session.version.flattened) return super.getCollisionShape(session, context, position, state, blockEntity)
+    override fun getCollisionShape(session: PlaySession, context: CollisionContext, position: BlockPosition, state: BlockState): Shape? {
+        if (session.version.flattened) return super.getCollisionShape(session, context, position, state)
+
         return getLegacyShape(session, position, state)
     }
 
@@ -174,14 +174,14 @@ abstract class DoorBlock(identifier: ResourceLocation, settings: BlockSettings) 
         val OPEN = BooleanProperty("open")
 
         private val SHAPES = arrayOf(
-            VoxelShape(0.0, 0.0, 0.0, 1.0, 1.0, 0.1875),
-            VoxelShape(0.0, 0.0, 0.8125, 1.0, 1.0, 1.0),
-            VoxelShape(0.0, 0.0, 0.0, 0.1875, 1.0, 1.0),
-            VoxelShape(0.8125, 0.0, 0.0, 1.0, 1.0, 1.0),
+            AABB(0.0, 0.0, 0.0, 1.0, 1.0, 0.1875),
+            AABB(0.0, 0.0, 0.8125, 1.0, 1.0, 1.0),
+            AABB(0.0, 0.0, 0.0, 0.1875, 1.0, 1.0),
+            AABB(0.8125, 0.0, 0.0, 1.0, 1.0, 1.0),
         )
     }
 
-    private inner class DoorModel(
+    private class DoorModel(
         val models: Map<Map<BlockProperty<*>, Any>, BlockRender?>
     ) : PickedBlockRender {
         override val default: BlockRender?
@@ -192,11 +192,10 @@ abstract class DoorBlock(identifier: ResourceLocation, settings: BlockSettings) 
         }
 
         override fun pick(state: BlockState, neighbours: Array<BlockState?>): BlockRender? {
-            if (state !is PropertyBlockState) return null
             val half = state[HALF]
 
             val other = if (half == Halves.UPPER) neighbours[Directions.O_DOWN] else neighbours[Directions.O_UP]
-            if (other !is PropertyBlockState || other.block !is DoorBlock) return null
+            if (other == null || other.block !is DoorBlock) return null
             if (other[HALF] == half) return null // double door is invalid
 
             val top = if (half == Halves.UPPER) state else other

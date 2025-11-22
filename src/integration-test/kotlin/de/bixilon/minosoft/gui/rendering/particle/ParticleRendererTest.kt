@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.particle
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
@@ -23,16 +24,17 @@ import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.RenderingStates
 import de.bixilon.minosoft.gui.rendering.camera.Camera
 import de.bixilon.minosoft.gui.rendering.light.RenderLight
+import de.bixilon.minosoft.gui.rendering.particle.mesh.ParticleMeshBuilder
 import de.bixilon.minosoft.gui.rendering.particle.types.Particle
 import de.bixilon.minosoft.gui.rendering.system.dummy.DummyRenderSystem
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTextureManager
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
 import de.bixilon.minosoft.test.ITUtil.allocate
 import org.testng.Assert.assertEquals
 import org.testng.Assert.assertFalse
 import org.testng.annotations.Test
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 @Test(groups = ["particle"])
 class ParticleRendererTest {
@@ -46,6 +48,7 @@ class ParticleRendererTest {
         context::light.forceSet(RenderLight(context))
         context::camera.forceSet(Camera(context))
         val renderer = ParticleRenderer(context.session, context)
+        context::thread.forceSet(Thread.currentThread())
 
 
         return renderer
@@ -126,7 +129,7 @@ class ParticleRendererTest {
 
     // TODO: auto ticking (task registering)
 
-    private class TestParticle(session: PlaySession) : Particle(session, Vec3d.EMPTY, Vec3d.EMPTY, DATA) {
+    private class TestParticle(session: PlaySession) : Particle(session, Vec3d.EMPTY, MVec3d.EMPTY, DATA) {
         var vertices = 0
         var tryTicks = 0
 
@@ -134,11 +137,11 @@ class ParticleRendererTest {
             maxAge = 10
         }
 
-        override fun tryTick(time: Long) {
+        override fun tryTick(time: ValueTimeMark) {
             tryTicks++
         }
 
-        override fun addVertex(mesh: ParticleMesh, translucentMesh: ParticleMesh, time: Long) {
+        override fun addVertex(mesh: ParticleMeshBuilder, translucentMesh: ParticleMeshBuilder, time: ValueTimeMark) {
             vertices++
         }
 

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,12 @@
 
 package de.bixilon.minosoft.gui.rendering.models.block.state.baked
 
-import de.bixilon.kotlinglm.func.rad
-import de.bixilon.kotlinglm.mat3x3.Mat3
-import de.bixilon.kotlinglm.mat4x4.Mat4
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.mat.mat3.f.MMat3f
+import de.bixilon.kmath.mat.mat4.f.MMat4f
+import de.bixilon.kmath.mat.mat4.f.Mat4f
+import de.bixilon.kmath.vec.vec3.f.MVec3f
+import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kutil.primitive.FloatUtil.rad
 import org.junit.jupiter.api.Test
 import kotlin.math.abs
 import kotlin.math.asin
@@ -36,7 +38,7 @@ class SkeletalShadeTest {
         return delta * max
     }
 
-    fun getShade(normal: Vec3): Float {
+    fun getShade(normal: MVec3f): Float {
         normal.normalizeAssign() // for testing purposes
         // Take code from skeletal/shade.glsl
 
@@ -52,68 +54,68 @@ class SkeletalShadeTest {
         return x + y + z
     }
 
-    fun transformNormal(normal: Vec3, transform: Mat4): Vec3 {
+    fun transformNormal(normal: Vec3f, transform: Mat4f): Vec3f {
         //  return normalize(mat3(transpose(inverse(transform))) * normal);
-        return (Mat3(transform) * normal).normalizeAssign()
+        return (MMat3f(transform) * normal).apply { normalizeAssign() }.unsafe
     }
 
     @Test
     fun up() {
-        assertEquals(1.0f, getShade(Vec3(0, 1, 0)))
+        assertEquals(1.0f, getShade(MVec3f(0, 1, 0)))
     }
 
     @Test
     fun down() {
-        assertEquals(0.5f, getShade(Vec3(0, -1, 0)))
+        assertEquals(0.5f, getShade(MVec3f(0, -1, 0)))
     }
 
     @Test
     fun north() {
-        assertEquals(0.8f, getShade(Vec3(0, 0, 1)))
+        assertEquals(0.8f, getShade(MVec3f(0, 0, 1)))
     }
 
     @Test
     fun south() {
-        assertEquals(0.8f, getShade(Vec3(0, 0, -1)))
+        assertEquals(0.8f, getShade(MVec3f(0, 0, -1)))
     }
 
     @Test
     fun west() {
-        assertEquals(0.6f, getShade(Vec3(1, 0, 0)))
+        assertEquals(0.6f, getShade(MVec3f(1, 0, 0)))
     }
 
     @Test
     fun east() {
-        assertEquals(0.6f, getShade(Vec3(-1, 0, 0)))
+        assertEquals(0.6f, getShade(MVec3f(-1, 0, 0)))
     }
 
     @Test
     fun northWest() {
-        assertEquals(0.7f, getShade(Vec3(1, 0, 1)))
+        assertEquals(0.7f, getShade(MVec3f(1, 0, 1)))
     }
 
     @Test
     fun eastSouth() {
-        assertEquals(0.7f, getShade(Vec3(-1, 0, -1)))
+        assertEquals(0.7f, getShade(MVec3f(-1, 0, -1)))
     }
 
     @Test
     fun westUp() {
-        assertEquals(0.8f, getShade(Vec3(1, 1, 0)))
+        assertEquals(0.8f, getShade(MVec3f(1, 1, 0)))
     }
 
     @Test
     fun westDown() {
-        assertEquals(0.55f, getShade(Vec3(-1, -1, 0)))
+        assertEquals(0.55f, getShade(MVec3f(-1, -1, 0)))
     }
 
     @Test
     fun westNorthUp() {
-        assertEquals(0.94f, getShade(Vec3(1, 1, 1)))
+        assertEquals(0.94f, getShade(MVec3f(1, 1, 1)))
     }
 
 
-    private fun assertEquals(actual: Vec3, expected: Vec3) {
+    private fun assertEquals(actual: Vec3f, expected: Vec3f) {
         val delta = actual - expected
         if (delta.length2() < 0.01f) return
         throw AssertionError("Expected $expected, but got $actual")
@@ -121,59 +123,66 @@ class SkeletalShadeTest {
 
     @Test
     fun `transform rotate Y 90deg`() {
-        val transform = Mat4().rotateYassign(90.0f.rad)
-        val normal = Vec3(0.0f, 1.0f, 0.0f)
-        assertEquals(transformNormal(normal, transform), Vec3(0.0f, 1.0f, 0.0f))
+        val transform = MMat4f().apply { rotateYAssign(90.0f.rad) }
+        val normal = Vec3f(0.0f, 1.0f, 0.0f)
+        assertEquals(transformNormal(normal, transform.unsafe), Vec3f(0.0f, 1.0f, 0.0f))
     }
 
     @Test
     fun `transform rotate Y 180deg`() {
-        val transform = Mat4().rotateYassign(180.0f.rad)
-        val normal = Vec3(0.0f, -1.0f, 0.0f)
-        assertEquals(transformNormal(normal, transform), Vec3(0.0f, -1.0f, 0.0f))
+        val transform = MMat4f().apply { rotateYAssign(180.0f.rad) }
+        val normal = Vec3f(0.0f, -1.0f, 0.0f)
+        assertEquals(transformNormal(normal, transform.unsafe), Vec3f(0.0f, -1.0f, 0.0f))
     }
 
 
     @Test
     fun `transform rotate Y 90deg 2`() {
-        val transform = Mat4().rotateYassign(90.0f.rad)
-        val normal = Vec3(1.0f, 0.0f, 0.0f)
-        assertEquals(transformNormal(normal, transform), Vec3(0.0f, 0.0f, -1.0f))
+        val transform = MMat4f().apply { rotateYAssign(90.0f.rad) }
+        val normal = Vec3f(1.0f, 0.0f, 0.0f)
+        assertEquals(transformNormal(normal, transform.unsafe), Vec3f(0.0f, 0.0f, -1.0f))
     }
 
     @Test
     fun `transform rotate Y 180deg 2`() {
-        val transform = Mat4().rotateYassign(180.0f.rad)
-        val normal = Vec3(1.0f, 0.0f, 0.0f)
-        assertEquals(transformNormal(normal, transform), Vec3(-1.0f, 0.0f, 0.0f))
+        val transform = MMat4f().apply { rotateYAssign(180.0f.rad) }
+        val normal = Vec3f(1.0f, 0.0f, 0.0f)
+        assertEquals(transformNormal(normal, transform.unsafe), Vec3f(-1.0f, 0.0f, 0.0f))
     }
 
     @Test
     fun `transform translated`() {
-        val transform = Mat4()
-            .translateAssign(Vec3(123, 456, 789))
-            .rotateYassign(180.0f.rad)
-        val normal = Vec3(1.0f, 0.0f, 0.0f)
-        assertEquals(transformNormal(normal, transform), Vec3(-1.0f, 0.0f, 0.0f))
+        val transform = MMat4f().apply {
+            translateAssign(Vec3f(123, 456, 789))
+            rotateYAssign(180.0f.rad)
+        }
+        val normal = Vec3f(1.0f, 0.0f, 0.0f)
+        assertEquals(transformNormal(normal, transform.unsafe), Vec3f(-1.0f, 0.0f, 0.0f))
     }
 
     @Test
     fun `transform translated scaled`() {
-        val transform = Mat4()
-            .scaleAssign(0.4f)
-            .translateAssign(Vec3(123, 456, 789))
-            .rotateYassign(180.0f.rad)
-        val normal = Vec3(1.0f, 0.0f, 0.0f)
-        assertEquals(transformNormal(normal, transform), Vec3(-1.0f, 0.0f, 0.0f))
+        val transform = MMat4f().apply {
+            scaleAssign(0.4f)
+            translateAssign(Vec3f(123, 456, 789))
+            rotateYAssign(180.0f.rad)
+        }
+        val normal = Vec3f(1.0f, 0.0f, 0.0f)
+        assertEquals(transformNormal(normal, transform.unsafe), Vec3f(-1.0f, 0.0f, 0.0f))
     }
 
     @Test
     fun `somehow broken in the shader`() {
-        val transform = Mat4(-0.93298566, 0.0, 0.09189103, 0.0, -0.09186335, 0.023007425, -0.9327047, 0.0, -0.0022551212, -0.9372176, -0.02289664, 0.0, -455.2743, 95.37174, 618.4536, 1.0)
-        val expected = Vec3(1.0f, 0.0f, 0.0f)
+        val transform = Mat4f(
+            -0.93298566f, 0.0f, 0.09189103f, 0.0f,
+            -0.09186335f, 0.023007425f, -0.9327047f, 0.0f,
+            -0.0022551212f, -0.9372176f, -0.02289664f, 0.0f,
+            -455.2743f, 95.37174f, 618.4536f, 1.0f,
+        )
+        val expected = Vec3f(1.0f, 0.0f, 0.0f)
         val normal = transformNormal(expected, transform)
-        assertEquals(normal, Vec3(-1.0f, 0.0f, 0.0f))
-        assertEquals(getShade(normal), 0.6f)
+        assertEquals(normal, Vec3f(-1.0f, 0.0f, 0.0f))
+        assertEquals(getShade(normal.unsafe), 0.6f)
     }
 
 

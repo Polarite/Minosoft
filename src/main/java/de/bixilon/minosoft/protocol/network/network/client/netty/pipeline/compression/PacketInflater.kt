@@ -13,36 +13,60 @@
 
 package de.bixilon.minosoft.protocol.network.network.client.netty.pipeline.compression
 
-import de.bixilon.kutil.compression.zlib.ZlibUtil.decompress
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.ciritical.PacketTooLongException
+import de.bixilon.kutil.buffer.ByteBufferUtil.createBuffer
+import de.bixilon.kutil.buffer.arbitrary.ArbitraryByteArray
+import de.bixilon.minosoft.protocol.network.network.client.netty.NetworkAllocator
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.ciritical.InvalidPacketSizeError
 import de.bixilon.minosoft.protocol.network.network.client.netty.pipeline.compression.exception.SizeMismatchInflaterException
 import de.bixilon.minosoft.protocol.protocol.buffers.InByteBuffer
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.MessageToMessageDecoder
+import java.util.zip.Inflater
 
 
 class PacketInflater(
     private val maxPacketSize: Int,
-) : MessageToMessageDecoder<ByteArray>() {
+) : MessageToMessageDecoder<ArbitraryByteArray>() {
 
-    override fun decode(context: ChannelHandlerContext?, data: ByteArray, out: MutableList<Any>) {
-        val buffer = InByteBuffer(data)
+    fun decode(data: ArbitraryByteArray): ArbitraryByteArray {
+        val buffer = InByteBuffer(data.array).apply { offset = data.offset }
 
-        val uncompressedLength = buffer.readVarInt()
-        val rest = buffer.readRemaining()
-        if (uncompressedLength == 0) {
-            out += rest
-            return
-        }
-        if (uncompressedLength > maxPacketSize) {
-            throw PacketTooLongException(uncompressedLength, maxPacketSize)
+        val length = buffer.readVarInt() // uncompressed
+        val offset = buffer.offset
+        val left = data.size - (offset - data.offset)
+
+        if (length == 0) { // TODO: uncompressed if length < threshold?
+            // uncompressed
+            return ArbitraryByteArray(offset, left, data.array)
         }
 
-        val decompressed = rest.decompress(uncompressedLength)
-        if (decompressed.size != uncompressedLength) {
-            throw SizeMismatchInflaterException()
+        if (length > maxPacketSize) throw InvalidPacketSizeError(length, maxPacketSize)
+        val decompressed = NetworkAllocator.allocate(length)
+        val decompressedLength = data.array.decompress(decompressed, offset, left)
+        NetworkAllocator.free(data.array)
+
+
+        if (length != decompressedLength) throw SizeMismatchInflaterException()
+
+        return ArbitraryByteArray(0, length, decompressed)
+    }
+
+    private fun ByteArray.decompress(output: ByteArray, offset: Int, size: Int): Int {
+        val inflater = Inflater()
+        inflater.setInput(this, offset, size)
+        var pointer = 0
+        val buffer = createBuffer()  // TODO: Buffer allocator
+
+        while (!inflater.finished()) {
+            val length = inflater.inflate(buffer)
+            System.arraycopy(buffer, 0, output, pointer, length)
+            pointer += length
         }
-        out += decompressed
+        return pointer
+    }
+
+    override fun decode(context: ChannelHandlerContext?, data: ArbitraryByteArray, out: MutableList<Any>) {
+        out += decode(data)
     }
 
     companion object {

@@ -14,93 +14,49 @@
 package de.bixilon.minosoft.gui.rendering.chunk.queue.loading
 
 import de.bixilon.kutil.concurrent.lock.Lock
-import de.bixilon.kutil.time.TimeUtil
+import de.bixilon.kutil.concurrent.lock.LockUtil.locked
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.gui.rendering.chunk.ChunkRenderer
 import de.bixilon.minosoft.gui.rendering.chunk.mesh.ChunkMeshes
-import de.bixilon.minosoft.gui.rendering.chunk.queue.QueuePosition
+import de.bixilon.minosoft.gui.rendering.chunk.mesh.cache.ChunkMeshCache
 import de.bixilon.minosoft.gui.rendering.chunk.util.ChunkRendererUtil.maxBusyTime
 
 class MeshUnloadingQueue(
     private val renderer: ChunkRenderer,
 ) {
-    private val meshes: MutableList<ChunkMeshes> = mutableListOf() // prepared meshes, that can be loaded in the (next) frame
-    private val positions: MutableSet<QueuePosition> = mutableSetOf()
+    private val meshes = ArrayDeque<ChunkMeshes>()
+    private val caches = ArrayDeque<ChunkMeshCache>()
     private val lock = Lock.lock()
 
 
-    private fun forceWork() {
-        if (meshes.isEmpty()) {
-            return
-        }
+    private inline fun <E> work(queue: ArrayDeque<E>, unloader: (E) -> Unit) {
+        if (queue.isEmpty()) return
 
-        val time = TimeUtil.millis()
+        val start = now()
         val maxTime = renderer.maxBusyTime
 
-        while (meshes.isNotEmpty() && (TimeUtil.millis() - time < maxTime)) {
-            val mesh = meshes.removeAt(0)
-            this.positions -= QueuePosition(mesh)
-            renderer.visible.removeMesh(mesh)
-            mesh.unload()
+        var index = 0
+        while (queue.isNotEmpty()) {
+            if (index++ % MeshLoadingQueue.BATCH_SIZE == 0 && now() - start >= maxTime) break
+
+            val entry = queue.removeFirst()
+            unloader.invoke(entry)
         }
     }
 
-    fun work() {
-        lock()
-        try {
-            forceWork()
-        } finally {
-            unlock()
-        }
+    fun work() = lock.locked {
+        work(this.meshes, ChunkMeshes::unload)
+        work(this.caches, ChunkMeshCache::unload)
     }
 
-    fun forceQueue(mesh: ChunkMeshes, lock: Boolean = true) {
-        if (lock) lock()
 
-        if (mesh.chunkPosition == renderer.session.camera.entity.physics.positionInfo.chunkPosition) {
-            this.meshes.add(0, mesh)
-        } else {
-            this.meshes += mesh
-        }
-        this.positions += QueuePosition(mesh)
+    operator fun plusAssign(cache: ChunkMeshCache) = lock.locked { caches += cache }
 
-        if (lock) unlock()
-    }
+    @JvmName("plusAssignCache")
+    operator fun plusAssign(caches: Collection<ChunkMeshCache>) = lock.locked { this.caches += caches }
 
-    fun queue(mesh: ChunkMeshes, lock: Boolean = true) {
-        if (lock) lock()
-        if (QueuePosition(mesh) in this.positions) {
-            // already queued
-            // TODO: maybe camera chunk position changed?
-            unlock()
-            return
-        }
-        forceQueue(mesh, false)
-        if (lock) unlock()
-    }
+    operator fun plusAssign(mesh: ChunkMeshes) = lock.locked { meshes += mesh }
 
-    fun forceQueue(meshes: Collection<ChunkMeshes>, lock: Boolean = true) {
-        if (lock) lock()
-        for (mesh in meshes) {
-            forceQueue(mesh, false)
-        }
-        if (lock) unlock()
-    }
-
-    fun queue(meshes: Collection<ChunkMeshes>) {
-        lock()
-        for (mesh in meshes) {
-            queue(mesh, false)
-        }
-        unlock()
-    }
-
-    fun lock() {
-        renderer.lock.acquire()
-        this.lock.lock()
-    }
-
-    fun unlock() {
-        this.lock.unlock()
-        renderer.lock.release()
-    }
+    @JvmName("plusAssignMesh")
+    operator fun plusAssign(meshes: Collection<ChunkMeshes>) = lock.locked { this.meshes += meshes }
 }

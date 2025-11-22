@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.camera
 
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 
 object CameraDefinition {
     const val NEAR_PLANE = 0.01f
     const val FALLBACK_FAR_PLANE = 100.0f
-    val CAMERA_UP_VEC3 = Vec3(0.0f, 1.0f, 0.0f)
+    val CAMERA_UP_VEC3 = Vec3f(0.0f, 1.0f, 0.0f)
 }

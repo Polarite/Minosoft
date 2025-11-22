@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.data.entities.block
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.primitive.IntUtil.toInt
@@ -28,13 +28,12 @@ import de.bixilon.minosoft.data.registries.blocks.properties.BlockProperties.isL
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
 import de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.entity.CampfireBlock
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.fire.SmokeParticle
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.util.nbt.tag.NBTUtil.listCast
-import java.util.*
 
-class CampfireBlockEntity(session: PlaySession) : BlockEntity(session) {
+class CampfireBlockEntity(session: PlaySession, position: BlockPosition, state: BlockState) : BlockEntity(session, position, state) {
     val items: Array<ItemStack?> = arrayOfNulls(CampfireBlock.MAX_ITEMS)
 
 
@@ -54,7 +53,6 @@ class CampfireBlockEntity(session: PlaySession) : BlockEntity(session) {
             }
             val stack = ItemStackUtil.of(
                 item = session.registries.item[slot["id"].unsafeCast<String>()]!!,
-                session = session,
                 count = slot["Count"]?.toInt() ?: 1,
             )
 
@@ -63,11 +61,13 @@ class CampfireBlockEntity(session: PlaySession) : BlockEntity(session) {
     }
 
 
-    override fun tick(session: PlaySession, state: BlockState, position: Vec3i, random: Random) {
+    override fun tick() {
         val particle = session.world.particle ?: return
+        val state = this.state
         if (state.block !is CampfireBlock || !state.isLit()) {
             return
         }
+        val random = session.world.random
 
         if (random.nextFloat() < 0.11f) {
             for (i in 0 until random.nextInt(2) + 2) {
@@ -85,19 +85,19 @@ class CampfireBlockEntity(session: PlaySession) : BlockEntity(session) {
             val direction = HORIZONTAL[Math.floorMod(index + facing, Directions.SIDES.size)]
 
             val position = Vec3d(position) + Vec3d(
-                0.5f - direction.vector.x * DIRECTION_OFFSET + direction.rotateY().vector.x * DIRECTION_OFFSET,
-                0.5f,
-                0.5f - direction.vector.z * DIRECTION_OFFSET + direction.rotateY().vector.z * DIRECTION_OFFSET,
+                0.5 - direction.vector.x * DIRECTION_OFFSET + direction.rotateY().vector.x * DIRECTION_OFFSET,
+                0.5,
+                0.5 - direction.vector.z * DIRECTION_OFFSET + direction.rotateY().vector.z * DIRECTION_OFFSET,
             )
 
             for (i in 0 until 4) {
-                particle += SmokeParticle(session, position, Vec3d(0.0, 5.0E-4, 0.0))
+                particle += SmokeParticle(session, position, MVec3d(0.0, 5.0E-4, 0.0))
             }
         }
     }
 
     companion object : BlockEntityFactory<CampfireBlockEntity> {
-        override val identifier: ResourceLocation = minecraft("campfire")
+        override val identifier = minecraft("campfire")
         private val HORIZONTAL = arrayOf(Directions.SOUTH, Directions.WEST, Directions.NORTH, Directions.EAST)
         const val DIRECTION_OFFSET = 0.3125
 
@@ -111,8 +111,6 @@ class CampfireBlockEntity(session: PlaySession) : BlockEntity(session) {
         }
 
 
-        override fun build(session: PlaySession): CampfireBlockEntity {
-            return CampfireBlockEntity(session)
-        }
+        override fun build(session: PlaySession, position: BlockPosition, state: BlockState) = CampfireBlockEntity(session, position, state)
     }
 }

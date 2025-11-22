@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,14 +13,15 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.dust
 
-import de.bixilon.kotlinglm.func.common.clamp
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kutil.math.simple.FloatMath.clamp
 import de.bixilon.minosoft.data.registries.particle.data.DustParticleData
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.SimpleTextureParticle
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
-abstract class AbstractDustParticle(session: PlaySession, position: Vec3d, velocity: Vec3d, data: DustParticleData) : SimpleTextureParticle(session, position, velocity, data) {
+abstract class AbstractDustParticle(session: PlaySession, position: Vec3d, velocity: MVec3d, data: DustParticleData) : SimpleTextureParticle(session, position, velocity, data) {
 
     override var scale: Float
         get() = super.scale * (floatAge / maxAge * 32.0f).clamp(0.0f, 1.0f)
@@ -33,10 +34,10 @@ abstract class AbstractDustParticle(session: PlaySession, position: Vec3d, veloc
         this.velocity *= 0.1f
 
         val brightness = random.nextFloat() * 0.4f + 0.6f
-        this.color = RGBColor(
-            red = colorMix(data.color.floatRed, brightness),
-            green = colorMix(data.color.floatGreen, brightness),
-            blue = colorMix(data.color.floatBlue, brightness),
+        this.color = RGBAColor(
+            red = colorMix(data.color.redf, brightness),
+            green = colorMix(data.color.greenf, brightness),
+            blue = colorMix(data.color.bluef, brightness),
         )
         super.scale *= 0.75f * data.scale
 
@@ -51,7 +52,7 @@ abstract class AbstractDustParticle(session: PlaySession, position: Vec3d, veloc
 
     override fun tick() {
         super.tick()
-        forceMove(velocity)
+        forceMove()
 
         velocity *= 0.99f
     }

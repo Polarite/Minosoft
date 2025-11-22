@@ -37,11 +37,12 @@ I will still bring up fixes from time to time, might do some changes but don't e
 
 ## System requirements
 
+- OS: Windows/Linux/macOS (x86/x64 or arm64/aarch64)
 - CPU: Multiple (4+) cores, high clock speed (2+ GHz)
 - RAM: Minimum 500 MiB, 1 GiB recommended
 - Disk space: 80 MiB + assets (~ 300 MiB per version)
 - GPU: OpenGL 3.3+. Every modern GPU works and is recommended.
-- Java 11+, 16+ recommended (Java 8 is **not** supported).
+- Java 11+ (Java 8 is **not** supported).
 - A minecraft server (local or online)
 
 ## Rendering
@@ -74,6 +75,8 @@ A beautiful sunset
 
 ![Eros](doc/img/eros.png)  
 [Eros](https://en.wikipedia.org/wiki/Eros) is the main gui. You can select your account/favorite server and then connect to it. Once everything is prepared, the rendering will start.
+
+Some screenshots are years old, try the latest version to see how it actually looks.
 
 ## Version support
 
@@ -110,13 +113,13 @@ I invested many thousands of hours in this project to make it "work". A lot of v
 A release normally means, that it is stable, has few (known) bugs and won't change that much in the near future.
 All those "requirements" are currently not fulfilled at all. It is just way to alpha atm. The current goal always was to play bedwars with this client and it actually worked on hypixel ([#42](https://gitlab.bixilon.de/bixilon/minosoft/-/issues/42)).
 
-If you want to get notified when cool new features arrive or other interesting stuff happens were, feel free to subscribe to [@MinosoftDevNews](https://t.me/MinosoftDevNews).
+Feel free to join the [matrix channel](https://matrix.to/#/#minosoft:matrix.org) to get notified when new features arrive.
 
 ## Downloads / Installation
 
 ### Linux, Windows, macOS
 
-The latest x64 and arm64 build gets uploaded to github actions. See [github actions](https://github.com/Bixilon/Minosoft/actions/?ref=gitlab.bixilon.de)
+The latest x64 and arm64 build gets uploaded to github actions. See [github actions](https://github.com/Bixilon/Minosoft/actions/workflows/build.yml?query=branch%3Amaster+event%3Apush+is%3Asuccess&ref=gitlab.bixilon.de)
 
 
 #### Arch

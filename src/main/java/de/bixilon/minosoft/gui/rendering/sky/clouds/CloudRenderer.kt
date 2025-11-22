@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.clouds
 
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.AsyncRenderer
@@ -24,12 +24,12 @@ import de.bixilon.minosoft.gui.rendering.renderer.renderer.RendererBuilder
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.world.LayerSettings
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.world.WorldRenderer
 import de.bixilon.minosoft.gui.rendering.sky.SkyRenderer
-import de.bixilon.minosoft.gui.rendering.system.base.RenderSystem
 import de.bixilon.minosoft.gui.rendering.system.base.layer.RenderLayer
 import de.bixilon.minosoft.gui.rendering.system.base.settings.RenderSettings
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.play.PlaySessionStates
 import kotlin.math.pow
+import kotlin.time.Duration.Companion.seconds
 
 class CloudRenderer(
     private val sky: SkyRenderer,
@@ -38,8 +38,7 @@ class CloudRenderer(
 ) : WorldRenderer, AsyncRenderer {
     private val color = CloudColor(sky)
     override val layers = LayerSettings()
-    override val renderSystem: RenderSystem = context.system
-    val shader = renderSystem.createShader(minosoft("sky/clouds")) { CloudShader(it) }
+    val shader = context.system.shader.create(minosoft("sky/clouds")) { CloudShader(it) }
     val matrix = CloudMatrix()
     private val cloudLayers: MutableList<CloudLayer> = mutableListOf()
     private var position = Vec2i(Int.MIN_VALUE)
@@ -50,7 +49,7 @@ class CloudRenderer(
         private set
     private var toUnload: MutableSet<CloudLayer> = mutableSetOf()
 
-    private var time = millis()
+    private var time = now()
     var delta = 0.0f
         private set
 
@@ -115,7 +114,7 @@ class CloudRenderer(
 
     private fun updateLayers(layers: Int) {
         while (layers < this.cloudLayers.size) {
-            toUnload += this.cloudLayers.removeLast()
+            toUnload += this.cloudLayers.removeAt(this.cloudLayers.size - 1)
         }
         for (index in this.cloudLayers.size until layers) {
             val layer = CloudLayer(sky, this, index, getCloudHeight(index))
@@ -136,9 +135,9 @@ class CloudRenderer(
             updateLayers(nextLayers)
         }
 
-        val time = millis()
+        val time = now()
         val delta = time - this.time
-        this.delta = delta / 1000.0f
+        this.delta = (delta / 1.seconds).toFloat()
         this.time = time
 
         for (layer in cloudLayers) {

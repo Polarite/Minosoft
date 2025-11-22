@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering.models.block.state.baked.cull
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.direction.Directions
+import de.bixilon.minosoft.data.registries.blocks.light.TransparentProperty
 import de.bixilon.minosoft.data.registries.blocks.settings.BlockSettings
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.Block
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.models.block.state.baked.BakedModel
@@ -32,20 +34,22 @@ import org.testng.annotations.Test
 @Test(groups = ["models", "culling"])
 class FaceCullingTest {
 
-    private fun createFace(transparency: TextureTransparencies = TextureTransparencies.OPAQUE, properties: FaceProperties? = FaceProperties(Vec2(0), Vec2(1), transparency)): FaceProperties? {
+    private fun createFace(transparency: TextureTransparencies = TextureTransparencies.OPAQUE, properties: FaceProperties? = FaceProperties(Vec2f(0), Vec2f(1), transparency)): FaceProperties? {
         return properties
     }
 
-    private fun createBlock(transparency: TextureTransparencies = TextureTransparencies.OPAQUE, properties: SideProperties? = SideProperties(arrayOf(FaceProperties(Vec2(0), Vec2(1), transparency)), transparency), type: Int = 0): BlockState {
+    private fun createBlock(transparency: TextureTransparencies = TextureTransparencies.OPAQUE, properties: SideProperties? = SideProperties(arrayOf(FaceProperties(Vec2f(0), Vec2f(1), transparency)), transparency), type: Int = 0): BlockState {
         val block = object : Block(minosoft("dummy$type"), BlockSettings(IT.VERSION)) {
             override val hardness: Float get() = Broken()
+
+            override val lightProperties get() = TransparentProperty
         }
 
         return createBlock(block, transparency, properties)
     }
 
-    private fun createBlock(block: Block, transparency: TextureTransparencies = TextureTransparencies.OPAQUE, properties: SideProperties? = SideProperties(arrayOf(FaceProperties(Vec2(0), Vec2(1), transparency)), transparency)): BlockState {
-        val state = BlockState(block, 0)
+    private fun createBlock(block: Block, transparency: TextureTransparencies = TextureTransparencies.OPAQUE, properties: SideProperties? = SideProperties(arrayOf(FaceProperties(Vec2f(0), Vec2f(1), transparency)), transparency)): BlockState {
+        val state = BlockState(block, emptyMap(), BlockStateFlags.of(block))
 
         state.model = BakedModel(Array(Directions.SIZE) { emptyArray() }, arrayOf(properties, properties, properties, properties, properties, properties), null, null)
 
@@ -78,50 +82,50 @@ class FaceCullingTest {
     }
 
     fun sizeMatch() {
-        val face = createFace(properties = FaceProperties(Vec2(0.0f, 0.5f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.0f, 0.5f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.0f, 0.5f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.0f, 0.5f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE)))
         assertTrue(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
     fun greaterNeighbour() {
-        val face = createFace(properties = FaceProperties(Vec2(0.0f, 0.5f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.0f, 0.5f), Vec2(1.0f, 0.6f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.0f, 0.5f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.0f, 0.5f), Vec2f(1.0f, 0.6f), TextureTransparencies.OPAQUE)))
         assertTrue(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
     fun smallerNeighbour() {
-        val face = createFace(properties = FaceProperties(Vec2(0.0f, 0.5f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.0f, 0.5f), Vec2(1.0f, 0.4f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.0f, 0.5f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.0f, 0.5f), Vec2f(1.0f, 0.4f), TextureTransparencies.OPAQUE)))
         assertFalse(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
     fun noSize() {
-        val face = createFace(properties = FaceProperties(Vec2(0.0f, 0.5f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.1f, 0.5f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.0f, 0.5f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.1f, 0.5f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE)))
         assertTrue(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
     fun shiftedNeighbour1() {
-        val face = createFace(properties = FaceProperties(Vec2(0.0f, 0.4f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.1f, 0.4f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.0f, 0.4f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.1f, 0.4f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE)))
         assertFalse(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
     fun shiftedNeighbour2() {
-        val face = createFace(properties = FaceProperties(Vec2(0.0f, 0.4f), Vec2(1.0f, 0.5f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.1f, 0.4f), Vec2(1.0f, 0.6f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.0f, 0.4f), Vec2f(1.0f, 0.5f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.1f, 0.4f), Vec2f(1.0f, 0.6f), TextureTransparencies.OPAQUE)))
         assertFalse(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
     fun shiftedNeighbour3() {
-        val face = createFace(properties = FaceProperties(Vec2(0.1f, 0.8f), Vec2(0.9f, 0.9f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.1f, 0.5f), Vec2(0.95f, 0.95f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.1f, 0.8f), Vec2f(0.9f, 0.9f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.1f, 0.5f), Vec2f(0.95f, 0.95f), TextureTransparencies.OPAQUE)))
         assertTrue(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
     fun multipleNeighbourFaces() {
-        val face = createFace(properties = FaceProperties(Vec2(0.1f, 0.3f), Vec2(0.9f, 0.9f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.1f, 0.2f), Vec2(0.95f, 0.4f), TextureTransparencies.OPAQUE), FaceProperties(Vec2(0.1f, 0.4f), Vec2(0.95f, 0.6f), TextureTransparencies.OPAQUE), FaceProperties(Vec2(0.1f, 0.6f), Vec2(0.95f, 0.95f), TextureTransparencies.OPAQUE)))
+        val face = createFace(properties = FaceProperties(Vec2f(0.1f, 0.3f), Vec2f(0.9f, 0.9f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.1f, 0.2f), Vec2f(0.95f, 0.4f), TextureTransparencies.OPAQUE), FaceProperties(Vec2f(0.1f, 0.4f), Vec2f(0.95f, 0.6f), TextureTransparencies.OPAQUE), FaceProperties(Vec2f(0.1f, 0.6f), Vec2f(0.95f, 0.95f), TextureTransparencies.OPAQUE)))
         assertTrue(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
@@ -212,8 +216,8 @@ class FaceCullingTest {
 
 
     fun `opaque but neighbour opaque and transparent`() { // grass block + overlay
-        val face = createFace(TextureTransparencies.OPAQUE, properties = FaceProperties(Vec2(0.0f, 0.0f), Vec2(1.0f, 1.0f), TextureTransparencies.OPAQUE))
-        val neighbour = createBlock(properties = side(FaceProperties(Vec2(0.0f, 0.0f), Vec2(1.0f, 1.0f), TextureTransparencies.OPAQUE), FaceProperties(Vec2(0.0f, 0.0f), Vec2(1.0f, 1.0f), TextureTransparencies.TRANSPARENT), transparency = null))
+        val face = createFace(TextureTransparencies.OPAQUE, properties = FaceProperties(Vec2f(0.0f, 0.0f), Vec2f(1.0f, 1.0f), TextureTransparencies.OPAQUE))
+        val neighbour = createBlock(properties = side(FaceProperties(Vec2f(0.0f, 0.0f), Vec2f(1.0f, 1.0f), TextureTransparencies.OPAQUE), FaceProperties(Vec2f(0.0f, 0.0f), Vec2f(1.0f, 1.0f), TextureTransparencies.TRANSPARENT), transparency = null))
         assertTrue(FaceCulling.canCull(createState(), face, Directions.EAST, neighbour))
     }
 
@@ -224,6 +228,8 @@ class FaceCullingTest {
 
     private fun forceNoCull() = object : Block(minosoft("dummy"), BlockSettings(IT.VERSION)), CustomBlockCulling {
         override val hardness get() = Broken()
+
+        override val lightProperties get() = TransparentProperty
 
         override fun shouldCull(state: BlockState, properties: FaceProperties, directions: Directions, neighbour: BlockState): Boolean {
             return false

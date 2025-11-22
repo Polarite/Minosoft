@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,61 +13,51 @@
 
 package de.bixilon.minosoft.data.world.chunk.manager
 
-import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.kutil.collections.map.LockMap
+import de.bixilon.kutil.concurrent.lock.LockUtil.locked
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
 import de.bixilon.minosoft.data.world.World
-import de.bixilon.minosoft.data.world.biome.source.BiomeSource
-import de.bixilon.minosoft.data.world.biome.source.DummyBiomeSource
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
-import de.bixilon.minosoft.data.world.chunk.chunk.ChunkPrototype
+import de.bixilon.minosoft.data.world.chunk.chunk.ChunkData
 import de.bixilon.minosoft.data.world.chunk.manager.size.WorldSizeManager
-import de.bixilon.minosoft.data.world.chunk.neighbours.ChunkNeighbours
+import de.bixilon.minosoft.data.world.chunk.neighbours.ChunkNeighbourUtil
 import de.bixilon.minosoft.data.world.chunk.update.AbstractWorldUpdate
 import de.bixilon.minosoft.data.world.chunk.update.WorldUpdateEvent
-import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkCreateUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkDataUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkLightUpdate
 import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkUnloadUpdate
-import de.bixilon.minosoft.data.world.chunk.update.chunk.NeighbourChangeUpdate
-import de.bixilon.minosoft.data.world.chunk.update.chunk.prototype.PrototypeChange
-import de.bixilon.minosoft.data.world.chunk.update.chunk.prototype.PrototypeChangeUpdate
+import de.bixilon.minosoft.data.world.chunk.update.chunk.NeighbourSetUpdate
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
 
-class ChunkManager(val world: World, chunkCapacity: Int = 0, prototypeCapacity: Int = 0) {
-    val chunks: LockMap<Vec2i, Chunk> = LockMap(HashMap(chunkCapacity), world.lock)
-    val prototypes: LockMap<Vec2i, ChunkPrototype> = LockMap(HashMap(prototypeCapacity), world.lock)
+class ChunkManager(
+    val world: World,
+    chunkCapacity: Int = 0,
+) {
+    val chunks: LockMap<ChunkPosition, Chunk> = LockMap(HashMap(chunkCapacity), world.lock)
     val size = WorldSizeManager(world)
     val ticker = ChunkTicker(this)
     var revision by observed(0)
 
 
-    operator fun get(position: ChunkPosition): Chunk? {
-        return chunks[position]
-    }
-
-    operator fun get(x: Int, z: Int): Chunk? {
-        return this[Vec2i(x, z)]
-    }
+    operator fun get(position: ChunkPosition) = chunks[position]
+    operator fun get(x: Int, z: Int) = this[ChunkPosition(x, z)]
 
     fun unload(position: ChunkPosition) {
-        world.lock.lock()
-        this.prototypes.unsafe -= position
-        val chunk = chunks.unsafe.remove(position)
-        if (chunk == null) {
-            world.lock.unlock()
-            return
+        val chunk = world.lock.locked {
+            val chunk = chunks.unsafe.remove(position) ?: return
+            size.onUnload(position)
+            return@locked chunk
         }
-        val updates = hashSetOf<AbstractWorldUpdate>(ChunkUnloadUpdate(position, chunk))
+        val updates = hashSetOf<AbstractWorldUpdate>(ChunkUnloadUpdate(chunk))
 
-        for ((index, neighbour) in chunk.neighbours.neighbours.withIndex()) {
+        val neighbours = chunk.neighbours
+        for ((index, neighbour) in neighbours.array.withIndex()) {
             if (neighbour == null) continue
-            val offset = ChunkNeighbours.OFFSETS[index]
-            val neighbourPosition = position + offset
+            val offset = ChunkPosition(ChunkNeighbourUtil.OFFSETS[index])
             neighbour.neighbours.remove(-offset)
-            updates += NeighbourChangeUpdate(neighbourPosition, neighbour)
+            neighbours.array[index] = null
         }
-        size.onUnload(position)
         world.occlusion++
-        world.lock.unlock()
 
         for (update in updates) {
             world.session.events.fire(WorldUpdateEvent(world.session, update))
@@ -79,100 +69,86 @@ class ChunkManager(val world: World, chunkCapacity: Int = 0, prototypeCapacity: 
 
     fun clear() {
         chunks.unsafe.clear()
-        prototypes.unsafe.clear()
         size.clear()
         world.view.updateServerDistance()
         revision++
     }
 
-    private fun updateExisting(position: ChunkPosition, prototype: ChunkPrototype, replaceExisting: Boolean): PrototypeChange? {
-        val chunk = this.chunks.unsafe[position] ?: return null
-        val affected = prototype.updateChunk(chunk, replaceExisting) ?: return null
-        return PrototypeChange(chunk, affected)
-    }
+    private fun create(position: ChunkPosition): Chunk {
+        val chunk = Chunk(world, position)
 
-
-    operator fun set(position: ChunkPosition, prototype: ChunkPrototype) {
-        set(position, prototype, true)
-    }
-
-    fun set(position: ChunkPosition, prototype: ChunkPrototype, replaceExisting: Boolean) {
-        if (!world.isValidPosition(position)) throw IllegalArgumentException("Chunk position $position is not valid!")
-        world.lock.lock()
-        updateExisting(position, prototype, replaceExisting)?.let {
-            world.lock.unlock()
-            PrototypeChangeUpdate(position, it.chunk, it.affected).fire(world.session)
-            it.chunk.light.recalculate(fireEvent = true, fireSameChunkEvent = false)
-            revision++
-            return
-        }
-        val existingPrototype = this.prototypes.unsafe[position]
-        existingPrototype?.update(prototype)
-
-        val chunk = (existingPrototype ?: prototype).createChunk(world.session, position)
-        if (chunk == null) {
-            // chunk not complete
-            if (existingPrototype == null) {
-                this.prototypes.unsafe.getOrPut(position) { ChunkPrototype() }
-            }
-            world.lock.unlock()
-            return
-        }
-
-        if (existingPrototype != null) {
-            this.prototypes.unsafe -= position
+        for (index in 0 until ChunkNeighbourUtil.COUNT) {
+            if (chunk.neighbours.array[index] != null) continue
+            val offset = ChunkPosition(ChunkNeighbourUtil.OFFSETS[index])
+            val neighbour = this.chunks.unsafe[chunk.position + offset] ?: continue
+            chunk.neighbours[offset] = neighbour
+            neighbour.neighbours[-offset] = chunk
         }
 
         this.chunks.unsafe[position] = chunk
-        val updates = onChunkCreate(chunk)
-        world.lock.unlock()
-        for (update in updates) update.fire(world.session)
-        revision++
+
+        return chunk
     }
 
-    private fun onChunkCreate(chunk: Chunk): Set<AbstractWorldUpdate> {
-        // TODO: update chunk neighbours, update section neighbours, build biome cache, update light (propagate from neighbours), fire update
-        size.onCreate(chunk.chunkPosition)
+    fun update(position: ChunkPosition, data: ChunkData, replace: Boolean): Chunk {
+        var created = false
+        val chunk = world.lock.locked {
+            chunks.unsafe[position]?.let { return@locked it }
+            created = true
+
+            return@locked create(position)
+        }
+
+
+        val affected = data.update(chunk, replace && !created)
+
+        size.onCreate(chunk.position)
         world.view.updateServerDistance()
 
-        val updates = HashSet<AbstractWorldUpdate>(9, 1.0f)
-        updates += ChunkCreateUpdate(chunk.chunkPosition, chunk)
+        if (created || affected.isNotEmpty()) {
+            if (!created) chunk.light.reset()
+            chunk.light.calculate(false, ChunkLightUpdate.Causes.INITIAL)
+            chunk.light.propagateFromNeighbours(fireEvent = false, ChunkLightUpdate.Causes.INITIAL)
 
-        for (index in 0 until ChunkNeighbours.COUNT) {
-            val offset = ChunkNeighbours.OFFSETS[index]
-            val neighbour = this.chunks.unsafe[chunk.chunkPosition + offset] ?: continue
-            chunk.neighbours[index] = neighbour
-            neighbour.neighbours[-offset] = chunk
-
-        }
-        // TODO: Update section neighbours
-        // TODO: fire event
+            for (neighbour in chunk.neighbours.array) {
+                if (neighbour == null || !neighbour.neighbours.complete) continue
+                if (created && neighbour.light.initial) continue
+                neighbour.light.initial = false
 
 
-        for (neighbour in chunk.neighbours) {
-            if (neighbour == null) continue
-            updates += NeighbourChangeUpdate(neighbour.chunkPosition, neighbour)
+                neighbour.light.reset()
+                neighbour.light.calculate(false, ChunkLightUpdate.Causes.INITIAL)
+                neighbour.light.propagateFromNeighbours(true, ChunkLightUpdate.Causes.INITIAL)
+            }
         }
 
-        return updates
-    }
-
-
-    fun create(position: ChunkPosition, biome: BiomeSource = DummyBiomeSource(null)): Chunk {
-        if (!world.isValidPosition(position)) throw IllegalArgumentException("Chunk position $position is not valid!")
-        chunks.lock.lock()
-        val chunk = chunks.unsafe.getOrPut(position) { Chunk(world.session, position, biome) }
-        val updates = onChunkCreate(chunk)
-        chunks.lock.unlock()
-
-        for (update in updates) update.fire(world.session)
         revision++
+
+        if (affected.isNotEmpty()) {
+            ChunkDataUpdate(chunk, affected).fire(world.session)
+        }
+
+        if (created) {
+            for (neighbour in chunk.neighbours.array) {
+                if (neighbour == null) continue
+                NeighbourSetUpdate(neighbour).fire(world.session)
+            }
+        }
 
 
         return chunk
     }
 
-    fun tick(simulationDistance: Int, cameraPosition: Vec2i) {
+    operator fun set(position: ChunkPosition, data: ChunkData) = update(position, data, true)
+
+
+    fun tick(simulationDistance: Int, cameraPosition: ChunkPosition) {
         ticker.tick(simulationDistance, cameraPosition)
+    }
+
+    inline fun forEach(consumer: (Chunk) -> Unit) {
+        for ((_, chunk) in this.chunks.unsafe) {
+            consumer.invoke(chunk)
+        }
     }
 }

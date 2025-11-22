@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.model.human.animator
 
-import de.bixilon.kotlinglm.func.rad
+import de.bixilon.kutil.primitive.FloatUtil.rad
 import de.bixilon.minosoft.gui.rendering.entities.model.human.HumanModel
 import de.bixilon.minosoft.gui.rendering.skeletal.instance.TransformInstance
-import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.rotateXAssign
+import kotlin.time.Duration
 
 class LegAnimator(
     val model: HumanModel<*>,
@@ -24,21 +24,23 @@ class LegAnimator(
     val right: TransformInstance,
 ) {
 
-    fun update(delta: Float) {
+    fun update(delta: Duration) {
         apply()
     }
 
     private fun apply() {
         val angle = model.speedAnimator.getAngle(MAX_ANGLE).rad
 
-        left.value
-            .translateAssign(left.pivot)
-            .rotateXAssign(-angle)
-            .translateAssign(left.nPivot)
-        right.value
-            .translateAssign(left.pivot)
-            .rotateXAssign(angle)
-            .translateAssign(left.nPivot)
+        left.matrix.apply {
+            translateAssign(left.pivot)
+            rotateXAssign(-angle)
+            translateAssign(left.nPivot)
+        }
+        right.matrix.apply {
+            translateAssign(left.pivot)
+            rotateXAssign(angle)
+            translateAssign(left.nPivot)
+        }
     }
 
     private companion object {

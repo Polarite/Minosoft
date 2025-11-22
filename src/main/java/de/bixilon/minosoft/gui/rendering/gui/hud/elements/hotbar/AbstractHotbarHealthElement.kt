@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,18 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.hotbar
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.math.simple.FloatMath.ceil
 import de.bixilon.minosoft.data.text.ChatComponent
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor.Companion.rgba
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.atlas.AtlasElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 abstract class AbstractHotbarHealthElement(guiRenderer: GUIRenderer) : Element(guiRenderer) {
     abstract val totalHealth: Float
@@ -49,24 +49,24 @@ abstract class AbstractHotbarHealthElement(guiRenderer: GUIRenderer) : Element(g
                 rows++
             }
 
-            _size = Vec2(HEARTS_PER_ROW, rows) * HEART_SIZE + Vec2(1, 0) // 1 pixel is overlapping, so we have one more for the heart
+            _size = Vec2f(HEARTS_PER_ROW, rows) * HEART_SIZE + Vec2f(1, 0) // 1 pixel is overlapping, so we have one more for the heart
         }
 
         cacheUpToDate = false
     }
 
-    protected fun drawCanisters(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?, atlasElement: AtlasElement?) {
+    protected fun drawCanisters(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?, atlasElement: AtlasElement?) {
         for (heart in 0 until totalMaxHearts) {
             val row = heart / HEARTS_PER_ROW
             val column = heart % HEARTS_PER_ROW
 
             val image = AtlasImageElement(guiRenderer, atlasElement)
 
-            image.render(offset + Vec2(column, (rows - 1) - row) * HEART_SIZE, consumer, options)
+            image.render(offset + Vec2f(column, (rows - 1) - row) * HEART_SIZE, consumer, options)
         }
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         textElement.render(offset, consumer, options)
     }
 
@@ -74,7 +74,7 @@ abstract class AbstractHotbarHealthElement(guiRenderer: GUIRenderer) : Element(g
 
 
     companion object {
-        val NORMAL_TEXT_COLOR = "#ff1313".asColor()
+        val NORMAL_TEXT_COLOR = "#ff1313".rgba()
         private const val HP_PER_ROW = 20
         const val HEARTS_PER_ROW = HP_PER_ROW / 2
         val HEART_SIZE = Vec2i(8, 9)

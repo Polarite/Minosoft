@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,11 @@
 
 package de.bixilon.minosoft.gui.rendering.models.util
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kmath.vec.vec3.f.MVec3f
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.Axes
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.gui.rendering.models.block.element.FaceVertexData
@@ -24,7 +25,7 @@ import de.bixilon.minosoft.gui.rendering.models.block.element.face.FaceUV
 
 object CuboidUtil {
 
-    fun positions(direction: Directions, from: Vec3, to: Vec3): FaceVertexData {
+    fun positions(direction: Directions, from: Vec3f, to: Vec3f): FaceVertexData {
         return when (direction) {
             // @formatter:off
             Directions.DOWN ->  floatArrayOf(from.x, from.y, from.z,   from.x, from.y, to  .z,   to  .x, from.y, to  .z,   to  .x, from.y, from.z)
@@ -37,14 +38,14 @@ object CuboidUtil {
         }
     }
 
-    fun cubeUV(offset: Vec2i, from: Vec3, to: Vec3, direction: Directions): FaceUV {
-        val cube = Vec3i(to - from)
+    fun cubeUV(offset: Vec2i, from: Vec3f, to: Vec3f, direction: Directions): FaceUV {
+        val cube = MVec3f(to - from)
 
-        val uv = Vec2i(offset)
+        val uv = MVec2f(offset)
         val size = when (direction.axis) {
-            Axes.Y -> Vec2i(cube.x, cube.z)
-            Axes.Z -> Vec2i(cube.x, cube.y)
-            Axes.X -> Vec2i(cube.z, cube.y)
+            Axes.Y -> MVec2f(cube.x, cube.z)
+            Axes.Z -> MVec2f(cube.x, cube.y)
+            Axes.X -> MVec2f(cube.z, cube.y)
         }
 
         when (direction) {
@@ -80,6 +81,6 @@ object CuboidUtil {
         }
 
 
-        return FaceUV(Vec2(uv.x, uv.y), Vec2(uv.x + size.x, uv.y + size.y))
+        return FaceUV(uv.unsafe, Vec2f(uv.x + size.x, uv.y + size.y))
     }
 }

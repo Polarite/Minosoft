@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.registries.entities
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
 import de.bixilon.minosoft.data.entities.entities.*
@@ -47,6 +47,7 @@ import de.bixilon.minosoft.data.entities.entities.vehicle.*
 import de.bixilon.minosoft.data.entities.entities.vehicle.boat.Boat
 import de.bixilon.minosoft.data.entities.entities.vehicle.boat.ChestBoat
 import de.bixilon.minosoft.data.registries.factory.DefaultFactory
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import java.util.*
@@ -193,7 +194,7 @@ object DefaultEntityFactories : DefaultFactory<EntityFactory<*>>(
     }
 
     val ABSTRACT_ENTITY_DATA_CLASSES = mapOf(
-        "minecraft:player".toResourceLocation() to PlayerEntity::class,
+        minecraft("player") to PlayerEntity::class,
         "Entity".toResourceLocation() to Entity::class,
         "LivingEntity".toResourceLocation() to LivingEntity::class,
         "PersistentProjectileEntity".toResourceLocation() to AbstractArrow::class,

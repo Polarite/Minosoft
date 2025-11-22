@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,12 @@
 
 package de.bixilon.minosoft.updater
 
-import com.google.common.io.Files
 import de.bixilon.kutil.array.ByteArrayUtil.toHex
 import de.bixilon.kutil.base64.Base64Util.fromBase64
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
+import de.bixilon.kutil.exception.ExceptionUtil.catchAll
+import de.bixilon.kutil.file.PathUtil.div
+import de.bixilon.kutil.file.PathUtil.toPath
 import de.bixilon.kutil.hash.HashUtil
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
 import de.bixilon.kutil.os.PlatformInfo
@@ -24,11 +26,9 @@ import de.bixilon.kutil.shutdown.ShutdownManager
 import de.bixilon.kutil.stream.InputStreamUtil.copy
 import de.bixilon.kutil.string.StringUtil.formatPlaceholder
 import de.bixilon.kutil.url.URLUtil.toURL
-import de.bixilon.minosoft.assets.util.FileUtil
 import de.bixilon.minosoft.config.profile.profiles.other.OtherProfileManager
 import de.bixilon.minosoft.properties.MinosoftProperties
-import de.bixilon.minosoft.terminal.CommandLineArguments
-import de.bixilon.minosoft.terminal.RunConfiguration
+import de.bixilon.minosoft.terminal.arguments.CommandLineArguments
 import de.bixilon.minosoft.util.http.HTTP2.get
 import de.bixilon.minosoft.util.http.HTTPResponse
 import de.bixilon.minosoft.util.http.exceptions.HTTPException
@@ -39,10 +39,14 @@ import de.bixilon.minosoft.util.logging.LogMessageType
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.security.SignatureException
+import kotlin.io.path.absolutePathString
 
 object MinosoftUpdater {
+    var disabled = false
     var update: MinosoftUpdate? by observed(null)
         private set
 
@@ -57,7 +61,7 @@ object MinosoftUpdater {
     }
 
     fun check(force: Boolean = false, callback: (MinosoftUpdate?) -> Unit) {
-        if (!RunConfiguration.UPDATE_CHECKING) return
+        if (disabled) return
         if (!MinosoftProperties.canUpdate()) return
         if (!force) {
             this.update?.let { callback.invoke(update); return }
@@ -127,10 +131,11 @@ object MinosoftUpdater {
         }
         progress.log?.print("Downloading update...")
 
+        var temp: File? = null
         try {
             val stream = download.url.openStream()
             val digest = MessageDigest.getInstance(HashUtil.SHA_512)
-            val temp = FileUtil.createTempFile()
+            temp = File("./Minosoft-${update.id}.jar.tmp")
             val signature = UpdateKey.createInstance()
             stream.copy(FileOutputStream(temp), digest = digest, signature = signature)
             if (digest.digest().toHex() != download.sha512) throw SignatureException("Hash mismatch of downloaded file: Expected ${download.sha512}, got ${digest.digest().toHex()}")
@@ -139,14 +144,15 @@ object MinosoftUpdater {
             progress.log?.print("Moving temporary file to final destination")
 
             // move to current directory
-            val output = File(("./Minosoft-${update.id}.jar"))
-            Files.move(temp, output) // TODO: might be possible to tamper jar? in the meantime
+            val output = File("./Minosoft-${update.id}.jar")
+            Files.move(temp.toPath(), output.toPath(), StandardCopyOption.ATOMIC_MOVE)
             progress.log?.print("Success, file saved to $output")
 
             start(output)
             progress.log?.print("Started new process, exiting")
             ShutdownManager.shutdown()
         } catch (error: Throwable) {
+            catchAll { temp?.delete() }
             if (progress.log == null) {
                 error.printStackTrace()
             } else {
@@ -159,10 +165,10 @@ object MinosoftUpdater {
 
     fun start(jar: File) {
         val arguments: MutableList<String> = mutableListOf()
-        arguments += System.getProperty("java.home") + File.separator + "bin" + File.separator + "java"
+        arguments += (System.getProperty("java.home").toPath() / "bin" / "java").absolutePathString()
         arguments += "-jar"
         arguments += jar.absolutePath.toString()
-        arguments += CommandLineArguments.ARGUMENTS
+        arguments += CommandLineArguments.raw
         ProcessBuilder(arguments).start()
     }
 }

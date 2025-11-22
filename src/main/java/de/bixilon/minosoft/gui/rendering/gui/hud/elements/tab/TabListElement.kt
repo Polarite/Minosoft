@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,17 +13,17 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.tab
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedMapOf
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedMap
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
-import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.minosoft.config.key.KeyActions
 import de.bixilon.minosoft.config.key.KeyBinding
 import de.bixilon.minosoft.config.key.KeyCodes
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -34,14 +34,12 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ColorElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.LayoutedGUIElement
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.HUDBuilder
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 import de.bixilon.minosoft.modding.event.events.TabListEntryChangeEvent
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.util.Initializable
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
 
@@ -49,9 +47,9 @@ class TabListElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedE
     val header = TextElement(guiRenderer, "", background = null, properties = TextRenderProperties(HorizontalAlignments.CENTER), parent = this)
     val footer = TextElement(guiRenderer, "", background = null, properties = TextRenderProperties(HorizontalAlignments.CENTER), parent = this)
 
-    private val background = ColorElement(guiRenderer, Vec2.EMPTY, color = RGBColor(0, 0, 0, 120))
+    private val background = ColorElement(guiRenderer, Vec2f.EMPTY, color = RGBAColor(0, 0, 0, 120))
 
-    private var entriesSize = Vec2.EMPTY
+    private var entriesSize = Vec2f.EMPTY
     private val entries: MutableMap<UUID, TabListEntryElement> = synchronizedMapOf()
     private var toRender: List<TabListEntryElement> = emptyList()
     private val lock = ReentrantLock()
@@ -59,32 +57,33 @@ class TabListElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedE
         private set
     private var columns = 0
 
-    override val layoutOffset: Vec2
-        get() = Vec2((guiRenderer.scaledSize.x - super.size.x) / 2, 20)
+    override val layoutOffset: Vec2f
+        get() = Vec2f((guiRenderer.scaledSize.x - super.size.x) / 2.0f, 20.0f)
 
     val atlas = TabListAtlas(guiRenderer)
 
     init {
-        super.prefMaxSize = Vec2(-1, -1)
+        super.prefMaxSize = Vec2f(-1, -1)
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         background.render(offset, consumer, options)
+        val offset = MVec2f(offset)
 
         offset.y += BACKGROUND_PADDING // No need for x, this is done with the CENTER offset calculation
 
         val size = size
 
         header.size.let {
-            header.render(offset + Vec2(HorizontalAlignments.CENTER.getOffset(size.x, it.x), 0), consumer, options)
+            header.render(offset.unsafe + Vec2f(HorizontalAlignments.CENTER.getOffset(size.x, it.x), 0.0f), consumer, options)
             offset.y += it.y
         }
 
-        val offsetBefore = Vec2(offset)
+        val offsetBefore = Vec2f(offset)
         offset.x += HorizontalAlignments.CENTER.getOffset(size.x, entriesSize.x)
 
         for ((index, entry) in toRender.withIndex()) {
-            entry.render(offset, consumer, options)
+            entry.render(offset.unsafe, consumer, options)
             offset.y += TabListEntryElement.HEIGHT + ENTRY_VERTICAL_SPACING
             if ((index + 1) % ENTRIES_PER_COLUMN == 0) {
                 offset.x += entry.width + ENTRY_HORIZONTAL_SPACING
@@ -92,17 +91,17 @@ class TabListElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedE
             }
         }
         offset.x = offsetBefore.x
-        offset.y = offsetBefore.y + (columns > 1).decide(ENTRIES_PER_COLUMN, toRender.size) * (TabListEntryElement.HEIGHT + ENTRY_VERTICAL_SPACING)
+        offset.y = offsetBefore.y + (if(columns > 1) ENTRIES_PER_COLUMN else toRender.size) * (TabListEntryElement.HEIGHT + ENTRY_VERTICAL_SPACING)
 
 
         footer.size.let {
-            footer.render(offset + Vec2i(HorizontalAlignments.CENTER.getOffset(size.x, it.x), 0), consumer, options)
+            footer.render(offset.unsafe + Vec2f(HorizontalAlignments.CENTER.getOffset(size.x, it.x), 0.0f), consumer, options)
             offset.y += it.y
         }
     }
 
     override fun forceSilentApply() {
-        val size = Vec2.EMPTY
+        val size = MVec2f.EMPTY
 
         size.y += header.size.y
 
@@ -150,7 +149,7 @@ class TabListElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedE
             widths[column] = currentMaxPrefWidth
             totalEntriesWidth += currentMaxPrefWidth
         }
-        size.y += (columns > 1).decide(ENTRIES_PER_COLUMN, toRender.size) * (TabListEntryElement.HEIGHT + ENTRY_VERTICAL_SPACING)
+        size.y += (if(columns > 1) ENTRIES_PER_COLUMN else toRender.size) * (TabListEntryElement.HEIGHT + ENTRY_VERTICAL_SPACING)
 
         size.y -= ENTRY_VERTICAL_SPACING // Remove already added space again
 
@@ -160,7 +159,7 @@ class TabListElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedE
             totalEntriesWidth += (columns - 1) * ENTRY_HORIZONTAL_SPACING
         }
 
-        this.entriesSize = Vec2(totalEntriesWidth, size.y - previousSize.y)
+        this.entriesSize = Vec2f(totalEntriesWidth, size.y - previousSize.y)
         size.x = maxOf(size.x, totalEntriesWidth)
 
 
@@ -182,8 +181,8 @@ class TabListElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedE
 
         this.columns = columns
         size += (BACKGROUND_PADDING * 2)
-        this.size = size
-        background.size = size
+        this.size = size.unsafe
+        background.size = size.unsafe
 
         cacheUpToDate = false
         needsApply = false
@@ -243,12 +242,12 @@ class TabListElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedE
 
     companion object : HUDBuilder<LayoutedGUIElement<TabListElement>> {
         private const val ENTRIES_PER_COLUMN = 20
-        private const val ENTRY_HORIZONTAL_SPACING = 5
-        private const val ENTRY_VERTICAL_SPACING = 1
-        private const val BACKGROUND_PADDING = 3
+        private const val ENTRY_HORIZONTAL_SPACING = 5.0f
+        private const val ENTRY_VERTICAL_SPACING = 1.0f
+        private const val BACKGROUND_PADDING = 3.0f
         private const val MAX_ENTRIES = 80
-        override val identifier: ResourceLocation = "minosoft:tab_list".toResourceLocation()
-        override val ENABLE_KEY_BINDING_NAME: ResourceLocation = "minosoft:enable_tab_list".toResourceLocation()
+        override val identifier = minosoft("tab_list")
+        override val ENABLE_KEY_BINDING_NAME = minosoft("enable_tab_list")
         override val ENABLE_KEY_BINDING: KeyBinding = KeyBinding(
                 KeyActions.CHANGE to setOf(KeyCodes.KEY_TAB),
         )

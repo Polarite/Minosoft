@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,6 @@
 
 package de.bixilon.minosoft.data.registries.blocks.types.fluid.water
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
-import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.entities.Entity
@@ -28,28 +25,24 @@ import de.bixilon.minosoft.data.registries.blocks.types.Block
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidBlock
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidFilled
 import de.bixilon.minosoft.data.registries.blocks.types.properties.LightedBlock
-import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.VelocityBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.rendering.RandomDisplayTickable
 import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.Registries
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
 import de.bixilon.minosoft.physics.entities.EntityPhysics
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import java.util.*
 
-class BubbleColumnBlock(identifier: ResourceLocation = Companion.identifier, settings: BlockSettings) : Block(identifier, settings), VelocityBlock, EntityCollisionHandler, FluidFilled, LightedBlock, RandomDisplayTickable {
+class BubbleColumnBlock(identifier: ResourceLocation = Companion.identifier, settings: BlockSettings) : Block(identifier, settings), EntityCollisionHandler, FluidFilled, LightedBlock, RandomDisplayTickable {
     override val hardness: Float get() = Broken("Fluid!")
-    override val fluid: WaterFluid = unsafeNull()
-    override val velocity: Float get() = 1.0f
+    override val fluid: WaterFluid = this::fluid.inject(WaterFluid)
 
-    init {
-        this::fluid.inject(WaterFluid)
-    }
+    override val lightProperties get() = FluidBlock.LIGHT_PROPERTIES
 
-    override fun onEntityCollision(entity: Entity, physics: EntityPhysics<*>, position: Vec3i, state: BlockState) {
+
+    override fun onEntityCollision(entity: Entity, physics: EntityPhysics<*>, position: BlockPosition, state: BlockState) {
         val up = entity.session.world[position + Directions.UP]
         val drag = state.hasDrag()
         if (up == null) {
@@ -61,19 +54,15 @@ class BubbleColumnBlock(identifier: ResourceLocation = Companion.identifier, set
 
     private fun onCollision(physics: EntityPhysics<*>, drag: Boolean) {
         val velocity = physics.velocity
-        val y = if (drag) maxOf(-0.3, velocity.y - 0.03) else minOf(0.7, velocity.y + 0.06)
-        physics.velocity = Vec3d(velocity.x, y, velocity.z)
+        physics.velocity.y = if (drag) maxOf(-0.3, velocity.y - 0.03) else minOf(0.7, velocity.y + 0.06)
         physics.fallDistance = 0.0f
     }
 
     private fun surfaceCollision(physics: EntityPhysics<*>, drag: Boolean) {
         val velocity = physics.velocity
-        val y = if (drag) maxOf(-0.9, velocity.y - 0.03) else minOf(1.8, velocity.y + 0.1)
-        physics.velocity = Vec3d(velocity.x, y, velocity.z)
+        physics.velocity.y = if (drag) maxOf(-0.9, velocity.y - 0.03) else minOf(1.8, velocity.y + 0.1)
     }
 
-
-    override fun getLightProperties(blockState: BlockState) = FluidBlock.LIGHT_PROPERTIES
 
     override fun randomDisplayTick(session: PlaySession, state: BlockState, position: BlockPosition, random: Random) {
         fluid.randomTick(session, state, position, random)

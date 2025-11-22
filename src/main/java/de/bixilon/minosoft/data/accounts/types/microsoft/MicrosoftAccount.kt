@@ -11,6 +11,8 @@
  * This software is not affiliated with Mojang AB, the original developer of Minecraft.
  */
 
+@file:OptIn(ExperimentalTime::class)
+
 package de.bixilon.minosoft.data.accounts.types.microsoft
 
 import com.fasterxml.jackson.annotation.JacksonInject
@@ -20,15 +22,14 @@ import de.bixilon.kutil.concurrent.lock.Lock
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.latch.AbstractLatch.Companion.child
-import de.bixilon.kutil.time.TimeUtil.millis
 import de.bixilon.minosoft.config.profile.profiles.account.AccountProfileManager
 import de.bixilon.minosoft.config.profile.storage.ProfileStorage
 import de.bixilon.minosoft.data.accounts.Account
+import de.bixilon.minosoft.data.accounts.AccountCapabilities
 import de.bixilon.minosoft.data.accounts.AccountStates
 import de.bixilon.minosoft.data.entities.entities.player.properties.PlayerProperties
 import de.bixilon.minosoft.data.registries.identified.Identified
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.util.account.AccountUtil
 import de.bixilon.minosoft.util.account.microsoft.MicrosoftOAuthUtils
 import de.bixilon.minosoft.util.account.minecraft.MinecraftPrivateKey
@@ -38,6 +39,8 @@ import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
 import java.net.ConnectException
 import java.util.*
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 class MicrosoftAccount(
     override val uuid: UUID,
@@ -49,7 +52,9 @@ class MicrosoftAccount(
     override val properties: PlayerProperties?,
 ) : Account(username, storage) {
     override val id: String = uuid.toString()
-    override val type: ResourceLocation = identifier
+    override val type = identifier
+
+    override val capabilities = AccountCapabilities.set(AccountCapabilities.SKIN, AccountCapabilities.ENCRYPTION)
 
     @JsonIgnore
     private val keyLock = Lock.lock()
@@ -89,7 +94,7 @@ class MicrosoftAccount(
             // already checking
             return
         }
-        if (minecraft.expires >= millis() / 1000) {
+        if (minecraft.expires >= Clock.System.now()) {
             return check(latch)
         }
         if (state == AccountStates.WORKING) {
@@ -108,7 +113,7 @@ class MicrosoftAccount(
 
     private fun refreshMinecraftToken(latch: AbstractLatch?) {
         state = AccountStates.REFRESHING
-        val time = millis() / 1000
+        val time = Clock.System.now()
         if (time >= msa.expires) {
             // token expired
             refreshMicrosoftToken(latch)
@@ -132,7 +137,7 @@ class MicrosoftAccount(
 
     private fun checkMinecraftToken(latch: AbstractLatch?) {
         state = AccountStates.CHECKING
-        val time = millis() / 1000
+        val time = Clock.System.now()
         if (time >= minecraft.expires) {
             // token expired
             refreshMinecraftToken(latch)
@@ -172,6 +177,6 @@ class MicrosoftAccount(
     }
 
     companion object : Identified {
-        override val identifier: ResourceLocation = "minosoft:microsoft_account".toResourceLocation()
+        override val identifier = minosoft("microsoft_account")
     }
 }

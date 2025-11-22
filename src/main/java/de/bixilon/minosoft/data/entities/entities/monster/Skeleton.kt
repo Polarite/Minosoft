@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.monster
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
 import de.bixilon.minosoft.data.entities.data.EntityDataField
@@ -30,7 +30,7 @@ class Skeleton(session: PlaySession, entityType: EntityType, data: EntityData, p
 
 
     companion object : EntityFactory<Skeleton> {
-        override val identifier: ResourceLocation = minecraft("skeleton")
+        override val identifier = minecraft("skeleton")
         private val CONVERTING_DATA = EntityDataField("SKELETON_STRAY_FREEZE_CONVERTING")
         private val LEGACY_TYPE_DATA = EntityDataField("LEGACY_SKELETON_TYPE")
 

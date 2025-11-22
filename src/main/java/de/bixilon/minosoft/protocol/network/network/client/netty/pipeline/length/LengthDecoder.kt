@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,10 @@
 
 package de.bixilon.minosoft.protocol.network.network.client.netty.pipeline.length
 
+import de.bixilon.kutil.buffer.arbitrary.ArbitraryByteArray
 import de.bixilon.kutil.exception.FastException
-import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.ciritical.PacketTooLongException
+import de.bixilon.minosoft.protocol.network.network.client.netty.NetworkAllocator
+import de.bixilon.minosoft.protocol.network.network.client.netty.exceptions.ciritical.InvalidPacketSizeError
 import io.netty.buffer.ByteBuf
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.ByteToMessageDecoder
@@ -24,33 +26,44 @@ class LengthDecoder(
     private val maxLength: Int,
 ) : ByteToMessageDecoder() {
 
-    override fun decode(context: ChannelHandlerContext?, buffer: ByteBuf, out: MutableList<Any>) {
-        buffer.markReaderIndex()
+    private fun readLength(buffer: ByteBuf): Int {
         if (buffer.readableBytes() < 2) { // 1 length byte and 1 packet id byte is the minimum
-            buffer.resetReaderIndex()
-            return
+            return -1
         }
         val length: Int
         try {
             length = buffer.readVarInt()
         } catch (error: BufferTooShortException) {
-            buffer.resetReaderIndex()
-            return
+            return -1
         }
 
         if (length <= 0 || length > maxLength) {
-            throw PacketTooLongException(length, maxLength)
+            throw InvalidPacketSizeError(length, maxLength)
         }
 
         if (buffer.readableBytes() < length) {
-            buffer.resetReaderIndex()
-            return
+            return -1
         }
 
-        val array = ByteArray(length)
-        buffer.readBytes(array)
+        return length
+    }
 
-        out += array
+    fun read(buffer: ByteBuf): ArbitraryByteArray? {
+        buffer.markReaderIndex()
+        val length = readLength(buffer)
+        if (length < 0) {
+            buffer.resetReaderIndex()
+            return null
+        }
+
+        val array = NetworkAllocator.allocate(length)
+        buffer.readBytes(array, 0, length)
+
+        return ArbitraryByteArray(0, length, array)
+    }
+
+    override fun decode(context: ChannelHandlerContext?, buffer: ByteBuf, out: MutableList<Any>) {
+        out += read(buffer) ?: return
     }
 
 
@@ -58,23 +71,24 @@ class LengthDecoder(
         const val NAME = "length_decoder"
 
         private fun ByteBuf.readVarInt(): Int {
-            var readCount = 0
-            var varInt = 0
-            var currentByte: Int
+            var count = 0
+            var data = 0
+            var current: Int
             do {
                 if (this.readableBytes() <= 0) {
                     throw BufferTooShortException()
                 }
-                currentByte = this.readByte().toInt()
-                val value = currentByte and 0x7F
-                varInt = varInt or (value shl 7 * readCount)
-                readCount++
-                if (readCount > 5) {
-                    throw RuntimeException("VarInt is too big")
+                current = this.readByte().toInt()
+                val value = current and 0x7F
+                data = data or (value shl 7 * count)
+                count++
+                if (count > 5) {
+                    throw IllegalStateException("VarInt is too big")
                 }
-            } while (currentByte and 0x80 != 0)
+            } while (current and 0x80 != 0)
 
-            return varInt
+
+            return data
         }
 
         private class BufferTooShortException : FastException()

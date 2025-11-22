@@ -13,12 +13,11 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base.texture.array
 
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.concurrent.lock.RWLock
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.concurrent.pool.ThreadPool
-import de.bixilon.kutil.concurrent.pool.runnable.ForcePooledRunnable
-import de.bixilon.kutil.concurrent.pool.runnable.SimplePoolRunnable
+import de.bixilon.kutil.concurrent.pool.runnable.ThreadPoolRunnable
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.latch.AbstractLatch.Companion.child
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
@@ -38,16 +37,16 @@ abstract class StaticTextureArray(
     private val lock = RWLock.rwlock()
 
     val animator = SpriteAnimator(context)
-    var state: TextureArrayStates = TextureArrayStates.DECLARED
+    var state: TextureArrayStates = TextureArrayStates.PREPARING
         protected set
 
 
-    operator fun get(resourceLocation: ResourceLocation): Texture? {
+    operator fun get(name: ResourceLocation): Texture? {
         val state = state
         if (state != TextureArrayStates.UPLOADED) {
             lock.acquire()
         }
-        val texture = this.named[resourceLocation]
+        val texture = this.named[name]
         if (state != TextureArrayStates.UPLOADED) {
             lock.release()
         }
@@ -57,25 +56,25 @@ abstract class StaticTextureArray(
     operator fun plusAssign(texture: Texture) = push(texture)
 
     fun push(texture: Texture) {
-        if (state != TextureArrayStates.DECLARED) throw IllegalStateException("Already loaded!")
+        if (state != TextureArrayStates.PREPARING) throw IllegalStateException("Already loaded!")
         lock.lock()
         other += texture
         lock.unlock()
         if (texture.state != TextureStates.LOADED && async) {
-            DefaultThreadPool += ForcePooledRunnable { texture.load(context) }
+            DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { texture.load(context) }
         }
     }
 
-    open fun create(resourceLocation: ResourceLocation, mipmaps: Boolean = true, factory: (mipmaps: Int) -> Texture = { PNGTexture(resourceLocation, mipmaps = it) }): Texture {
-        if (state != TextureArrayStates.DECLARED) throw IllegalStateException("Already loaded!")
+    open fun create(name: ResourceLocation, mipmaps: Boolean = true, factory: (mipmaps: Int) -> Texture = { PNGTexture(name, mipmaps = it) }): Texture {
+        if (state != TextureArrayStates.PREPARING) throw IllegalStateException("Already loaded!")
         lock.lock()
-        named[resourceLocation]?.let { lock.unlock(); return it }
+        named[name]?.let { lock.unlock(); return it }
         val texture = factory.invoke(if (mipmaps) this.mipmaps else 0)
 
-        named[resourceLocation] = texture
+        named[name] = texture
         lock.unlock()
         if (async) {
-            DefaultThreadPool += ForcePooledRunnable { texture.load(context) }
+            DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { texture.load(context) }
         }
 
         return texture
@@ -89,14 +88,14 @@ abstract class StaticTextureArray(
             if (texture.state != TextureStates.DECLARED) continue
 
             latch.inc()
-            DefaultThreadPool += SimplePoolRunnable(ThreadPool.HIGH) { texture.load(context); latch.dec() }
+            DefaultThreadPool += ThreadPoolRunnable(ThreadPool.Priorities.HIGH) { texture.load(context); latch.dec() }
         }
     }
 
     protected abstract fun upload(textures: Collection<Texture>)
 
     override fun load(latch: AbstractLatch?) {
-        if (state != TextureArrayStates.DECLARED) throw IllegalStateException("Already loaded!")
+        if (state != TextureArrayStates.PREPARING) throw IllegalStateException("Already loaded!")
         val latch = latch.child(0)
         load(latch, named.values)
         load(latch, other)

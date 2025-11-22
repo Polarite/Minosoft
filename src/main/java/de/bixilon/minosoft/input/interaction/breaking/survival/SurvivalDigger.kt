@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,6 @@
 
 package de.bixilon.minosoft.input.interaction.breaking.survival
 
-import de.bixilon.kotlinglm.pow
 import de.bixilon.minosoft.camera.target.targets.BlockTarget
 import de.bixilon.minosoft.data.entities.entities.player.Hands
 import de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.PixLyzerBlock
@@ -67,16 +66,16 @@ class SurvivalDigger(
         val toolRequired = if (block is PixLyzerBlock) block.requiresTool else (block is ToolRequirement && block !is HandBreakable)
         var isBestTool = !toolRequired
 
-        if (stack != null && stack.item.item is MiningTool) {
-            isBestTool = isBestTool || stack.item.item.isSuitableFor(session, target.state, stack)
-            toolSpeed = stack.item.item.getMiningSpeed(session, target.state, stack)
+        if (stack != null && stack.item is MiningTool) {
+            isBestTool = isBestTool || stack.item.isSuitableFor(session, target.state, stack)
+            toolSpeed = stack.item.getMiningSpeed(session, target.state, stack)
             speed *= toolSpeed
         }
 
 
         if (toolSpeed > 1.0f) {
-            stack?._enchanting?.enchantments?.get(MiningEnchantment.Efficiency)?.let {
-                speed += it.pow(2) + 1.0f
+            stack?.enchanting?.enchantments?.get(MiningEnchantment.Efficiency)?.let {
+                speed += it * it + 1.0f
             }
         }
 

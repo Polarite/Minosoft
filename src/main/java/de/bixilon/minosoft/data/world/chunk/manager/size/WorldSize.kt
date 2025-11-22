@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,18 @@
 
 package de.bixilon.minosoft.data.world.chunk.manager.size
 
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
+import de.bixilon.kmath.vec.vec2.i.MVec2i
 
+@Deprecated("refactor")
 data class WorldSize(
-    val min: Vec2i = Vec2i(Int.MAX_VALUE),
-    val max: Vec2i = Vec2i(Int.MIN_VALUE),
-    val size: Vec2i = Vec2i.EMPTY,
+    val min: MVec2i = MVec2i(Int.MAX_VALUE, Int.MAX_VALUE),
+    val max: MVec2i = MVec2i(Int.MIN_VALUE, Int.MIN_VALUE),
+    val size: MVec2i = MVec2i(0, 0),
 ) {
-    companion object {
-        val EMPTY = WorldSize()
+
+    fun clear() {
+        min.x = Int.MAX_VALUE; min.y = Int.MAX_VALUE
+        max.x = Int.MIN_VALUE; max.y = Int.MIN_VALUE
+        size.x = 0; size.y = 0
     }
 }

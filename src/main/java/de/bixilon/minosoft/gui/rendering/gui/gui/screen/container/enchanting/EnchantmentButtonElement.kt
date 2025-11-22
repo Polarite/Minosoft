@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.container.enchanting
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.data.registries.enchantment.Enchantment
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TextComponent
@@ -30,8 +29,8 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.input.button.AbstractButto
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.hotbar.HotbarExperienceBarElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 class EnchantmentButtonElement(
     guiRenderer: GUIRenderer,
@@ -45,22 +44,22 @@ class EnchantmentButtonElement(
     override val hoveredAtlas = container.atlas["card_hovered"]
     private val levelText = TextElement(guiRenderer, ChatComponent.EMPTY, background = null)
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         super.forceRender(offset, consumer, options)
 
         val level = AtlasImageElement(guiRenderer, if (disabled) disabledLevelAtlas else levelAtlas)
         val size = size
-        level.render(offset + Vec2i(5, VerticalAlignments.CENTER.getOffset(size.y, level.size.y)), consumer, options)
+        level.render(offset + Vec2f(5f, VerticalAlignments.CENTER.getOffset(size.y, level.size.y)), consumer, options)
 
         if (!_disabled) {
-            levelText.render(offset + Vec2i(HorizontalAlignments.RIGHT.getOffset(size.x, levelText.size.x) - 3, VerticalAlignments.BOTTOM.getOffset(size.y, levelText.size.y) - 2), consumer, options)
+            levelText.render(offset + Vec2f(HorizontalAlignments.RIGHT.getOffset(size.x, levelText.size.x) - 3, VerticalAlignments.BOTTOM.getOffset(size.y, levelText.size.y) - 2), consumer, options)
         }
     }
 
     init {
         _parent = container
         dynamicSized = false
-        _size = normalAtlas?.size?.let { Vec2(it) } ?: Vec2(108, 19)
+        _size = normalAtlas?.size?.let { Vec2f(it) } ?: Vec2f(108, 19)
     }
 
     override fun submit() {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,9 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.input.button
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.config.key.KeyCodes
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.atlas.AtlasElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -27,18 +27,17 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElemen
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.CursorShapes
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 abstract class AbstractButtonElement(
     guiRenderer: GUIRenderer,
     text: Any,
     disabled: Boolean = false,
 ) : Element(guiRenderer) {
-    val textElement = TextElement(guiRenderer, text, background = null, parent = this)
+    protected val textElement = TextElement(guiRenderer, text, background = null, parent = this)
     protected abstract val disabledAtlas: AtlasElement?
     protected abstract val normalAtlas: AtlasElement?
     protected abstract val hoveredAtlas: AtlasElement?
@@ -52,16 +51,16 @@ abstract class AbstractButtonElement(
             }
 
             textElement.prefMaxSize = if (value) {
-                Vec2(-1, -1)
+                Vec2f(-1, -1)
             } else {
-                size - Vec2(TEXT_PADDING * 2, TEXT_PADDING * 2)
+                size - Vec2f(TEXT_PADDING * 2, TEXT_PADDING * 2)
             }
             _dynamicSized = value
             forceApply()
         }
 
 
-    override var size: Vec2
+    override var size: Vec2f
         get() = super.size
         set(value) {
             _dynamicSized = false
@@ -81,7 +80,7 @@ abstract class AbstractButtonElement(
             if (_disabled == value) {
                 return
             }
-            _disabled = value
+            _disabled = disabled
             forceApply()
         }
 
@@ -99,10 +98,10 @@ abstract class AbstractButtonElement(
 
 
     init {
-        size = textElement.size + Vec2(TEXT_PADDING * 2, TEXT_PADDING * 2)
+        size = textElement.size + Vec2f(TEXT_PADDING * 2, TEXT_PADDING * 2)
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         val texture = when {
             disabled -> disabledAtlas
             hovered -> hoveredAtlas
@@ -114,11 +113,8 @@ abstract class AbstractButtonElement(
         background.size = size
         val textSize = textElement.size
 
-        // Apply reduced opacity when disabled
-        val renderOptions = if (disabled) GUIVertexOptions(alpha = 0.4f) else options
-
-        background.render(offset, consumer, renderOptions)
-        textElement.render(offset + Vec2(HorizontalAlignments.CENTER.getOffset(size.x, textSize.x), VerticalAlignments.CENTER.getOffset(size.y, textSize.y)), consumer, renderOptions)
+        background.render(offset, consumer, options)
+        textElement.render(offset + Vec2f(HorizontalAlignments.CENTER.getOffset(size.x, textSize.x), VerticalAlignments.CENTER.getOffset(size.y, textSize.y)), consumer, options)
     }
 
     override fun forceSilentApply() {
@@ -126,7 +122,7 @@ abstract class AbstractButtonElement(
         cacheUpToDate = false
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         if (disabled) {
             return true
         }
@@ -158,7 +154,7 @@ abstract class AbstractButtonElement(
         return true
     }
 
-    override fun onMouseEnter(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseEnter(position: Vec2f, absolute: Vec2f): Boolean {
         hovered = true
         context.window.cursorShape = CursorShapes.HAND
 
@@ -176,7 +172,7 @@ abstract class AbstractButtonElement(
 
     private fun _submit() {
         if (guiRenderer.session.profiles.audio.gui.button) {
-            guiRenderer.session.world.play2DSound(CLICK_SOUND)
+            guiRenderer.session.world.audio?.play2D(CLICK_SOUND)
         }
         submit()
     }
@@ -184,7 +180,7 @@ abstract class AbstractButtonElement(
     override fun onChildChange(child: Element) {
         if (child == textElement) {
             if (dynamicSized) {
-                size = textElement.size + Vec2i(TEXT_PADDING * 2, TEXT_PADDING * 2)
+                size = textElement.size + Vec2f(TEXT_PADDING * 2, TEXT_PADDING * 2)
             }
             cacheUpToDate = false
         }
@@ -192,7 +188,7 @@ abstract class AbstractButtonElement(
     }
 
     private companion object {
-        val CLICK_SOUND = "minecraft:ui.button.click".toResourceLocation()
+        val CLICK_SOUND = minecraft("ui.button.click")
         const val TEXT_PADDING = 4
     }
 }

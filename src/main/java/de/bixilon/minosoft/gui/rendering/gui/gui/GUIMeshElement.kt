@@ -13,27 +13,28 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.gui.dragged.Dragged
 import de.bixilon.minosoft.gui.rendering.gui.hud.HUDElement
+import de.bixilon.minosoft.gui.rendering.gui.hud.Skippable
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMesh
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GuiMeshBuilder
 import de.bixilon.minosoft.gui.rendering.input.count.MouseClickCounter
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
-import de.bixilon.minosoft.gui.rendering.renderer.drawable.BaseDrawable
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
-import de.bixilon.minosoft.gui.rendering.system.opengl.MemoryLeakException
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
 import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.mesh.MeshStates
 import de.bixilon.minosoft.util.Initializable
 import de.bixilon.minosoft.util.collections.floats.FloatListUtil
+import de.bixilon.minosoft.util.collections.ints.IntListUtil
 
 open class GUIMeshElement<T : Element>(
     val element: T,
@@ -41,13 +42,13 @@ open class GUIMeshElement<T : Element>(
     override val guiRenderer: GUIRenderer = element.guiRenderer
     override val context: RenderContext = guiRenderer.context
     private val clickCounter = MouseClickCounter()
-    private var _mesh: GUIMesh? = null
-    var mesh: GUIMesh = GUIMesh(context, guiRenderer.halfSize, FloatListUtil.direct(1024))
-    override val skipDraw: Boolean
-        get() = if (element is BaseDrawable) element.skipDraw else false
+    private val data = FloatListUtil.direct(1024, false)
+    private val index = IntListUtil.direct(1024 / 4, false)
+    var mesh: Mesh? = null
+    override val skip get() = if (element is Skippable) element.skip else false
     protected var lastRevision = 0L
-    protected var lastPosition: Vec2? = null
-    protected var lastDragPosition: Vec2? = null
+    protected var lastPosition: Vec2f? = null
+    protected var lastDragPosition: Vec2f? = null
     protected var dragged = false
     override var enabled = true
         set(value) {
@@ -68,7 +69,7 @@ open class GUIMeshElement<T : Element>(
         get() = element.canPop
 
     init {
-        element.cache.data = mesh.data
+        element.cache.data = data
     }
 
     override fun tick() {
@@ -87,38 +88,33 @@ open class GUIMeshElement<T : Element>(
         }
     }
 
-    protected fun createNewMesh() {
-        if (this._mesh != null) throw MemoryLeakException("Mesh to unload is already set!")
-        this._mesh = this.mesh
-        this.mesh = GUIMesh(context, guiRenderer.halfSize, mesh.data)
-        this.mesh.preload()
-    }
-
     fun prepare() = Unit
 
-    fun prepareAsync(offset: Vec2) {
-        element.render(offset, mesh, null)
+    fun prepareAsync(offset: Vec2f) {
+        val builder = GuiMeshBuilder(context, guiRenderer.halfSize, this.data, this.index)
+        element.render(offset, builder, null)
+
+
         val revision = element.cache.revision
         if (revision != lastRevision) {
-            createNewMesh()
+            builder.fixIndex()
+            this.mesh?.let { context.queue += { it.unload() } }
+            val data = builder._data
+            this.mesh = if (data == null || data.isEmpty) null else builder.bake()
             this.lastRevision = revision
         }
     }
 
     open fun postPrepare() {
-        val _mesh = this._mesh ?: return
-        if (_mesh.state == Mesh.MeshStates.LOADED) {
-            _mesh.unload()
-        }
-        this._mesh = null
+        val mesh = this.mesh ?: return
 
-        if (this.mesh.state == Mesh.MeshStates.PRELOADED) {
+        if (mesh.state == MeshStates.PREPARING) {
             mesh.load()
         }
     }
 
     open fun prepareAsync() {
-        prepareAsync(Vec2.EMPTY)
+        prepareAsync(Vec2f.EMPTY)
     }
 
     override fun draw() {
@@ -133,35 +129,31 @@ open class GUIMeshElement<T : Element>(
         }
     }
 
-    fun initMesh() {
-        mesh.load()
-    }
-
     override fun onCharPress(char: Int): Boolean {
         return element.onCharPress(char)
     }
 
-    override fun onMouseMove(position: Vec2): Boolean {
-        lastPosition = Vec2(position)
+    override fun onMouseMove(position: Vec2f): Boolean {
+        lastPosition = position
         return element.onMouseMove(position, position)
     }
 
     override fun onKey(code: KeyCodes, change: KeyChangeTypes): Boolean {
         val mouseButton = MouseButtons[code] ?: return element.onKey(code, change)
-        val position = Vec2(lastPosition ?: return false)
+        val position = (lastPosition ?: return false)
 
         val mouseAction = MouseActions[change] ?: return false
 
-        return element.onMouseAction(position, mouseButton, mouseAction, clickCounter.getClicks(mouseButton, mouseAction, position, millis()))
+        return element.onMouseAction(position, mouseButton, mouseAction, clickCounter.getClicks(mouseButton, mouseAction, position, now()))
     }
 
-    override fun onScroll(scrollOffset: Vec2): Boolean {
-        val position = Vec2(lastPosition ?: return false)
+    override fun onScroll(scrollOffset: Vec2f): Boolean {
+        val position = (lastPosition ?: return false)
         return element.onScroll(position, scrollOffset)
     }
 
-    override fun onDragMove(position: Vec2, dragged: Dragged): Element? {
-        lastDragPosition = Vec2(position)
+    override fun onDragMove(position: Vec2f, dragged: Dragged): Element? {
+        lastDragPosition = position
         if (!this.dragged) {
             this.dragged = true
             return element.onDragEnter(position, position, dragged)
@@ -171,15 +163,15 @@ open class GUIMeshElement<T : Element>(
 
     override fun onDragKey(type: KeyChangeTypes, key: KeyCodes, dragged: Dragged): Element? {
         val mouseButton = MouseButtons[key] ?: return element.onDragKey(key, type, dragged)
-        val position = Vec2(lastDragPosition ?: return null)
+        val position = (lastDragPosition ?: return null)
 
         val mouseAction = MouseActions[type] ?: return null
 
-        return element.onDragMouseAction(position, mouseButton, mouseAction, clickCounter.getClicks(mouseButton, mouseAction, position, millis()), dragged)
+        return element.onDragMouseAction(position, mouseButton, mouseAction, clickCounter.getClicks(mouseButton, mouseAction, position, now()), dragged)
     }
 
-    override fun onDragScroll(scrollOffset: Vec2, dragged: Dragged): Element? {
-        return element.onDragScroll(Vec2(lastDragPosition ?: return null), scrollOffset, dragged)
+    override fun onDragScroll(scrollOffset: Vec2f, dragged: Dragged): Element? {
+        return element.onDragScroll(lastDragPosition ?: return null, scrollOffset, dragged)
     }
 
     override fun onDragChar(char: Int, dragged: Dragged): Element? {
@@ -207,5 +199,13 @@ open class GUIMeshElement<T : Element>(
         state = ElementStates.HIDDEN
         element.onHide()
         element.onMouseLeave()
+    }
+
+    override fun unload() {
+        this.data.free()
+        this::data.forceSet(null)
+
+        this.index.free()
+        this::index.forceSet(null)
     }
 }

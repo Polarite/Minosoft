@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -32,6 +32,7 @@ import de.bixilon.minosoft.util.logging.LogMessageType
 import org.jline.reader.*
 import org.jline.terminal.Terminal
 import org.jline.terminal.TerminalBuilder
+import java.io.IOException
 
 object CLI {
     const val CLI_PREFIX = '.'
@@ -47,7 +48,7 @@ object CLI {
             if (command is SessionCommand && session == null) {
                 continue
             }
-            commands.addChild(command.node)
+            commands.addChild(command.node ?: continue)
         }
     }
 
@@ -85,6 +86,8 @@ object CLI {
             } catch (exception: EndOfFileException) {
                 eol(exception); break
             } catch (exception: LastErrorException) {
+                eol(exception); break
+            } catch (exception: IOException) {
                 eol(exception); break
             } catch (exception: UserInterruptException) {
                 ShutdownManager.shutdown(reason = AbstractShutdownReason.DEFAULT)

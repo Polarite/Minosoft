@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -17,7 +17,7 @@ import de.bixilon.kutil.concurrent.schedule.QueuedTask
 import de.bixilon.kutil.concurrent.schedule.TaskScheduler
 import de.bixilon.kutil.concurrent.schedule.TaskScheduler.runLater
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
-import de.bixilon.kutil.unit.UnitFormatter.formatMillis
+import de.bixilon.kutil.unit.UnitFormatter.format
 import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import java.util.concurrent.TimeoutException
 
@@ -53,7 +53,7 @@ class TimeoutHandler(val session: StatusSession) {
             if (session.state == StatusSessionStates.ERROR) return@runLater
             if (session.state == StatusSessionStates.PING_DONE) return@runLater
 
-            session.error = TimeoutException("Session timed out after ${ProtocolDefinition.SOCKET_TIMEOUT.formatMillis()}") // implicit disconnect
+            session.error = TimeoutException("Session timed out after ${ProtocolDefinition.SOCKET_TIMEOUT.format()}") // implicit disconnect
         }
     }
 }

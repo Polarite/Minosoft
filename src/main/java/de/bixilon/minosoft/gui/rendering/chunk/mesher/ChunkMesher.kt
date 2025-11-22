@@ -13,67 +13,86 @@
 
 package de.bixilon.minosoft.gui.rendering.chunk.mesher
 
-import de.bixilon.kutil.concurrent.pool.runnable.InterruptableRunnable
+import de.bixilon.kutil.enums.inline.IntInlineSet
+import de.bixilon.kutil.enums.inline.enums.IntInlineEnumSet
+import de.bixilon.kutil.observer.DataObserver.Companion.observe
+import de.bixilon.minosoft.data.world.chunk.ChunkSection
+import de.bixilon.minosoft.data.world.positions.SectionPosition
 import de.bixilon.minosoft.gui.rendering.chunk.ChunkRenderer
-import de.bixilon.minosoft.gui.rendering.chunk.WorldQueueItem
 import de.bixilon.minosoft.gui.rendering.chunk.mesh.ChunkMeshes
-import de.bixilon.minosoft.gui.rendering.chunk.queue.meshing.tasks.MeshPrepareTask
-import de.bixilon.minosoft.gui.rendering.chunk.util.ChunkRendererUtil.smallMesh
-import de.bixilon.minosoft.protocol.packets.s2c.play.block.chunk.ChunkUtil
+import de.bixilon.minosoft.gui.rendering.chunk.mesh.ChunkMeshesBuilder
+import de.bixilon.minosoft.gui.rendering.chunk.mesh.cache.ChunkMeshCache
+import de.bixilon.minosoft.gui.rendering.chunk.mesh.details.ChunkMeshDetails
+import de.bixilon.minosoft.gui.rendering.chunk.mesher.fluid.FluidSectionMesher
 
 class ChunkMesher(
     private val renderer: ChunkRenderer,
 ) {
+    private val profile = renderer.context.session.profiles.block.lod
     private val solid = SolidSectionMesher(renderer.context)
     private val fluid = FluidSectionMesher(renderer.context)
 
-    private fun mesh(item: WorldQueueItem): ChunkMeshes? {
-        if (item.section.blocks.isEmpty) {
-            renderer.unload(item)
-            return null
-        }
-        val neighbours = item.chunk.neighbours.get()
-        if (neighbours == null) {
-            renderer.unload(item)
-            return null
-        }
-        val sectionNeighbours = ChunkUtil.getDirectNeighbours(neighbours, item.chunk, item.section.sectionHeight)
-        val mesh = ChunkMeshes(renderer.context, item.chunkPosition, item.sectionHeight, item.section.smallMesh)
-        try {
-            solid.mesh(item.chunkPosition, item.sectionHeight, item.chunk, item.section, neighbours, sectionNeighbours, mesh)
+    var details = IntInlineSet()
+        private set
 
-            if (item.section.blocks.hasFluid) {
-                fluid.mesh(item.chunkPosition, item.sectionHeight, item.chunk, item.section, neighbours, sectionNeighbours, mesh)
+    init {
+        profile::enabled.observe(this) { updateDetails() }
+        profile::minorVisualImpact.observe(this) { updateDetails() }
+        profile::aggressiveCulling.observe(this) { updateDetails() }
+        profile::darkCaveCulling.observe(this) { updateDetails() }
+
+        updateDetails()
+    }
+
+    private fun updateDetails() {
+        var details = IntInlineSet()
+
+        if (!profile.enabled) details += ChunkMeshDetails.ALL
+
+        if (!profile.minorVisualImpact) details += ChunkMeshDetails.MINOR_VISUAL_IMPACT
+        if (!profile.aggressiveCulling) details += ChunkMeshDetails.AGGRESSIVE_CULLING
+        if (!profile.darkCaveCulling) details += ChunkMeshDetails.DARK_CAVE_SURFACE
+
+
+        if (details == this.details) return
+
+        renderer.invalidate(renderer.world)
+    }
+
+    private fun getDetails(previous: IntInlineSet?, position: SectionPosition): IntInlineSet {
+        if (previous == null) return ChunkMeshDetails.of(position, renderer.visibility.sectionPosition)
+
+        return ChunkMeshDetails.update(previous, position, renderer.visibility.sectionPosition)
+    }
+
+    fun mesh(previous: ChunkMeshes?, cache: ChunkMeshCache, section: ChunkSection): ChunkMeshes? {
+        if (section.blocks.isEmpty) return null
+
+        val neighbours = section.chunk.neighbours
+        val sectionNeighbours = section.neighbours
+        if (!neighbours.complete) return null // TODO: Requeue the chunk? (But on a neighbour update the chunk gets queued again?)
+
+        cache.unmark()
+
+        val position = SectionPosition.of(section)
+
+        val details = getDetails(previous?.details, position) + this.details
+
+
+        // TODO: put sizes of previous mesh (cache estimate)
+        val mesh = ChunkMeshesBuilder(renderer.context, section, details)
+        try {
+            solid.mesh(section, cache, neighbours, sectionNeighbours, mesh)
+
+            if (section.blocks.fluidCount > 0) {
+                fluid.mesh(section, mesh)
             }
-        } catch (exception: Exception) {
-            mesh.unload()
-            throw exception
+            cache.cleanup()
+        } catch (error: Throwable) {
+            mesh.drop()
+            throw error
         }
 
-        return mesh
-    }
-
-    private fun mesh(item: WorldQueueItem, runnable: InterruptableRunnable) {
-        val mesh = mesh(item) ?: return
-        runnable.interruptable = false
-        if (Thread.interrupted()) return
-        if (mesh.clearEmpty() == 0) {
-            return renderer.unload(item)
-        }
-        mesh.finish()
-        item.mesh = mesh
-        renderer.loadingQueue.queue(mesh)
-    }
-
-    fun tryMesh(item: WorldQueueItem, task: MeshPrepareTask, runnable: InterruptableRunnable) {
-        try {
-            mesh(item, runnable)
-        } catch (ignored: InterruptedException) {
-        } finally {
-            task.runnable.interruptable = false
-            if (Thread.interrupted()) throw InterruptedException()
-            renderer.meshingQueue.tasks -= task
-            renderer.meshingQueue.work()
-        }
+        return mesh.build(position)
     }
 }

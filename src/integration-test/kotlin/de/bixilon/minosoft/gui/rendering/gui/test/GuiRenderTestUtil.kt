@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.test
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.minosoft.gui.rendering.RenderContext
@@ -26,13 +26,13 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.system.dummy.DummyRenderSystem
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTexture
 import de.bixilon.minosoft.gui.rendering.system.dummy.texture.DummyTextureManager
-import de.bixilon.minosoft.test.IT.OBJENESIS
+import de.bixilon.minosoft.test.ITUtil.allocate
 import org.testng.Assert.assertEquals
 
 object GuiRenderTestUtil {
 
     private fun createContext(): RenderContext {
-        val context = OBJENESIS.newInstance(RenderContext::class.java)
+        val context = RenderContext::class.java.allocate()
         context.font = FontManager(DummyFontType)
         context::system.forceSet(DummyRenderSystem(context))
         context::textures.forceSet(DummyTextureManager(context))
@@ -42,10 +42,10 @@ object GuiRenderTestUtil {
         return context
     }
 
-    fun create(size: Vec2 = Vec2(1920.0f, 1080.0f)): GUIRenderer {
-        val renderer = OBJENESIS.newInstance(GUIRenderer::class.java)
+    fun create(size: Vec2f = Vec2f(1920.0f, 1080.0f)): GUIRenderer {
+        val renderer = GUIRenderer::class.java.allocate()
         renderer::scaledSize.forceSet(DataObserver(size))
-        renderer::halfSize.forceSet(size / 2.0f)
+        renderer::halfSize.forceSet((size / 2.0f)._0)
 
         renderer::context.forceSet(createContext())
 
@@ -53,11 +53,11 @@ object GuiRenderTestUtil {
     }
 
 
-    fun Element.assetSize(size: Vec2) {
+    fun Element.assetSize(size: Vec2f) {
         assertEquals(this.size, size)
     }
 
-    fun Element.assetPrefSize(size: Vec2) {
+    fun Element.assetPrefSize(size: Vec2f) {
         assertEquals(this.prefSize, size)
     }
 }

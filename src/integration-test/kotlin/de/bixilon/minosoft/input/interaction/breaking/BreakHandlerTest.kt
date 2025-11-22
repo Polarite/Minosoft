@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.input.interaction.breaking
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.observer.DataObserver
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
@@ -40,6 +39,7 @@ import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.item.items.tool.materials.*
 import de.bixilon.minosoft.data.registries.item.items.tool.shears.ShearsItem
+import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil.tick
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil.unsafePress
 import de.bixilon.minosoft.input.interaction.InteractionTestUtil.unsafeRelease
@@ -50,6 +50,7 @@ import de.bixilon.minosoft.protocol.network.session.play.PacketTestUtil.assertNo
 import de.bixilon.minosoft.protocol.network.session.play.PacketTestUtil.assertPacket
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
+import de.bixilon.minosoft.protocol.network.session.play.tick.Ticks.Companion.ticks
 import de.bixilon.minosoft.protocol.packets.c2s.play.entity.player.PlayerActionC2SP
 import de.bixilon.minosoft.protocol.packets.c2s.play.entity.player.SwingArmC2SP
 import de.bixilon.minosoft.test.ITUtil.todo
@@ -83,15 +84,13 @@ class BreakHandlerTest {
         if (tool != null) {
             val item = session.registries.item[tool] ?: Broken()
             val stack = ItemStack(item)
-            if (efficiency > 0) {
-                stack.enchanting.enchantments[MiningEnchantment.Efficiency] = efficiency
-            }
+                .with(MiningEnchantment.Efficiency, efficiency)
             player.items.inventory[EquipmentSlots.MAIN_HAND] = stack
         }
-        if (haste > 0) player.effects += StatusEffectInstance(MiningEffect.Haste, haste, 100000)
-        if (miningFatigue > 0) player.effects += StatusEffectInstance(MiningEffect.MiningFatigue, miningFatigue, 100000)
+        if (haste > 0) player.effects += StatusEffectInstance(MiningEffect.Haste, haste, 100000.ticks)
+        if (miningFatigue > 0) player.effects += StatusEffectInstance(MiningEffect.MiningFatigue, miningFatigue, 100000.ticks)
         if (aquaAffinity > 0) {
-            player.items.inventory[EquipmentSlots.HEAD] = ItemStack(session.registries.item["minecraft:iron_helmet"]!!, 1).apply { enchanting.enchantments[ArmorEnchantment.AquaAffinity] = 1 }
+            player.items.inventory[EquipmentSlots.HEAD] = ItemStack(session.registries.item["minecraft:iron_helmet"]!!, 1).with(ArmorEnchantment.AquaAffinity, 1)
         }
 
 
@@ -103,7 +102,7 @@ class BreakHandlerTest {
         if (ticks > 1) {
             for (tick in 0 until ticks - 2) { // -1 for count, -1 for post ticking
                 handler.tick()
-                assertEquals(session.world[Vec3i(1, 2, 3)], state, "Block got mined in tick $tick, expected $ticks")
+                assertEquals(session.world[BlockPosition(1, 2, 3)], state, "Block got mined in tick $tick, expected $ticks")
             }
             status = handler.digging.status
             handler.tick()
@@ -113,7 +112,7 @@ class BreakHandlerTest {
         }
 
         if (ticks >= 0) {
-            val existing = session.world[Vec3i(1, 2, 3)]
+            val existing = session.world[BlockPosition(1, 2, 3)]
             assertNull(existing, "Block is still present, progress=${status?.progress}")
         }
 
@@ -382,7 +381,7 @@ class BreakHandlerTest {
 
         handler.unsafePress()
 
-        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, Vec3i(1, 2, 3), Directions.UP, 0))
+        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, BlockPosition(1, 2, 3), Directions.UP, 0))
         session.assertPacket(SwingArmC2SP(Hands.MAIN))
         // vanilla sends 2: session.assertPacket(SwingArmC2SP(Hands.MAIN))
         session.assertNoPacket()
@@ -392,7 +391,7 @@ class BreakHandlerTest {
         session.assertNoPacket()
 
         handler.unsafeRelease()
-        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.CANCELLED_DIGGING, Vec3i(1, 2, 3), Directions.DOWN, 0))
+        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.CANCELLED_DIGGING, BlockPosition(1, 2, 3), Directions.DOWN, 0))
         session.assertNoPacket()
     }
 
@@ -407,7 +406,7 @@ class BreakHandlerTest {
 
         handler.unsafePress()
 
-        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, Vec3i(1, 2, 3), Directions.UP, 0))
+        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, BlockPosition(1, 2, 3), Directions.UP, 0))
         session.assertPacket(SwingArmC2SP(Hands.MAIN))
         // vanilla sends 2: session.assertPacket(SwingArmC2SP(Hands.MAIN))
         session.assertNoPacket()
@@ -421,7 +420,7 @@ class BreakHandlerTest {
         session.assertNoPacket()
 
         handler.tick()
-        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.FINISHED_DIGGING, Vec3i(1, 2, 3), Directions.UP, 0))
+        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.FINISHED_DIGGING, BlockPosition(1, 2, 3), Directions.UP, 0))
         session.assertPacket(SwingArmC2SP(Hands.MAIN))
         session.assertNoPacket()
     }
@@ -436,7 +435,7 @@ class BreakHandlerTest {
         handler::executor.forceSet(TestExecutor(handler))
 
         handler.unsafePress()
-        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, Vec3i(1, 2, 3), Directions.UP, sequence = 0))
+        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, BlockPosition(1, 2, 3), Directions.UP, sequence = 0))
         session.assertPacket(SwingArmC2SP(Hands.MAIN))
         session.assertNoPacket()
     }
@@ -451,7 +450,7 @@ class BreakHandlerTest {
         handler::executor.forceSet(TestExecutor(handler))
 
         handler.unsafePress()
-        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, Vec3i(1, 2, 3), Directions.UP, sequence = 0))
+        session.assertPacket(PlayerActionC2SP(PlayerActionC2SP.Actions.START_DIGGING, BlockPosition(1, 2, 3), Directions.UP, sequence = 0))
         session.assertPacket(SwingArmC2SP(Hands.MAIN))
         session.assertNoPacket()
     }
@@ -476,9 +475,9 @@ class BreakHandlerTest {
 
         fun createTarget(session: PlaySession, block: ResourceLocation, distance: Double): BlockState {
             val state = session.registries.block[block]!!.states.default
-            session.world[Vec3i(1, 2, 3)] = state
+            session.world[BlockPosition(1, 2, 3)] = state
 
-            val target = BlockTarget(Vec3d(1.0, 2.0, 3.0), distance, Directions.UP, state, null, Vec3i(1, 2, 3), false)
+            val target = BlockTarget(Vec3d(1.0, 2.0, 3.0), distance, Directions.UP, state, null, BlockPosition(1, 2, 3), false)
             session.camera.target::target.forceSet(DataObserver(target))
 
             return state

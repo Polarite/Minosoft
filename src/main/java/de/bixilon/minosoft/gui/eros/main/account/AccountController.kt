@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,16 +16,17 @@ package de.bixilon.minosoft.gui.eros.main.account
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.collections.CollectionUtil.extend
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
-import de.bixilon.kutil.concurrent.pool.runnable.ForcePooledRunnable
+import de.bixilon.kutil.concurrent.pool.io.DefaultIOPool
+import de.bixilon.kutil.concurrent.pool.runnable.ThreadPoolRunnable
 import de.bixilon.kutil.latch.CallbackLatch
 import de.bixilon.kutil.observer.map.MapChange.Companion.values
-import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.minosoft.config.profile.profiles.eros.ErosProfileManager
 import de.bixilon.minosoft.data.accounts.Account
 import de.bixilon.minosoft.data.accounts.AccountStates
 import de.bixilon.minosoft.data.accounts.types.microsoft.MicrosoftAccount
 import de.bixilon.minosoft.data.accounts.types.offline.OfflineAccount
 import de.bixilon.minosoft.data.language.IntegratedLanguage
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TranslatableComponents
@@ -36,7 +37,6 @@ import de.bixilon.minosoft.gui.eros.main.account.add.MicrosoftAddController
 import de.bixilon.minosoft.gui.eros.main.account.add.OfflineAddController
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.ctext
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.delegate.JavaFXDelegate.observeMapFX
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
@@ -105,7 +105,7 @@ class AccountController : EmbeddedJavaFXController<Pane>() {
             }
         }
 
-        accountListViewFX.items.contains(selected).decide(selected, null).let {
+        (if (selected in accountListViewFX.items) selected else null).let {
             accountListViewFX.selectionModel.select(it)
             accountListViewFX.scrollTo(it)
             setAccountInfo(it)
@@ -117,7 +117,7 @@ class AccountController : EmbeddedJavaFXController<Pane>() {
         val profile = ErosProfileManager.selected.general.accountProfile
         if (account.state == AccountStates.WORKING) {
             onSuccess?.let {
-                DefaultThreadPool += ForcePooledRunnable {
+                DefaultThreadPool += ThreadPoolRunnable(forcePool = true) {
                     it(account)
                 }
             }
@@ -134,7 +134,7 @@ class AccountController : EmbeddedJavaFXController<Pane>() {
         val latch = CallbackLatch(2)
         val dialog = CheckingDialog(latch)
         dialog.show()
-        DefaultThreadPool += ForcePooledRunnable {
+        DefaultIOPool += ThreadPoolRunnable(forcePool = true) {
             latch.dec()
             try {
                 account.tryCheck(latch) // ToDo: Show error
@@ -243,23 +243,23 @@ class AccountController : EmbeddedJavaFXController<Pane>() {
     }
 
     companion object {
-        val LAYOUT = "minosoft:eros/main/account/account.fxml".toResourceLocation()
+        val LAYOUT = minosoft("eros/main/account/account.fxml")
 
-        private val CHECK = "minosoft:main.account.list.info.button.check".toResourceLocation()
-        private val USE = "minosoft:main.account.list.info.button.use".toResourceLocation()
-        private val ADD = "minosoft:main.account.list.info.button.add".toResourceLocation()
+        private val CHECK = minosoft("main.account.list.info.button.check")
+        private val USE = minosoft("main.account.list.info.button.use")
+        private val ADD = minosoft("main.account.list.info.button.add")
 
         private val ACCOUNT_INFO_PROPERTIES: List<Pair<ResourceLocation, (account: Account) -> Any?>> = listOf(
-            "minosoft:main.account.account_info.id".toResourceLocation() to { it.id },
-            "minosoft:main.account.account_info.state".toResourceLocation() to { it.state },
+            minosoft("main.account.account_info.id") to { it.id },
+            minosoft("main.account.account_info.state") to { it.state },
         )
 
         val ACCOUNT_TYPES = listOf(
             ErosAccountType<MicrosoftAccount>(
                 identifier = MicrosoftAccount.identifier,
-                translationKey = "minosoft:main.account.type.microsoft".toResourceLocation(),
+                translationKey = minosoft("main.account.type.microsoft"),
                 additionalDetails = listOf(
-                    "minosoft:main.account.account_info.uuid".toResourceLocation() to { it.uuid },
+                    minosoft("main.account.account_info.uuid") to { it.uuid },
                 ),
                 icon = FontAwesomeBrands.MICROSOFT,
                 addHandler = { MicrosoftAddController(it).request() },
@@ -267,7 +267,7 @@ class AccountController : EmbeddedJavaFXController<Pane>() {
             ),
             ErosAccountType<OfflineAccount>(
                 identifier = OfflineAccount.identifier,
-                translationKey = "minosoft:main.account.type.offline".toResourceLocation(),
+                translationKey = minosoft("main.account.type.offline"),
                 icon = FontAwesomeSolid.MAP,
                 addHandler = { OfflineAddController(it).show() },
             ),

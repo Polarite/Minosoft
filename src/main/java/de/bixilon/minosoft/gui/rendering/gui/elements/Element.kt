@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,24 +13,24 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec4.Vec4
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec4.f.Vec4f
 import de.bixilon.minosoft.gui.rendering.RenderConstants
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.input.DragTarget
 import de.bixilon.minosoft.gui.rendering.gui.input.InputElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMesh
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMeshCache
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GuiMeshBuilder
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GuiMeshCache
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.CachedGuiVertexConsumer
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isGreater
 import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.isSmaller
-import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4Util.EMPTY
-import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4Util.spaceSize
-import de.bixilon.minosoft.util.collections.DirectList
+import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4fUtil.horizontal
+import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4fUtil.vertical
 
-abstract class Element(val guiRenderer: GUIRenderer, initialCacheSize: Int = 1000) : InputElement, DragTarget {
+abstract class Element(val guiRenderer: GUIRenderer, estimate: Int = 32) : InputElement, DragTarget {
     var ignoreDisplaySize = false
     val context = guiRenderer.context
     open val activeWhenHidden = false
@@ -64,58 +64,58 @@ abstract class Element(val guiRenderer: GUIRenderer, initialCacheSize: Int = 100
             }
         }
 
-    @Deprecated("Warning: Should not be directly accessed!")
-    open val cache = GUIMeshCache(guiRenderer.halfSize, context.system.quadOrder, context, initialCacheSize)
+    open val cache = GuiMeshCache(context, guiRenderer.halfSize, estimate)
 
-    private var previousMaxSize = Vec2.EMPTY
+    private var previousMaxSize = Vec2f.EMPTY
 
-    protected open var _prefSize: Vec2 = Vec2.EMPTY
+    protected open var _prefSize: Vec2f = Vec2f.EMPTY
 
     open val canFocus: Boolean get() = false
 
     /**
      * If maxSize was infinity, what size would the element have? (Excluded margin!)
      */
-    open var prefSize: Vec2
+    open var prefSize: Vec2f
         get() = _prefSize
         set(value) {
             _prefSize = value
             apply()
         }
 
-    protected open var _prefMaxSize: Vec2 = Vec2(-1, -1)
-    open var prefMaxSize: Vec2
+    protected open var _prefMaxSize: Vec2f = Vec2f(-1, -1)
+    open var prefMaxSize: Vec2f
         get() = _prefMaxSize
         set(value) {
             _prefMaxSize = value
             apply()
         }
 
-    open val maxSize: Vec2
-        get() {
-            var maxSize = Vec2(prefMaxSize)
-
-            var parentMaxSize = parent?.maxSize
-            if (parentMaxSize == null && !ignoreDisplaySize) {
-                parentMaxSize = guiRenderer.scaledSize
-            }
-
-            if (maxSize.x < 0) {
-                maxSize.x = parentMaxSize?.x ?: guiRenderer.scaledSize.x
-            }
-            if (maxSize.y < 0) {
-                maxSize.y = parentMaxSize?.y ?: guiRenderer.scaledSize.y
-            }
-
-            parentMaxSize?.let {
-                maxSize = maxSize.min(it)
-            }
-
-            return Vec2.EMPTY.max(maxSize - margin.spaceSize)
+    protected open fun applyMaxSize(max: MVec2f) {
+        if (parent == null && !ignoreDisplaySize) {
+            if (max.x < 0) max.x = guiRenderer.scaledSize.x
+            if (max.y < 0) max.y = guiRenderer.scaledSize.y
         }
 
-    protected open var _size: Vec2 = Vec2.EMPTY
-    open var size: Vec2
+        val pref = prefMaxSize
+        if (pref.x > 0 && pref.x < max.x) max.x = pref.x
+        if (pref.y > 0 && pref.y < max.y) max.y = pref.y
+
+        if (max.x < 0 || (pref.x < 0 && max.x > guiRenderer.scaledSize.x)) {
+            max.x = guiRenderer.scaledSize.x
+        }
+        if (max.y < 0 || (pref.y < 0 && max.y > guiRenderer.scaledSize.y)) {
+            max.y = guiRenderer.scaledSize.y
+        }
+        parent?.applyMaxSize(max)
+        max.x = maxOf(0.0f, max.x - margin.horizontal)
+        max.y = maxOf(0.0f, max.y - margin.vertical)
+    }
+
+    val maxSize: Vec2f
+        get() = MVec2f(Float.MAX_VALUE).apply { applyMaxSize(this) }.unsafe
+
+    protected open var _size: Vec2f = Vec2f.EMPTY
+    open var size: Vec2f
         get() {
             return _size.min(maxSize)
         }
@@ -124,7 +124,7 @@ abstract class Element(val guiRenderer: GUIRenderer, initialCacheSize: Int = 100
             apply()
         }
 
-    protected open var _margin: Vec4 = Vec4.EMPTY
+    protected open var _margin: Vec4f = Vec4f.EMPTY
 
     /**
      * Margin for the element
@@ -132,7 +132,7 @@ abstract class Element(val guiRenderer: GUIRenderer, initialCacheSize: Int = 100
      * The max size already includes the margin, the size not. To get the actual size of an element, add the margin to the element.
      * For rendering: Every element adds its padding itself
      */
-    open var margin: Vec4
+    open var margin: Vec4f
         get() = _margin
         set(value) {
             _margin = value
@@ -144,36 +144,35 @@ abstract class Element(val guiRenderer: GUIRenderer, initialCacheSize: Int = 100
      *
      * @return The number of z layers used
      */
-    open fun render(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
-        val offset = Vec2(offset)
-        var directRendering = false
-        if (consumer is GUIMesh && consumer.data == cache.data) {
-            directRendering = true
+    open fun render(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+        val offset = offset
+        var direct = false
+        if (consumer is GuiMeshBuilder && consumer.data == cache.data) {
+            direct = true
         }
-        if (RenderConstants.DISABLE_GUI_CACHE || !cacheEnabled) {
-            if (directRendering) {
+
+        if (RenderConstants.DISABLE_GUI_CACHE || !cacheEnabled || consumer !is CachedGuiVertexConsumer) {
+            if (direct) {
                 cache.clear()
             }
             forceRender(offset, consumer, options)
-            if (directRendering) {
+            if (direct) {
                 cache.revision++
             }
             return
         }
-        if (!cacheUpToDate || cache.offset != offset || guiRenderer.resolutionUpdate || cache.options != options || cache.halfSize !== guiRenderer.halfSize) {
+
+        if (!cacheUpToDate || cache.offset != offset || guiRenderer.resolutionUpdate || cache.options != options || cache.halfSize != guiRenderer.halfSize) {
             this.cache.clear()
             cache.halfSize = guiRenderer.halfSize
-            cache.offset = Vec2(offset)
+            cache.offset = offset
             cache.options = options
             forceRender(offset, cache, options)
-            if (cache.data !is DirectList) {
-                // not raw mesh data
-                cache.data.finish()
-            }
             cacheUpToDate = true
         }
-        if (!directRendering) {
-            consumer.addCache(cache)
+
+        if (!direct) {
+            consumer.add(cache)
         }
     }
 
@@ -182,7 +181,7 @@ abstract class Element(val guiRenderer: GUIRenderer, initialCacheSize: Int = 100
      *
      * @return The number of z layers used
      */
-    abstract fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?)
+    abstract fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?)
 
     /**
      * Force applies all changes made to any property, but does not notify the parent about the change

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2022 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,23 +13,26 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.clouds
 
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
+import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
 
 class CloudArray(
     val layer: CloudLayer,
     val offset: Vec2i,
-) {
-    private val mesh: CloudMesh = CloudMesh(layer.clouds.context)
+) : Drawable {
+    private val mesh = build()
 
     init {
-        build()
         mesh.load()
     }
 
-    private fun build() {
+    private fun build(): Mesh {
         val offset = layer.clouds.context.camera.offset.offset
         val matrix = layer.clouds.matrix
         val matrixOffset = (offset * ARRAY_SIZE) and 0xFF
+
+        val mesh = CloudMeshBuilder(layer.clouds.context)
 
         for (z in 0 until ARRAY_SIZE) {
             for (x in 0 until ARRAY_SIZE) {
@@ -51,14 +54,17 @@ class CloudArray(
                 mesh.createCloud(start, start + CLOUD_SIZE, offset, layer.height.first, layer.height.last, layer.clouds.flat, cull)
             }
         }
+
+        return mesh.bake()
     }
 
 
-    fun draw() {
+    override fun draw() {
         mesh.draw()
     }
 
-    fun unload() {}
+    fun unload() { // TODO????
+    }
 
     companion object {
         const val CLOUD_SIZE = 16

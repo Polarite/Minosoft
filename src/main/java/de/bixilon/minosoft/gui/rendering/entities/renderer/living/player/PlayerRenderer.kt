@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -33,38 +33,36 @@ import de.bixilon.minosoft.gui.rendering.system.base.texture.dynamic.DynamicText
 import de.bixilon.minosoft.gui.rendering.system.base.texture.dynamic.DynamicTextureListener
 import de.bixilon.minosoft.gui.rendering.system.base.texture.dynamic.DynamicTextureState
 import de.bixilon.minosoft.gui.rendering.system.base.texture.skin.SkinManager.Companion.isReallyWide
-import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.translateYAssign
+import kotlin.time.Duration
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 open class PlayerRenderer<E : PlayerEntity>(renderer: EntitiesRenderer, entity: E) : LivingEntityRenderer<E>(renderer, entity), DynamicTextureListener {
     var model: PlayerModel? = null
     var skin: DynamicTexture? = null
-    private var refresh = true
+
+    protected var unloadModel = false
 
     val score = EntityScoreFeature(this).register()
 
     init {
-        entity.additional::properties.observe(this) { refresh = true }
+        entity.additional::properties.observe(this) { unloadModel = true }
     }
 
-    override fun updateVisibility(occluded: Boolean, visible: Boolean) {
-        if (visible) {
-            val team = renderer.session.player.additional.team
-            if (team == null || !team.canSee(entity.additional.team)) {
-                this.visible = false
-            } else {
-                this.visible = entity.isInvisible
-            }
-        } else {
-            this.visible = false
+    private fun unloadModel() {
+        val model = this.model ?: return
+        this.model = null
+        features -= model
+        renderer.queue += { model.unload() }
+        this.unloadModel = false
+    }
+
+    override fun update(time: ValueTimeMark, delta: Duration) {
+        super.update(time, delta)
+        if (unloadModel) unloadModel()
+        if (this.model == null) {
+            this.model = createModel()
+            model?.register()
         }
-        this.visible = visible && !entity.isInvisible
-        features.updateVisibility(occluded)
-    }
-
-
-    override fun update(millis: Long) {
-        if (refresh) updateModel()
-        super.update(millis)
     }
 
     private fun setSkin(): SkinModel? {
@@ -80,16 +78,6 @@ open class PlayerRenderer<E : PlayerEntity>(renderer: EntitiesRenderer, entity: 
         }
 
         return skin.model
-    }
-
-    private fun updateModel() {
-        this.model?.let { this.features -= it }
-        val model = createModel()
-        this.model = model
-        this.refresh = false
-        if (model == null) return
-
-        this.features += model
     }
 
     private fun createModel(): PlayerModel? {
@@ -118,10 +106,10 @@ open class PlayerRenderer<E : PlayerEntity>(renderer: EntitiesRenderer, entity: 
         return true
     }
 
-    override fun updateMatrix(delta: Float) {
+    override fun updateMatrix(delta: Duration) {
         super.updateMatrix(delta)
         when (entity.pose) {
-            Poses.SNEAKING -> matrix.translateYAssign(SNEAKING_OFFSET) // TODO: interpolate
+            Poses.SNEAKING -> matrix.apply { translateYAssign(SNEAKING_OFFSET) } // TODO: interpolate
             else -> Unit
         }
     }
@@ -136,7 +124,7 @@ open class PlayerRenderer<E : PlayerEntity>(renderer: EntitiesRenderer, entity: 
         private const val SNEAKING_OFFSET = -0.125f
 
         override fun create(renderer: EntitiesRenderer, entity: PlayerEntity) = PlayerRenderer(renderer, entity)
-        override fun buildMesh(context: RenderContext) = PlayerModelMesh(context)
+        override fun buildMesh(context: RenderContext) = PlayerModelMeshBuilder(context)
 
         override fun register(loader: ModelLoader) {
             val override = mapOf(SKIN to loader.context.textures.debugTexture) // disable textures, they all dynamic

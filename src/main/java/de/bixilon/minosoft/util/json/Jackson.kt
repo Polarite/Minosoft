@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -23,10 +23,12 @@ import com.fasterxml.jackson.databind.type.MapType
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.KotlinFeature
 import com.fasterxml.jackson.module.kotlin.KotlinModule
-import de.bixilon.minosoft.util.json.vec.Vec2Serializer
+import de.bixilon.minosoft.util.json.time.DurationSerializer
+import de.bixilon.minosoft.util.json.time.InstantSerializer
+import de.bixilon.minosoft.util.json.vec.Vec2fSerializer
 import de.bixilon.minosoft.util.json.vec.Vec2iSerializer
-import de.bixilon.minosoft.util.json.vec.Vec3Serializer
-import de.bixilon.minosoft.util.json.vec.Vec4Serializer
+import de.bixilon.minosoft.util.json.vec.Vec3fSerializer
+import de.bixilon.minosoft.util.json.vec.Vec4fSerializer
 
 object Jackson {
     val MAPPER = JsonMapper.builder()
@@ -42,7 +44,7 @@ object Jackson {
                 .configure(KotlinFeature.NullToEmptyMap, false)
                 .configure(KotlinFeature.NullIsSameAsDefault, false)
                 .configure(KotlinFeature.SingletonSupport, false)
-                .configure(KotlinFeature.StrictNullChecks, false)
+                .configure(KotlinFeature.NewStrictNullChecks, false)
                 .build()
         )
         .registerModule(JavaTimeModule())
@@ -51,10 +53,14 @@ object Jackson {
         .registerModule(RGBColorSerializer)
         .registerModule(ChatComponentColorSerializer)
         .registerModule(FaceUVDeserializer)
-        .registerModule(Vec2Serializer)
+
+        .registerModule(Vec2fSerializer)
         .registerModule(Vec2iSerializer)
-        .registerModule(Vec3Serializer)
-        .registerModule(Vec4Serializer)
+        .registerModule(Vec3fSerializer)
+        .registerModule(Vec4fSerializer)
+
+        .registerModule(InstantSerializer)
+        .registerModule(DurationSerializer)
         .setDefaultMergeable(true)
         .apply {
             propertyNamingStrategy = PropertyNamingStrategies.SNAKE_CASE

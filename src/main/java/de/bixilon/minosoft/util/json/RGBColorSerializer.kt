@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -21,30 +21,28 @@ import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.deser.std.StdDeserializer
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.ser.std.StdSerializer
-import de.bixilon.minosoft.data.text.formatting.color.ChatColors.toColor
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.Color
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
 
 object RGBColorSerializer : SimpleModule() {
 
     init {
-        addDeserializer(RGBColor::class.java, Deserializer)
-        addSerializer(RGBColor::class.java, Serializer)
+        addDeserializer(Color::class.java, Deserializer)
+        addSerializer(Color::class.java, Serializer)
     }
 
-    object Deserializer : StdDeserializer<RGBColor>(RGBColor::class.java) {
+    object Deserializer : StdDeserializer<Color>(Color::class.java) {
 
-        override fun deserialize(parser: JsonParser, context: DeserializationContext?): RGBColor {
-            return when (parser.currentToken) {
-                JsonToken.VALUE_NUMBER_INT -> RGBColor(parser.valueAsInt)
-                JsonToken.VALUE_STRING -> parser.valueAsString.toColor()!!
-                else -> TODO("Can not parse color!")
-            }
+        override fun deserialize(parser: JsonParser, context: DeserializationContext?) = when (parser.currentToken) {
+            JsonToken.VALUE_NUMBER_INT -> parser.valueAsInt.rgb()
+            JsonToken.VALUE_STRING -> parser.valueAsString.rgb()
+            else -> TODO("Can not parse color!")
         }
     }
 
-    object Serializer : StdSerializer<RGBColor>(RGBColor::class.java) {
+    object Serializer : StdSerializer<Color>(Color::class.java) {
 
-        override fun serialize(value: RGBColor?, generator: JsonGenerator, provider: SerializerProvider?) {
+        override fun serialize(value: Color?, generator: JsonGenerator, provider: SerializerProvider?) {
             generator.writeString(value?.toString())
         }
     }

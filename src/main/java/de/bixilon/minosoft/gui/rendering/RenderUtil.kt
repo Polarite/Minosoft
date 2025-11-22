@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
+import de.bixilon.kmath.vec.vec2.f.MVec2f
 import de.bixilon.kutil.concurrent.pool.ThreadPool
-import de.bixilon.kutil.concurrent.pool.runnable.SimplePoolRunnable
+import de.bixilon.kutil.concurrent.pool.runnable.ThreadPoolRunnable
 import de.bixilon.minosoft.gui.eros.crash.ErosCrashReport.Companion.crash
-import de.bixilon.minosoft.gui.rendering.RenderConstants.UV_ADD
+import de.bixilon.minosoft.gui.rendering.RenderConstants.UV_PRECISION_CORRECTION
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
+import de.bixilon.minosoft.gui.rendering.system.window.CursorModes
 
 object RenderUtil {
 
@@ -28,28 +28,37 @@ object RenderUtil {
         guiRenderer.pause()
     }
 
-    inline fun RenderContext.runAsync(crossinline runnable: () -> Unit) {
-        DefaultThreadPool += SimplePoolRunnable(ThreadPool.HIGHER) {
+    inline fun RenderContext.runAsync(forcePool: Boolean = false, crossinline runnable: () -> Unit) {
+        RenderingThreadPool += ThreadPoolRunnable(ThreadPool.Priorities.HIGHER, forcePool = forcePool) {
             try {
-                runnable()
+                runnable.invoke()
             } catch (error: Throwable) {
+                window.cursorMode = CursorModes.NORMAL
                 error.printStackTrace()
+                this.session.error = error
                 Exception("Exception in rendering: ${session.id}", error).crash()
             }
         }
     }
 
-    fun Vec2.fixUVStart(): Vec2 {
-        if (x < 1.0f - UV_ADD && x > 0.0f) x += UV_ADD
-        if (y < 1.0f - UV_ADD && y > 0.0f) y += UV_ADD
-
-        return this
+    fun MVec2f.fixUVStart() {
+        if (x < 1.0f - UV_PRECISION_CORRECTION && x > 0.0f) x += UV_PRECISION_CORRECTION
+        if (y < 1.0f - UV_PRECISION_CORRECTION && y > 0.0f) y += UV_PRECISION_CORRECTION
     }
 
-    fun Vec2.fixUVEnd(): Vec2 {
-        if (x < 1.0f && x > UV_ADD) x -= UV_ADD
-        if (y < 1.0f && y > UV_ADD) y -= UV_ADD
+    fun MVec2f.fixUVEnd() {
+        if (x < 1.0f && x > UV_PRECISION_CORRECTION) x -= UV_PRECISION_CORRECTION
+        if (y < 1.0f && y > UV_PRECISION_CORRECTION) y -= UV_PRECISION_CORRECTION
+    }
 
-        return this
+    fun RenderContext.unload() {
+        renderer.unload()
+        models.unload()
+        skeletal.unload()
+
+        light.unload()
+        textures.unload()
+
+        queue.work()
     }
 }

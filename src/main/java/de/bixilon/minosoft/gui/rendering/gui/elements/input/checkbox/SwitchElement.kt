@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,9 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.input.checkbox
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.config.key.KeyCodes
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.atlas.Atlas.Companion.get
@@ -26,11 +26,10 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElemen
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.CursorShapes
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 open class SwitchElement(
     guiRenderer: GUIRenderer,
@@ -81,11 +80,11 @@ open class SwitchElement(
 
 
     init {
-        size = SIZE + Vec2(5 + TEXT_MARGIN + textElement.size.x, 0)
+        size = SIZE + Vec2f(5f + TEXT_MARGIN + textElement.size.x, 0f)
         this.parent = parent
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         val texture = when {
             disabled -> disabledAtlas
             hovered -> hoveredAtlas
@@ -100,12 +99,12 @@ open class SwitchElement(
 
 
         if (state) {
-            AtlasImageElement(guiRenderer, onStateAtlas, size = SLIDER_SIZE).render(offset + Vec2i(SIZE.x - SLIDER_SIZE.x, 0), consumer, options)
+            AtlasImageElement(guiRenderer, onStateAtlas, size = SLIDER_SIZE).render(offset + Vec2f(SIZE.x - SLIDER_SIZE.x, 0f), consumer, options)
         } else {
             AtlasImageElement(guiRenderer, offStateAtlas, size = SLIDER_SIZE).render(offset, consumer, options)
         }
 
-        textElement.render(offset + Vec2i(SIZE.x + TEXT_MARGIN, VerticalAlignments.CENTER.getOffset(size.y, textElement.size.y)), consumer, options)
+        textElement.render(offset + Vec2f(SIZE.x + TEXT_MARGIN, VerticalAlignments.CENTER.getOffset(size.y, textElement.size.y)), consumer, options)
     }
 
     override fun forceSilentApply() {
@@ -113,7 +112,7 @@ open class SwitchElement(
         cacheUpToDate = false
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         if (disabled) {
             return true
         }
@@ -145,7 +144,7 @@ open class SwitchElement(
         return true
     }
 
-    override fun onMouseEnter(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseEnter(position: Vec2f, absolute: Vec2f): Boolean {
         hovered = true
         context.window.cursorShape = CursorShapes.HAND
 
@@ -162,15 +161,15 @@ open class SwitchElement(
     open fun switchState() {
         state = !state
         if (guiRenderer.session.profiles.audio.gui.button) {
-            guiRenderer.session.world.play2DSound(CLICK_SOUND)
+            guiRenderer.session.world.audio?.play2D(CLICK_SOUND)
         }
     }
 
     companion object {
         val ATLAS = minosoft("elements/switch")
-        val CLICK_SOUND = "minecraft:ui.button.click".toResourceLocation()
+        val CLICK_SOUND = minecraft("ui.button.click")
         const val TEXT_MARGIN = 5
-        val SIZE = Vec2(30, 20)
-        val SLIDER_SIZE = Vec2(6, 20)
+        val SIZE = Vec2f(30, 20)
+        val SLIDER_SIZE = Vec2f(6, 20)
     }
 }

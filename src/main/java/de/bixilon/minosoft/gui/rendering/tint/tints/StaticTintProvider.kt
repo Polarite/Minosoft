@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,19 +16,19 @@ package de.bixilon.minosoft.gui.rendering.tint.tints
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.tint.TintProvider
 
-class StaticTintProvider(val block: Int, val item: Int = block, val particle: Int = block) : TintProvider {
+class StaticTintProvider(
+    val block: RGBColor,
+    val item: RGBColor = block,
+    val particle: RGBColor = block,
+) : TintProvider {
 
-    override fun getBlockColor(blockState: BlockState, biome: Biome?, x: Int, y: Int, z: Int, tintIndex: Int): Int {
-        return this.block
-    }
+    override fun getBlockColor(state: BlockState, biome: Biome?, position: BlockPosition, tintIndex: Int) = this.block
 
-    override fun getItemColor(stack: ItemStack, tintIndex: Int): Int {
-        return this.item
-    }
+    override fun getItemColor(stack: ItemStack, tintIndex: Int) = this.item
 
-    override fun getParticleColor(blockState: BlockState, biome: Biome?, x: Int, y: Int, z: Int): Int {
-        return this.particle
-    }
+    override fun getParticleColor(state: BlockState, biome: Biome?, position: BlockPosition) = this.particle
 }

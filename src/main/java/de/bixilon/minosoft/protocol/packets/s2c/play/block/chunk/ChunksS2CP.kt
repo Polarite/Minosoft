@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,9 +12,9 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.play.block.chunk
 
-import de.bixilon.kotlinglm.vec2.Vec2i
 import de.bixilon.kutil.compression.zlib.ZlibUtil.decompress
-import de.bixilon.minosoft.data.world.chunk.chunk.ChunkPrototype
+import de.bixilon.minosoft.data.world.chunk.chunk.ChunkData
+import de.bixilon.minosoft.data.world.positions.ChunkPosition
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.s2c.PlayS2CPacket
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions
@@ -25,7 +25,7 @@ import de.bixilon.minosoft.util.logging.LogMessageType
 import java.util.*
 
 class ChunksS2CP : PlayS2CPacket {
-    val chunks: MutableMap<Vec2i, ChunkPrototype?> = mutableMapOf()
+    val chunks: MutableMap<ChunkPosition, ChunkData?> = mutableMapOf()
 
     constructor(buffer: PlayInByteBuffer) {
         val dimension = buffer.session.world.dimension
@@ -45,20 +45,20 @@ class ChunksS2CP : PlayS2CPacket {
                 val chunkPosition = buffer.readChunkPosition()
                 val sectionBitMask = buffer.readLegacyBitSet(2) // ToDo: Test
                 val addBitMask = buffer.readLegacyBitSet(2)// ToDo: Test
-                chunks[chunkPosition] = ChunkUtil.readLegacyChunk(decompressed, dimension, sectionBitMask, addBitMask, true, skylight)
+                chunks[chunkPosition] = ChunkPacketUtil.readLegacyChunk(decompressed, dimension, sectionBitMask, addBitMask, true, skylight)
             }
             return
         }
         val skylight = buffer.readBoolean()
         val size = buffer.readVarInt()
-        val bitSets: MutableMap<Vec2i, BitSet> = mutableMapOf()
+        val bitSets: MutableMap<ChunkPosition, BitSet> = mutableMapOf()
 
         // ToDo: this was still compressed in 14w28a
         for (i in 0 until size) {
             bitSets[buffer.readChunkPosition()] = buffer.readLegacyBitSet(2)
         }
         for ((chunkPosition, sectionBitMask) in bitSets) {
-            chunks[chunkPosition] = ChunkUtil.readChunkPacket(buffer, dimension, sectionBitMask, null, true, skylight)
+            chunks[chunkPosition] = ChunkPacketUtil.readChunkPacket(buffer, dimension, sectionBitMask, null, true, skylight)
         }
     }
 
@@ -70,8 +70,7 @@ class ChunksS2CP : PlayS2CPacket {
                 session.world.chunks -= position
                 continue
             }
-            if (!session.world.isValidPosition(position)) continue
-            session.world.chunks[position] = prototype // action is always CREATE, force replace existing prototypes
+            session.world.chunks.update(position, prototype, true) // action is always CREATE, force replace existing prototypes
         }
     }
 

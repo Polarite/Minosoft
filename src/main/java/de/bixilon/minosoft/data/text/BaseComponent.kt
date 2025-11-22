@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -24,12 +24,13 @@ import de.bixilon.minosoft.data.text.events.click.ClickEvents
 import de.bixilon.minosoft.data.text.events.hover.HoverEvents
 import de.bixilon.minosoft.data.text.formatting.FormattingCodes
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors.toColor
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import de.bixilon.minosoft.util.KUtil.format
 import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.nbt.tag.NBTUtil.get
 
+// TODO: make this one immutable
 class BaseComponent : ChatComponent, Iterable<ChatComponent> {
     val parts: MutableList<ChatComponent> = mutableListOf()
 
@@ -97,16 +98,16 @@ class BaseComponent : ChatComponent, Iterable<ChatComponent> {
         }
     }
 
-    override fun getJson(): Any {
+    override fun toJson(): Any {
         if (parts.isEmpty()) {
             return emptyList<Any>()
         }
         if (parts.size == 1) {
-            return parts.first().getJson()
+            return parts.first().toJson()
         }
         val list = mutableListOf<Any>()
         for (part in parts) {
-            list += part.getJson()
+            list += part.toJson()
         }
         return list
     }
@@ -183,7 +184,7 @@ class BaseComponent : ChatComponent, Iterable<ChatComponent> {
         for (part in parts) part.italic(); return this
     }
 
-    override fun setFallbackColor(color: RGBColor): BaseComponent {
+    override fun setFallbackColor(color: RGBAColor): BaseComponent {
         for (part in parts) part.setFallbackColor(color); return this
     }
 

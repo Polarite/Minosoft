@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,6 +15,7 @@ package de.bixilon.minosoft.assets.minecraft.index
 
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedMapOf
 import de.bixilon.kutil.concurrent.pool.ThreadPool
+import de.bixilon.kutil.concurrent.pool.io.DefaultIOPool
 import de.bixilon.kutil.concurrent.worker.unconditional.UnconditionalTask
 import de.bixilon.kutil.concurrent.worker.unconditional.UnconditionalWorker
 import de.bixilon.kutil.json.JsonUtil.asJsonObject
@@ -98,7 +99,7 @@ class IndexAssetsManager(
 
         assets["objects"].let { assets = it.asJsonObject() }
 
-        val worker = UnconditionalWorker()
+        val worker = UnconditionalWorker(pool = DefaultIOPool)
 
         val hashes: MutableSet<String> = ObjectOpenHashSet()
 
@@ -123,7 +124,7 @@ class IndexAssetsManager(
             }
             hashes += hash
 
-            worker += UnconditionalTask(priority = ThreadPool.LOW) {
+            worker += UnconditionalTask(priority = ThreadPool.Priorities.LOW) {
                 verifyAsset(property) // TODO: This first verifies the asset, it will be verified another time when loading
             }
         }

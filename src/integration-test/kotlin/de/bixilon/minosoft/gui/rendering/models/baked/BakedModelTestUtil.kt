@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.models.baked
 
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.kutil.stream.InputStreamUtil.readAll
 import de.bixilon.minosoft.Minosoft
@@ -27,7 +27,6 @@ import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureManager
 import de.bixilon.minosoft.gui.rendering.system.base.texture.data.buffer.RGBA8Buffer
 import de.bixilon.minosoft.gui.rendering.system.base.texture.texture.memory.MemoryTexture
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.texture
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY_INSTANCE
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
 import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import org.testng.Assert
@@ -38,7 +37,7 @@ object BakedModelTestUtil {
     private val session by lazy { createSession() }
     private val rendering by lazy {
         val rendering = Rendering(session)
-        rendering.context.textures::debugTexture.forceSet(MemoryTexture(Vec2i.EMPTY_INSTANCE, mipmaps = 0, buffer = RGBA8Buffer(Vec2i(0, 0))))
+        rendering.context.textures::debugTexture.forceSet(MemoryTexture(Vec2i.EMPTY, mipmaps = 0, buffer = RGBA8Buffer(Vec2i(0, 0))))
         return@lazy rendering
     }
 
@@ -69,7 +68,7 @@ object BakedModelTestUtil {
         val face = faces.first()
 
         vertices?.let { assertMatches(face.positions, it, "Vertices mismatch") }
-        uv?.let { if (!face.uv.contentEquals(it)) throw AssertionError("UV mismatch, expected [${uv[0]}|${uv[1]}], but got [${face.uv[0]}|${face.uv[1]}]") } // printing the first element is fine, it is always clockwise
+        uv?.let { if (!face.uv.raw.contentEquals(it)) throw AssertionError("UV mismatch, expected [${uv[0]}|${uv[1]}], but got [${face.uv.raw[0]}|${face.uv.raw[1]}]") } // printing the first element is fine, it is always clockwise
         shade?.let { Assert.assertEquals(face.shade.shade, it, "Shade mismatch") }
         texture?.toResourceLocation()?.texture()?.let { Assert.assertEquals(face.texture, it, "Texture mismatch") }
     }

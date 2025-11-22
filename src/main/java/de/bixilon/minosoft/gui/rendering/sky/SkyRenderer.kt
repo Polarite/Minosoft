@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.sky
 
-import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kmath.mat.mat3.f.Mat3f
+import de.bixilon.kmath.mat.mat4.f.Mat4f
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.kutil.observer.DataObserver.Companion.observed
@@ -28,7 +29,6 @@ import de.bixilon.minosoft.gui.rendering.sky.planet.MoonRenderer
 import de.bixilon.minosoft.gui.rendering.sky.planet.SunRenderer
 import de.bixilon.minosoft.gui.rendering.sky.planet.scatter.SunScatterRenderer
 import de.bixilon.minosoft.gui.rendering.system.base.DepthFunctions
-import de.bixilon.minosoft.gui.rendering.system.base.RenderSystem
 import de.bixilon.minosoft.gui.rendering.system.base.phases.PreDrawable
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -37,11 +37,10 @@ class SkyRenderer(
     val session: PlaySession,
     override val context: RenderContext,
 ) : Renderer, PreDrawable, AsyncRenderer {
-    override val renderSystem: RenderSystem = context.system
     override val framebuffer: IntegratedFramebuffer? = null
     private val renderer: MutableList<SkyChildRenderer> = mutableListOf()
     var effects by observed(session.world.dimension.effects)
-    var matrix by observed(Mat4())
+    var matrix by observed(Mat4f())
     val profile = session.profiles.rendering.sky
     var time = session.world.time
         private set
@@ -69,7 +68,7 @@ class SkyRenderer(
         }
         session.world::time.observe(this) { updateTime = true }
         session.events.listen<CameraMatrixChangeEvent> {
-            matrix = it.projectionMatrix * it.viewMatrix.toMat3().toMat4()
+            matrix = it.projectionMatrix * Mat4f(Mat3f(it.viewMatrix))
         }
         session.world::dimension.observe(this) { effects = it.effects }
     }

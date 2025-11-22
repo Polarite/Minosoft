@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,13 +14,18 @@
 package de.bixilon.minosoft.data.world.chunk.light
 
 import de.bixilon.kutil.benchmark.BenchmarkUtil
-import de.bixilon.kutil.unit.UnitFormatter.formatNanos
+import de.bixilon.kutil.unit.UnitFormatter.format
+import de.bixilon.minosoft.data.world.chunk.ChunkSize
 import de.bixilon.minosoft.data.world.chunk.LightTestingUtil.createChunkWithNeighbours
 import de.bixilon.minosoft.data.world.chunk.LightTestingUtil.createOpaqueLight
 import de.bixilon.minosoft.data.world.chunk.LightTestingUtil.createSolidBlock
 import de.bixilon.minosoft.data.world.chunk.LightTestingUtil.fillBottom
+import de.bixilon.minosoft.data.world.chunk.update.chunk.ChunkLightUpdate
+import de.bixilon.minosoft.data.world.positions.InChunkPosition
+import de.bixilon.minosoft.data.world.positions.InSectionPosition
 import org.testng.annotations.Test
-import kotlin.system.measureNanoTime
+import kotlin.time.Duration
+import kotlin.time.measureTime
 
 
 internal class LightBenchmark {
@@ -29,7 +34,7 @@ internal class LightBenchmark {
     fun calculateEmptyLight() {
         val chunk = createChunkWithNeighbours()
         BenchmarkUtil.benchmark(100000) {
-            chunk.light.recalculate()
+            chunk.light.recalculate(true, ChunkLightUpdate.Causes.RECALCULATE)
         }.println()
     }
 
@@ -38,7 +43,7 @@ internal class LightBenchmark {
         val chunk = createChunkWithNeighbours()
         chunk.fillBottom(createSolidBlock().states.default)
         BenchmarkUtil.benchmark(100000) {
-            chunk.light.recalculate()
+            chunk.light.recalculate(true, ChunkLightUpdate.Causes.RECALCULATE)
         }.println()
     }
 
@@ -49,22 +54,27 @@ internal class LightBenchmark {
         val solid = createSolidBlock().states.default
         val light = createOpaqueLight().states.default
         val lowest = chunk.getOrPut(0)!!.blocks
-        for (index in 0 until 256) {
-            lowest.unsafeSet(index, solid)
+        for (z in 0 until ChunkSize.SECTION_WIDTH_Z) {
+            for (x in 0 until ChunkSize.SECTION_WIDTH_X) {
+                lowest.unsafeSet(InSectionPosition(x, 0, z), solid)
+            }
         }
         val highest = chunk.getOrPut(15)!!.blocks
-        for (index in 0 until 256) {
-            highest.unsafeSet(index or (0x0F shl 8), solid)
+
+        for (z in 0 until ChunkSize.SECTION_WIDTH_Z) {
+            for (x in 0 until ChunkSize.SECTION_WIDTH_X) {
+                highest.unsafeSet(InSectionPosition(x, ChunkSize.SECTION_MAX_Y, z), solid)
+            }
         }
-        var totalPlace = 0L
-        var totalBreak = 0L
+        var totalPlace = Duration.ZERO
+        var totalBreak = Duration.ZERO
         val benchmark = BenchmarkUtil.benchmark(10000) {
-            totalPlace += measureNanoTime { chunk[7, 1, 7] = light }
-            totalBreak += measureNanoTime { chunk[7, 1, 7] = null }
+            totalPlace += measureTime { chunk[InChunkPosition(7, 1, 7)] = light }
+            totalBreak += measureTime { chunk[InChunkPosition(7, 1, 7)] = null }
         }
 
-        println("Placing light took ${totalPlace.formatNanos()}, avg=${(totalPlace / benchmark.runs).formatNanos()}, runs=${benchmark.runs}")
-        println("Breaking light took ${totalBreak.formatNanos()}, avg=${(totalBreak / benchmark.runs).formatNanos()}, runs=${benchmark.runs}")
+        println("Placing light took ${totalPlace.format()}, avg=${(totalPlace / benchmark.iterations).format()}, runs=${benchmark.iterations}")
+        println("Breaking light took ${totalBreak.format()}, avg=${(totalBreak / benchmark.iterations).format()}, runs=${benchmark.iterations}")
     }
 
     @Test
@@ -72,23 +82,27 @@ internal class LightBenchmark {
         val chunk = createChunkWithNeighbours()
         val solid = createSolidBlock().states.default
         val lowest = chunk.getOrPut(0)!!.blocks
-        for (index in 0 until 256) {
-            lowest.unsafeSet(index, solid)
+        for (z in 0 until ChunkSize.SECTION_WIDTH_Z) {
+            for (x in 0 until ChunkSize.SECTION_WIDTH_X) {
+                lowest.unsafeSet(InSectionPosition(x, 0, z), solid)
+            }
         }
         val highest = chunk.getOrPut(15)!!.blocks
-        for (index in 0 until 256) {
-            highest.unsafeSet(index or (0x0F shl 8), solid)
+        for (z in 0 until ChunkSize.SECTION_WIDTH_Z) {
+            for (x in 0 until ChunkSize.SECTION_WIDTH_X) {
+                highest.unsafeSet(InSectionPosition(x, ChunkSize.SECTION_MAX_Y, z), solid)
+            }
         }
 
-        var totalPlace = 0L
-        var totalBreak = 0L
+        var totalPlace = Duration.ZERO
+        var totalBreak = Duration.ZERO
         val benchmark = BenchmarkUtil.benchmark(100000) {
-            totalBreak += measureNanoTime { chunk[7, 255, 7] = null }
-            totalPlace += measureNanoTime { chunk[7, 255, 7] = solid }
+            totalBreak += measureTime { chunk[InChunkPosition(7, 255, 7)] = null }
+            totalPlace += measureTime { chunk[InChunkPosition(7, 255, 7)] = solid }
         }
 
-        println("Placing block took ${totalPlace.formatNanos()}, avg=${(totalPlace / benchmark.runs).formatNanos()}, runs=${benchmark.runs}")
-        println("Breaking block took ${totalBreak.formatNanos()}, avg=${(totalBreak / benchmark.runs).formatNanos()}, runs=${benchmark.runs}")
+        println("Placing block took ${totalPlace.format()}, avg=${(totalPlace / benchmark.iterations).format()}, runs=${benchmark.iterations}")
+        println("Breaking block took ${totalBreak.format()}, avg=${(totalBreak / benchmark.iterations).format()}, runs=${benchmark.iterations}")
     }
 
     @Test
@@ -98,17 +112,19 @@ internal class LightBenchmark {
         val solid = createSolidBlock().states.default
         val light = createOpaqueLight().states.default
         val highest = chunk.getOrPut(15)!!.blocks
-        for (index in 0 until 256) {
-            highest.unsafeSet(index or (0x0F shl 8), solid)
+        for (z in 0 until ChunkSize.SECTION_WIDTH_Z) {
+            for (x in 0 until ChunkSize.SECTION_WIDTH_X) {
+                highest.unsafeSet(InSectionPosition(x, ChunkSize.SECTION_MAX_Y, z), solid)
+            }
         }
-        var totalPlace = 0L
-        var totalBreak = 0L
+        var totalPlace = Duration.ZERO
+        var totalBreak = Duration.ZERO
         val benchmark = BenchmarkUtil.benchmark(10000) {
-            totalPlace += measureNanoTime { chunk[8, 0, 8] = light }
-            totalBreak += measureNanoTime { chunk[8, 0, 8] = null }
+            totalPlace += measureTime { chunk[InChunkPosition(8, 0, 8)] = light }
+            totalBreak += measureTime { chunk[InChunkPosition(8, 0, 8)] = null }
         }
 
-        println("Placing block took ${totalPlace.formatNanos()}, avg=${(totalPlace / benchmark.runs).formatNanos()}, runs=${benchmark.runs}")
-        println("Breaking block took ${totalBreak.formatNanos()}, avg=${(totalBreak / benchmark.runs).formatNanos()}, runs=${benchmark.runs}")
+        println("Placing block took ${totalPlace.format()}, avg=${(totalPlace / benchmark.iterations).format()}, runs=${benchmark.iterations}")
+        println("Breaking block took ${totalBreak.format()}, avg=${(totalBreak / benchmark.iterations).format()}, runs=${benchmark.iterations}")
     }
 }

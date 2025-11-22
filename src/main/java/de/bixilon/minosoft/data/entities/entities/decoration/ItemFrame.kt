@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.decoration
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.camera.target.targets.EntityTarget
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.direction.Directions
@@ -24,7 +24,6 @@ import de.bixilon.minosoft.data.entities.wawla.EntityWawlaProvider
 import de.bixilon.minosoft.data.registries.entities.EntityFactory
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -52,7 +51,7 @@ open class ItemFrame(session: PlaySession, entityType: EntityType, data: EntityD
     }
 
     companion object : EntityFactory<ItemFrame> {
-        override val identifier: ResourceLocation = minecraft("item_frame")
+        override val identifier = minecraft("item_frame")
         private val ITEM_DATA = EntityDataField("ITEM_FRAME_ITEM")
         private val ROTATION_DATA = EntityDataField("ITEM_FRAME_ROTATION")
 

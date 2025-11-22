@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -29,7 +29,6 @@ import de.bixilon.minosoft.data.entities.entities.player.local.SignatureKeyManag
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.modding.event.events.chat.ChatMessageEvent
 import de.bixilon.minosoft.modding.event.events.chat.ChatMessageSendEvent
-import de.bixilon.minosoft.modding.event.events.container.ContainerCloseEvent
 import de.bixilon.minosoft.protocol.ProtocolUtil.encodeNetwork
 import de.bixilon.minosoft.protocol.network.NetworkConnection
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -141,12 +140,9 @@ class SessionUtil(
     fun prepareSpawn() {
         session.player.items.reset()
         session.player.physics.reset()
-        session.world.audio?.stopAllSounds()
-        session.world.particle?.removeAllParticles()
-        session.player.items.opened?.let {
-            session.player.items.opened = null
-            session.events.fire(ContainerCloseEvent(session, it))
-        }
+        session.world.audio?.stopAll()
+        session.world.particle?.removeAll()
+
         session.player.healthCondition = HealthCondition()
     }
 

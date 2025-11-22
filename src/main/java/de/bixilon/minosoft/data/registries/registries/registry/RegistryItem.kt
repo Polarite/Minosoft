@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,20 +15,18 @@ package de.bixilon.minosoft.data.registries.registries.registry
 
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.reflection.ReflectionUtil.field
-import de.bixilon.kutil.reflection.ReflectionUtil.jvmField
 import de.bixilon.kutil.reflection.wrapper.ObjectField
 import de.bixilon.minosoft.data.registries.identified.Identified
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.registries.Registries
-import java.lang.reflect.Field
 import kotlin.reflect.KProperty
 
 abstract class RegistryItem : Identified {
     open val injectable: Boolean get() = true
-    private val injects: MutableMap<ObjectField, List<Any>> = if (injectable) hashMapOf() else unsafeNull()
+    private val injects: MutableMap<ObjectField, List<Any>> = if (injectable) HashMap(4) else unsafeNull()
 
     fun <T : RegistryItem> KProperty<T?>.inject(vararg keys: Any?): T {
-        return this.jvmField.inject(*keys)
+        return this.field.inject(*keys)
     }
 
     fun <T : RegistryItem> ObjectField.inject(vararg keys: Any?): T {
@@ -46,10 +44,6 @@ abstract class RegistryItem : Identified {
 
     }
 
-    fun <T : RegistryItem> Field.inject(vararg keys: Any?): T {
-        return this.field.inject(*keys)
-    }
-
     fun inject(registries: Registries) {
         if (!injectable || injects.isEmpty()) return
 
@@ -62,28 +56,23 @@ abstract class RegistryItem : Identified {
             }
             if (value == null) continue
 
-            field.set(this, value)
+            field[this] = value
         }
 
-        INJECTS_FIELD.set(this, null)
+        INJECTS_FIELD[this] = null
     }
 
     open fun postInit(registries: Registries) {}
 
 
-    override fun toString(): String {
-        return identifier.toString()
-    }
+    override fun toString() = identifier.toString()
+    override fun hashCode() = identifier.hashCode()
 
-    override fun hashCode(): Int {
-        return identifier.hashCode()
-    }
-
-    override fun equals(other: Any?): Boolean {
-        if (other is ResourceLocation) return this.identifier == other
-        if (other is Identified) return this.identifier == other.identifier
-
-        return false
+    override fun equals(other: Any?) = when (other) {
+        is RegistryItem -> this.identifier == other.identifier
+        is ResourceLocation -> this.identifier == other
+        is Identified -> this.identifier == other.identifier
+        else -> false
     }
 
     companion object {

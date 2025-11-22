@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -26,24 +26,21 @@ class LightHeightmap(chunk: Chunk) : ChunkHeightmap(chunk) {
         chunk.light.sky.calculate()
     }
 
-    override fun onHeightmapUpdate(x: Int, z: Int, previous: Int, now: Int) {
-        if (previous > now) {
+    override fun onHeightmapUpdate(x: Int, z: Int, previousY: Int, y: Int) {
+        if (previousY > y) {
             // block is lower
             return chunk.light.sky.floodFill(x, z)
         }
         // block is now higher
         // ToDo: Neighbours
         val sections = chunk.sections
-        val maxIndex = previous.sectionHeight - chunk.minSection
-        val minIndex = now.sectionHeight - chunk.minSection
+
         chunk.light.bottom.reset()
-        for (index in maxIndex downTo minIndex) {
-            val section = sections[index] ?: continue
-            section.light.reset()
+        for (height in previousY.sectionHeight downTo y.sectionHeight) {
+            sections[height]?.light?.reset()
         }
-        for (index in maxIndex downTo minIndex) {
-            val section = sections[index] ?: continue
-            section.light.calculate()
+        for (height in previousY.sectionHeight downTo y.sectionHeight) {
+            sections[height]?.light?.calculate()
         }
         chunk.light.sky.calculate()
     }

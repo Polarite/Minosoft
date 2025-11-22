@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -18,25 +18,23 @@ import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.latch.ParentLatch
 import de.bixilon.kutil.latch.SimpleLatch
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
-import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
-import de.bixilon.kutil.unit.UnitFormatter.formatNanos
+import de.bixilon.kutil.unit.UnitFormatter.format
 import de.bixilon.minosoft.gui.rendering.RenderUtil.pause
 import de.bixilon.minosoft.gui.rendering.RenderUtil.runAsync
-import de.bixilon.minosoft.gui.rendering.events.ResizeWindowEvent
 import de.bixilon.minosoft.gui.rendering.font.manager.FontManager
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.input.key.DebugKeyBindings
 import de.bixilon.minosoft.gui.rendering.input.key.DefaultKeyBindings
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.DefaultRenderer
-import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.network.session.play.PlaySessionStates
 import de.bixilon.minosoft.util.Stopwatch
+import de.bixilon.minosoft.util.collections.MemoryOptions
 import de.bixilon.minosoft.util.delegate.RenderingDelegate.observeRendering
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
-import kotlin.system.measureNanoTime
+import kotlin.time.measureTime
 
 object RenderLoader {
 
@@ -54,6 +52,10 @@ object RenderLoader {
     }
 
     fun RenderContext.load(latch: AbstractLatch) {
+        if (!MemoryOptions.native) {
+            Log.log(LogMessageType.RENDERING, LogLevels.WARN) { "Native memory is disabled! Performance will be degraded!" }
+        }
+
         val renderLatch = ParentLatch(1, latch)
         setThread()
         Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Creating window..." }
@@ -66,7 +68,7 @@ object RenderLoader {
         camera.init()
 
 
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Creating context (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Creating context (after ${stopwatch.lab().format()})..." }
 
         system.init()
         system.reset()
@@ -75,7 +77,7 @@ object RenderLoader {
 
         // Init stage
         val initLatch = ParentLatch(1, renderLatch)
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Generating font, gathering textures and loading models (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Generating font, gathering textures and loading models (after ${stopwatch.lab().format()})..." }
         initLatch.inc(); runAsync { tints.init(session.assetsManager); initLatch.dec() }
         textures.dynamic.load(initLatch); textures.dynamic.upload(initLatch)
         textures.initializeSkins(session)
@@ -88,7 +90,7 @@ object RenderLoader {
         framebuffer.init()
 
 
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Initializing renderer (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Initializing renderer (after ${stopwatch.lab().format()})..." }
         light.init()
         skeletal.init()
         renderer.init(initLatch)
@@ -101,46 +103,44 @@ object RenderLoader {
         renderer[GUIRenderer]?.atlas?.load() // TODO: remove this
 
         // Post init stage
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Loading textures (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Loading textures (after ${stopwatch.lab().format()})..." }
         // TODO: async load both
         textures.static.load(renderLatch)
         textures.font.load(renderLatch)
 
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Uploading textures (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Uploading textures (after ${stopwatch.lab().format()})..." }
         textures.static.upload(renderLatch)
         textures.font.upload(renderLatch)
 
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Baking models (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Baking models (after ${stopwatch.lab().format()})..." }
         font.postInit(renderLatch)
         models.bake(renderLatch)
         models.upload()
         models.cleanup()
 
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Post loading renderer (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Post loading renderer (after ${stopwatch.lab().format()})..." }
         shaders.postInit()
         skeletal.postInit()
         renderer.postInit(renderLatch)
         framebuffer.postInit()
 
-        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Finishing up (after ${stopwatch.labTime()})..." }
+        Log.log(LogMessageType.RENDERING, LogLevels.VERBOSE) { "Finishing up (after ${stopwatch.lab().format()})..." }
 
-        window::focused.observeRendering(this) { state = it.decide(RenderingStates.RUNNING, RenderingStates.SLOW) }
+        window::focused.observeRendering(this) { state = if (it) RenderingStates.RUNNING else RenderingStates.BACKGROUND }
 
-        window::iconified.observeRendering(this) { state = it.decide(RenderingStates.PAUSED, RenderingStates.RUNNING) }
+        window::iconified.observeRendering(this) { state = if (it) RenderingStates.PAUSED else RenderingStates.RUNNING }
 
 
         input.init()
         DefaultKeyBindings.register(this)
         DebugKeyBindings.register(this)
-        session.events.listen<ResizeWindowEvent> { system.viewport = it.size }
+        window::size.observeRendering(this, true) { system.viewport = it }
 
         this::state.observe(this) {
-            if (it == RenderingStates.PAUSED || it == RenderingStates.SLOW || it == RenderingStates.STOPPED) {
+            if (it == RenderingStates.PAUSED || it == RenderingStates.BACKGROUND) {
                 pause()
             }
         }
-
-        window.postInit()
 
         textures.dynamic.activate()
         textures.static.activate()
@@ -149,7 +149,7 @@ object RenderLoader {
         renderLatch.dec() // initial count from rendering
         renderLatch.await()
 
-        Log.log(LogMessageType.RENDERING) { "Rendering is fully prepared in ${stopwatch.totalTime()}" }
+        Log.log(LogMessageType.RENDERING) { "Rendering is fully prepared in ${stopwatch.elapsed().format()}" }
     }
 
     fun RenderContext.awaitPlaying() {
@@ -163,11 +163,11 @@ object RenderLoader {
             }
         }
 
-        val time = measureNanoTime {
+        val time = measureTime {
             latch.await()
             state = RenderingStates.RUNNING
             window.visible = true
         }
-        Log.log(LogMessageType.RENDERING) { "Showing window after ${time.formatNanos()}" }
+        Log.log(LogMessageType.RENDERING) { "Showing window after ${time.format()}" }
     }
 }

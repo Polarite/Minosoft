@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,28 +13,53 @@
 
 package de.bixilon.minosoft.test
 
-import de.bixilon.kutil.cast.CastUtil.unsafeNull
-import de.bixilon.minosoft.data.registries.registries.Registries
+import de.bixilon.minosoft.MinosoftSIT
+import de.bixilon.minosoft.data.registries.blocks.types.building.stone.Andesite
+import de.bixilon.minosoft.data.registries.blocks.types.building.stone.Cobblestone
+import de.bixilon.minosoft.data.registries.blocks.types.building.stone.StoneBlock
+import de.bixilon.minosoft.data.registries.fallback.tags.FallbackTags
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.protocol.versions.Version
-import de.bixilon.minosoft.tags.TagManager
-import org.objenesis.ObjenesisStd
+import de.bixilon.minosoft.protocol.versions.Versions
+import de.bixilon.minosoft.test.ITUtil.allocate
+import kotlin.system.exitProcess
 
 object IT {
-    val OBJENESIS = ObjenesisStd()
-    const val TEST_VERSION_NAME = "1.19.3"
-    var VERSION: Version = unsafeNull()
-    var REGISTRIES: Registries = unsafeNull()
-    var FALLBACK_TAGS: TagManager = unsafeNull()
-    val NULL_CONNECTION = OBJENESIS.newInstance(PlaySession::class.java)
-
-    val references: MutableList<Any> = mutableListOf()
 
     init {
-        reference()
+        try {
+            MinosoftSIT.setup()
+        } catch (error: Throwable) {
+            error.printStackTrace()
+            exitProcess(1)
+        }
     }
 
-    fun Any.reference() {
-        references += this
+
+    var VERSION = Versions["1.19.3"]!!
+    var REGISTRIES = try {
+        ITUtil.loadRegistries(VERSION)
+    } catch (error: Throwable) {
+        error.printStackTrace()
+        exitProcess(1)
     }
+
+
+    var VERSION_LEGACY = Versions["1.12.2"]!!
+    var REGISTRIES_LEGACY = ITUtil.loadRegistries(VERSION_LEGACY)
+
+
+    var FALLBACK_TAGS = FallbackTags.map(REGISTRIES)
+
+
+    @Deprecated("TestBlockStates.OPAQUE1")
+    val BLOCK_1 = REGISTRIES.block[StoneBlock.Block]!!.states.default
+
+    @Deprecated("TestBlockStates.OPAQUE2")
+    val BLOCK_2 = REGISTRIES.block[Cobblestone.Block]!!.states.default
+
+    @Deprecated("TestBlockStates.OPAQUE3")
+    val BLOCK_3 = REGISTRIES.block[Andesite.Block]!!.states.default
+
+
+    val NULL_SESSION = PlaySession::class.java.allocate()
 }

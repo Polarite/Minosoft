@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -23,16 +23,21 @@ import de.bixilon.minosoft.data.text.formatting.TextFormattable
 import de.bixilon.minosoft.modding.loader.LoaderUtil
 import de.bixilon.minosoft.modding.loader.LoaderUtil.load
 import de.bixilon.minosoft.modding.loader.mod.MinosoftMod
-import de.bixilon.minosoft.terminal.RunConfiguration
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
+import de.bixilon.minosoft.util.logging.LogOptions
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 
 class DirectorySource(
     val directory: File,
 ) : ModSource, TextFormattable {
+
+    init {
+        if (!directory.isDirectory) throw FileNotFoundException("Not such directory: $directory")
+    }
 
     override fun process(mod: MinosoftMod) {
         val files = directory.listFiles()!!
@@ -68,7 +73,7 @@ class DirectorySource(
                 if (!file.name.endsWith(".class")) return
 
                 val path = file.path.removePrefix(base.path).removePrefix(File.separator)
-                if (RunConfiguration.VERBOSE_LOGGING) {
+                if (LogOptions.verbose) {
                     Log.log(LogMessageType.MOD_LOADING, LogLevels.VERBOSE) { "Injecting class $path" }
                 }
                 mod.classLoader.load(path, FileInputStream(file).readAll())

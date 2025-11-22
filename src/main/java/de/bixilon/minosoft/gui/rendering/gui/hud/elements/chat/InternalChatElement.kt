@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,16 +13,18 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.chat
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.data.chat.message.internal.InternalChatMessage
+import de.bixilon.minosoft.gui.rendering.RenderUtil.runAsync
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
+import de.bixilon.minosoft.gui.rendering.gui.hud.Skippable
 import de.bixilon.minosoft.modding.event.events.chat.ChatMessageEvent
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.util.delegate.RenderingDelegate.observeRendering
 
-class InternalChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer) {
+class InternalChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRenderer), Skippable {
     private val chatProfile = profile.chat.internal
     private var active = false
         set(value) {
@@ -31,18 +33,15 @@ class InternalChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRen
             messages.forceSilentApply()
             forceApply()
         }
-    override var skipDraw: Boolean // skips hud draw and draws it in gui stage
+    override val skip: Boolean // skips hud draw and draws it in gui stage
         get() = chatProfile.hidden || active
-        set(value) {
-            chatProfile.hidden = !value
-        }
-    override val activeWhenHidden: Boolean
-        get() = true
+
+    override val activeWhenHidden get() = true
 
     init {
-        messages.prefMaxSize = Vec2(chatProfile.width, chatProfile.height)
-        chatProfile::width.observeRendering(this, context = context) { messages.prefMaxSize = Vec2(it, messages.prefMaxSize.y) }
-        chatProfile::height.observeRendering(this, context = context) { messages.prefMaxSize = Vec2(messages.prefMaxSize.x, it) }
+        messages.prefMaxSize = Vec2f(chatProfile.width, chatProfile.height)
+        chatProfile::width.observeRendering(this, context = context) { messages.prefMaxSize = Vec2f(it, messages.prefMaxSize.y) }
+        chatProfile::height.observeRendering(this, context = context) { messages.prefMaxSize = Vec2f(messages.prefMaxSize.x, it) }
         forceSilentApply()
     }
 
@@ -52,13 +51,13 @@ class InternalChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRen
             if (it.message !is InternalChatMessage || profile.chat.internal.hidden) {
                 return@listen
             }
-            DefaultThreadPool += { messages += it.message.raw }
+            context.runAsync { messages += it.message.raw }
         }
     }
 
     override fun forceSilentApply() {
         messages.silentApply()
-        _size = Vec2(messages.prefMaxSize.x, messages.size.y + ChatElement.CHAT_INPUT_MARGIN * 2)
+        _size = Vec2f(messages.prefMaxSize.x, messages.size.y + ChatElement.CHAT_INPUT_MARGIN * 2)
         cacheUpToDate = false
     }
 
@@ -72,11 +71,11 @@ class InternalChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRen
         messages.onClose()
     }
 
-    override fun getAt(position: Vec2): Pair<Element, Vec2>? {
+    override fun getAt(position: Vec2f): Pair<Element, Vec2f>? {
         if (position.x < ChatElement.CHAT_INPUT_MARGIN) {
             return null
         }
-        val offset = Vec2(position)
+        val offset = MVec2f(position)
         offset.x -= ChatElement.CHAT_INPUT_MARGIN
 
         val messagesSize = messages.size
@@ -84,7 +83,7 @@ class InternalChatElement(guiRenderer: GUIRenderer) : AbstractChatElement(guiRen
             if (offset.x > messagesSize.x) {
                 return null
             }
-            return Pair(messages, offset)
+            return Pair(messages, offset.unsafe)
         }
         offset.y -= messagesSize.y
         return null

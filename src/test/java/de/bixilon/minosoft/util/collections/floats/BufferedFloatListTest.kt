@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,7 @@
 
 package de.bixilon.minosoft.util.collections.floats
 
-import de.bixilon.kutil.collections.primitive.floats.AbstractFloatList
-
 class BufferedFloatListTest : DirectFloatListTest() {
 
-    override fun create(initialSize: Int): AbstractFloatList {
-        return BufferedArrayFloatList(initialSize)
-    }
+    override fun create(initialSize: Int) = BufferFloatList(initialSize)
 }

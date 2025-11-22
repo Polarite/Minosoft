@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,42 +13,44 @@
 
 package de.bixilon.minosoft.gui.rendering.framebuffer.world
 
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.RenderContext
-import de.bixilon.minosoft.gui.rendering.framebuffer.FramebufferMesh
+import de.bixilon.minosoft.gui.rendering.framebuffer.FramebufferMeshBuilder
 import de.bixilon.minosoft.gui.rendering.framebuffer.FramebufferShader
 import de.bixilon.minosoft.gui.rendering.framebuffer.IntegratedFramebuffer
 import de.bixilon.minosoft.gui.rendering.framebuffer.world.`fun`.FunEffectManager
 import de.bixilon.minosoft.gui.rendering.framebuffer.world.overlay.OverlayManager
 import de.bixilon.minosoft.gui.rendering.system.base.PolygonModes
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.Framebuffer
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.depth.DepthModes
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.texture.TextureModes
 
 class WorldFramebuffer(
     override val context: RenderContext,
 ) : IntegratedFramebuffer {
     private val overlay = OverlayManager(context)
     val `fun` = FunEffectManager(context)
-    private val defaultShader = context.system.createShader("minosoft:framebuffer/world".toResourceLocation()) { FramebufferShader(it) }
+    private val defaultShader = context.system.shader.create(minosoft("framebuffer/world")) { FramebufferShader(it) }
     override val shader: FramebufferShader
         get() = `fun`.shader ?: defaultShader
-    override val framebuffer: Framebuffer = context.system.createFramebuffer(color = true, depth = true)
-    override val mesh = FramebufferMesh(context)
+    override var framebuffer: Framebuffer = unsafeNull()
+    override val mesh = FramebufferMeshBuilder(context).bake()
     override var polygonMode: PolygonModes = PolygonModes.DEFAULT
 
-    private var scale = 1.0f
+    override var size = Vec2i(1, 1)
+    override var scale = 1.0f
 
     override fun init() {
-        framebuffer.init()
-        defaultShader.load()
-        defaultShader.use()
-        // shader.setInt("uDepth", 1)
-        mesh.load()
+        super.init() // TODO: init defaultShader
 
         overlay.init()
         context.session.profiles.rendering.quality.resolution::worldScale.observe(this, instant = true) { this.scale = it }
     }
+
+    override fun create() = context.system.createFramebuffer(this.size, this.scale, texture = TextureModes.NEAREST, depth = DepthModes.DEPTH24)
 
     override fun postInit() {
         super.postInit()
@@ -60,9 +62,5 @@ class WorldFramebuffer(
         `fun`.preDraw()
         super.draw()
         overlay.draw()
-    }
-
-    override fun resize(size: Vec2i) {
-        super.resize(size, this.scale)
     }
 }

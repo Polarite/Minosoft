@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,39 +13,39 @@
 
 package de.bixilon.minosoft.gui.rendering.camera.arm
 
-import de.bixilon.kotlinglm.GLM
-import de.bixilon.kotlinglm.func.rad
-import de.bixilon.kotlinglm.mat4x4.Mat4
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.mat.mat4.f.MMat4f
+import de.bixilon.kmath.mat.mat4.f.Mat4f
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.kutil.cast.CastUtil.nullCast
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.kutil.latch.AbstractLatch
+import de.bixilon.kutil.observer.DataObserver.Companion.observe
+import de.bixilon.kutil.primitive.FloatUtil.rad
 import de.bixilon.minosoft.data.entities.entities.player.Arms
 import de.bixilon.minosoft.data.entities.entities.player.PlayerEntity
 import de.bixilon.minosoft.data.entities.entities.player.properties.textures.metadata.SkinModel
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.camera.CameraDefinition.FALLBACK_FAR_PLANE
 import de.bixilon.minosoft.gui.rendering.camera.CameraDefinition.NEAR_PLANE
+import de.bixilon.minosoft.gui.rendering.camera.CameraUtil
 import de.bixilon.minosoft.gui.rendering.entities.renderer.living.player.PlayerRenderer
 import de.bixilon.minosoft.gui.rendering.entities.renderer.living.player.PlayerRenderer.Companion.SKIN
 import de.bixilon.minosoft.gui.rendering.entities.renderer.living.player.PlayerRenderer.Companion.SLIM
 import de.bixilon.minosoft.gui.rendering.entities.renderer.living.player.PlayerRenderer.Companion.WIDE
-import de.bixilon.minosoft.gui.rendering.events.ResizeWindowEvent
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.Drawable
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.Renderer
 import de.bixilon.minosoft.gui.rendering.renderer.renderer.RendererBuilder
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalModel
 import de.bixilon.minosoft.gui.rendering.system.base.IntegratedBufferTypes
-import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
 class ArmRenderer(override val context: RenderContext) : Renderer, Drawable {
-    private var perspective = Mat4()
-    override val renderSystem = context.system
+    private var perspective = Mat4f()
     override val framebuffer get() = context.framebuffer.gui
-    val shader = context.system.createShader(minosoft("entities/player/arm")) { ArmShader(it) }
+    val shader = context.system.shader.create(minosoft("entities/player/arm")) { ArmShader(it) }
 
     override fun init(latch: AbstractLatch) {
         registerModels()
@@ -53,18 +53,20 @@ class ArmRenderer(override val context: RenderContext) : Renderer, Drawable {
 
     override fun postInit(latch: AbstractLatch) {
         shader.load()
-        context.session.events.listen<ResizeWindowEvent> { perspective = GLM.perspective(60.0f.rad, it.size.aspect, NEAR_PLANE, FALLBACK_FAR_PLANE) }
+        context.window::size.observe(this, true) {
+            perspective = CameraUtil.perspective(60.0f.rad, it.x.toFloat() / it.y, NEAR_PLANE, FALLBACK_FAR_PLANE)
+        }
     }
 
     private fun registerModels() {
         val skeletal = context.models.skeletal
         val override = mapOf(SKIN to context.textures.debugTexture) // disable textures, they all dynamic
 
-        skeletal.register(LEFT_ARM_WIDE, WIDE, override) { ArmMesh(context, Arms.LEFT) }
-        skeletal.register(RIGHT_ARM_WIDE, WIDE, override) { ArmMesh(context, Arms.RIGHT) }
+        skeletal.register(LEFT_ARM_WIDE, WIDE, override) { ArmMeshBuilder(context, Arms.LEFT) }
+        skeletal.register(RIGHT_ARM_WIDE, WIDE, override) { ArmMeshBuilder(context, Arms.RIGHT) }
 
-        skeletal.register(LEFT_ARM_SLIM, SLIM, override) { ArmMesh(context, Arms.LEFT) }
-        skeletal.register(RIGHT_ARM_SLIM, SLIM, override) { ArmMesh(context, Arms.RIGHT) }
+        skeletal.register(LEFT_ARM_SLIM, SLIM, override) { ArmMeshBuilder(context, Arms.LEFT) }
+        skeletal.register(RIGHT_ARM_SLIM, SLIM, override) { ArmMeshBuilder(context, Arms.RIGHT) }
     }
 
 
@@ -90,22 +92,23 @@ class ArmRenderer(override val context: RenderContext) : Renderer, Drawable {
 
         context.system.clear(IntegratedBufferTypes.DEPTH_BUFFER)
 
-        context.system.reset(faceCulling = false, depthTest = true, blending = true, depthMask = true)
+        context.system.reset(faceCulling = true, depthTest = true, blending = true, depthMask = true)
 
         shader.use()
         shader.skinParts = renderer.model?.skinParts ?: 0xFF
         shader.texture = renderer.skin?.shaderId ?: context.textures.debugTexture.shaderId
-        shader.tint = ChatColors.WHITE
+        shader.tint = ChatColors.WHITE.rgb()
 
-        val pivot = Vec3((if (arm == Arms.RIGHT) 6 else -6) / 16f, 24 / 16f, 0)
+        val pivot = Vec3f((if (arm == Arms.RIGHT) 6f else -6f) / 16f, 24 / 16f, 0f)
 
         // TODO: arm animation
-        val matrix = Mat4()
-            .translateAssign(Vec3((if (arm == Arms.RIGHT) 23f / 16f else -23f / 16f), -17 / 16f, -0.7f))
-            .rotateXassign(120.0f.rad)
-            .rotateYassign((if (arm == Arms.RIGHT) -20.0f else 20.0f).rad)
+        val matrix = MMat4f().apply {
+            translateAssign(Vec3f((if (arm == Arms.RIGHT) 23f / 16f else -23f / 16f), -17 / 16f, -0.7f))
+            rotateXAssign(120.0f.rad)
+            rotateYAssign((if (arm == Arms.RIGHT) -20.0f else 20.0f).rad)
 
-            .translateAssign(-pivot)
+            translateAssign(-pivot)
+        }
 
 
         shader.transform = perspective * matrix

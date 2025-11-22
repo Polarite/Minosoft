@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.dragged.elements.item
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.data.container.Container
-import de.bixilon.minosoft.data.container.actions.types.SimpleContainerAction
+import de.bixilon.minosoft.data.container.actions.types.DropFloatingContainerAction
+import de.bixilon.minosoft.data.container.actions.types.SlotCounts
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -23,14 +24,14 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.items.RawItemElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.dragged.Dragged
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 class FloatingItem(
     guiRenderer: GUIRenderer,
     val stack: ItemStack,
     val container: Container? = null,
-    size: Vec2 = RawItemElement.DEFAULT_SIZE,
+    size: Vec2f = RawItemElement.DEFAULT_SIZE,
 ) : Dragged(guiRenderer) {
     private val itemElement = RawItemElement(guiRenderer, size, stack, this)
 
@@ -39,14 +40,14 @@ class FloatingItem(
         _size = size
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         itemElement.render(offset, consumer, options)
     }
 
     override fun forceSilentApply() {
     }
 
-    override fun onDragMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int, target: Element?) {
+    override fun onDragMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int, target: Element?) {
         if (action != MouseActions.PRESS) {
             return
         }
@@ -54,7 +55,7 @@ class FloatingItem(
             return
         }
         if (target == null) {
-            container?.actions?.invoke(SimpleContainerAction(null, if (button == MouseButtons.LEFT) SimpleContainerAction.ContainerCounts.ALL else SimpleContainerAction.ContainerCounts.PART))
+            container?.execute(DropFloatingContainerAction(if (button == MouseButtons.LEFT) SlotCounts.ALL else SlotCounts.PART))
             guiRenderer.dragged.element = null
             return
         }

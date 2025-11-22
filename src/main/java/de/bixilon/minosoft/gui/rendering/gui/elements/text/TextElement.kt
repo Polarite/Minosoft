@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.text
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.language.IntegratedLanguage
@@ -21,6 +22,7 @@ import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.EmptyComponent
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.gui.rendering.font.renderer.component.ChatComponentRenderer
+import de.bixilon.minosoft.gui.rendering.font.renderer.component.TextRenderResults
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.LineRenderInfo
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextOffset
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderInfo
@@ -31,17 +33,13 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments.Compa
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.background.TextBackground
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMesh
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.CursorShapes
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.MAX
-import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4Util.horizontal
-import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4Util.offset
-import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4Util.spaceSize
-import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4Util.vertical
-import de.bixilon.minosoft.util.KUtil.charCount
+import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4fUtil.horizontal
+import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4fUtil.offset
+import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4fUtil.spaceSize
+import de.bixilon.minosoft.gui.rendering.util.vec.vec4.Vec4fUtil.vertical
 
 /**
  * A simple UI element that draws text on the screen
@@ -49,11 +47,11 @@ import de.bixilon.minosoft.util.KUtil.charCount
  */
 open class TextElement(
     guiRenderer: GUIRenderer,
-    text: Any,
+    text: ChatComponent,
     background: TextBackground? = TextBackground.DEFAULT,
     parent: Element? = null,
     properties: TextRenderProperties = TextRenderProperties.DEFAULT,
-) : Element(guiRenderer, text.charCount * 6 * GUIMesh.GUIMeshStruct.FLOATS_PER_VERTEX), Labeled {
+) : Element(guiRenderer, ChatComponentRenderer.calculatePrimitiveCount(text)), Labeled {
     private var activeElement: TextComponent? = null
     lateinit var info: TextRenderInfo
         private set
@@ -75,7 +73,7 @@ open class TextElement(
             forceApply()
         }
 
-    override var size: Vec2
+    override var size: Vec2f
         get() = super.size
         set(value) {}
 
@@ -84,6 +82,14 @@ open class TextElement(
             chatComponent = ChatComponent.of(value, translator = IntegratedLanguage.LANGUAGE /*guiRenderer.session.language*/) // Should the server be allowed to send minosoft namespaced translation keys?
             field = value
         }
+
+    constructor(
+        guiRenderer: GUIRenderer,
+        text: Any,
+        background: TextBackground? = TextBackground.DEFAULT,
+        parent: Element? = null,
+        properties: TextRenderProperties = TextRenderProperties.DEFAULT
+    ) : this(guiRenderer, ChatComponent.of(text), background, parent, properties)
 
     private var empty: Boolean = true
 
@@ -111,22 +117,21 @@ open class TextElement(
     }
 
     private fun updatePrefSize(text: ChatComponent) {
-        var prefSize = Vec2.EMPTY
-        if (!empty) {
-            val info = TextRenderInfo(Vec2.MAX)
+        val prefSize = if (empty) MVec2f.EMPTY else {
+            val info = TextRenderInfo(Vec2f.MAX)
             ChatComponentRenderer.render(TextOffset(), context.font, properties, info, null, null, text)
-            prefSize = info.size
+            MVec2f(info.size)
         }
-        _prefSize = prefSize.withBackgroundSize()
+        _prefSize = prefSize.withBackgroundSize().unsafe
     }
 
     private fun updateText(text: ChatComponent) {
-        val info = TextRenderInfo(maxSize.withBackgroundSize(-1.0f))
+        val info = TextRenderInfo(MVec2f(maxSize).withBackgroundSize(-1.0f).unsafe)
         if (!empty) {
             ChatComponentRenderer.render(TextOffset(), context.font, properties, info, null, null, text)
             info.rewind()
         }
-        _size = info.size.withBackgroundSize()
+        _size = MVec2f(info.size).withBackgroundSize().unsafe
         this.info = info
     }
 
@@ -137,9 +142,9 @@ open class TextElement(
 
     override fun onChildChange(child: Element) = Broken("A TextElement can not have a child!")
 
-    private fun GUIVertexConsumer.renderBackground(background: TextBackground, properties: TextRenderProperties, info: TextRenderInfo, offset: Vec2, options: GUIVertexOptions?) {
-        val start = Vec2()
-        val end = Vec2()
+    private fun GuiVertexConsumer.renderBackground(background: TextBackground, properties: TextRenderProperties, info: TextRenderInfo, offset: Vec2f, options: GUIVertexOptions?) {
+        val start = MVec2f()
+        val end = MVec2f()
 
         val lineHeight = properties.lineHeight
 
@@ -151,33 +156,33 @@ open class TextElement(
             end.y = start.y + lineHeight + background.size.vertical
 
 
-            addQuad(start, end, context.textures.whiteTexture, background.color, options)
+            addQuad(start.unsafe, end.unsafe, context.textures.whiteTexture, background.color, options)
         }
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         if (empty) return
         val info = this.info
         val properties = this.properties
-        val initialOffset = Vec2(offset + margin.offset)
-        val textOffset = Vec2(initialOffset)
+        val initialOffset = offset + margin.offset
+        val textOffset = MVec2f(initialOffset)
 
         this.background?.let {
             consumer.renderBackground(it, properties, info, initialOffset, options)
             textOffset += it.size.offset
         }
 
-        var vertices = ChatComponentRenderer.calculatePrimitiveCount(chatComponent) * consumer.order.size * GUIMesh.GUIMeshStruct.FLOATS_PER_VERTEX
+        var primitives = ChatComponentRenderer.calculatePrimitiveCount(chatComponent)
         if (properties.shadow) {
-            vertices *= 2
+            primitives *= 2
         }
-        consumer.ensureSize(vertices)
+        consumer.ensureSize(primitives)
 
-        ChatComponentRenderer.render(TextOffset(textOffset), context.font, properties, info, consumer, options, chatComponent)
+        ChatComponentRenderer.render(TextOffset(textOffset.unsafe), context.font, properties, info, consumer, options, chatComponent)
         info.rewind()
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         if (action != MouseActions.PRESS || button != MouseButtons.LEFT) {
             return true
         }
@@ -186,7 +191,7 @@ open class TextElement(
         return true
     }
 
-    override fun onMouseEnter(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseEnter(position: Vec2f, absolute: Vec2f): Boolean {
         val pair = getTextComponentAt(position) ?: return false
         activeElement = pair.first
         pair.first.hoverEvent?.onMouseEnter(guiRenderer, pair.second, absolute)
@@ -196,8 +201,8 @@ open class TextElement(
         return true
     }
 
-    override fun onMouseMove(position: Vec2, absolute: Vec2): Boolean {
-        val pair = getTextComponentAt(Vec2(position))
+    override fun onMouseMove(position: Vec2f, absolute: Vec2f): Boolean {
+        val pair = getTextComponentAt(position)
 
         if (activeElement != pair?.first) {
             val activeElement = activeElement
@@ -243,22 +248,21 @@ open class TextElement(
         return null
     }
 
-    private fun getTextComponentAt(position: Vec2): Pair<TextComponent, Vec2>? {
-        val offset = Vec2(position)
+    private fun getTextComponentAt(position: Vec2f): Pair<TextComponent, Vec2f>? {
+        val offset = position.mutable()
         val info = this.info
         val properties = this.properties
         val (line, yOffset) = info.getLineAt(properties.lineHeight, properties.lineSpacing, offset.y) ?: return null
         offset.y = yOffset
 
 
-        val cutInfo = TextRenderInfo(Vec2(offset.x, properties.lineHeight))
-        val cut = ChatComponentRenderer.render(TextOffset(), context.font, properties, cutInfo, null, null, line.text)
+        val cutInfo = TextRenderInfo(Vec2f(offset.x, properties.lineHeight))
+        val result = ChatComponentRenderer.render(TextOffset(), context.font, properties, cutInfo, null, null, line.text)
 
         val line0 = cutInfo.lines.getOrNull(0) ?: return null
         val message = line0.text.message
         var charToCheck = message.length
-        if (cut) {
-            // last char got cut off
+        if (result == TextRenderResults.CUT_OFF) {
             charToCheck++
         }
         val text = line.text.getTextAt(charToCheck)
@@ -266,20 +270,19 @@ open class TextElement(
 
 
         offset.x += properties.alignment.getOffset(info.size.x, line.width)
-        return Pair(text, offset)
+        return Pair(text, offset.unsafe)
     }
 
     override fun toString(): String {
         return chatComponent.toString()
     }
 
-    protected fun Vec2.withBackgroundSize(sign: Float = 1.0f): Vec2 {
-        val size = Vec2(this)
+    protected fun MVec2f.withBackgroundSize(sign: Float = 1.0f): MVec2f {
+        val size = this
         val background = this@TextElement.background
         if (background != null && size.x > 0.0f && size.y > 0.0f) { // only add background if text is not empty
             size += background.size.spaceSize * sign
         }
-
         return size
     }
 }

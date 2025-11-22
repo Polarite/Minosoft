@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,13 @@
 
 package de.bixilon.minosoft.gui.rendering.font.types.unicode.unihex
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.buffer.ByteBufferUtil.readRemaining
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
 import de.bixilon.kutil.unsafe.UnsafeUtil.setUnsafeAccessible
 import de.bixilon.minosoft.gui.rendering.font.types.unicode.UnicodeCodeRenderer
-import de.bixilon.minosoft.test.IT.OBJENESIS
+import de.bixilon.minosoft.test.ITUtil.allocate
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import org.testng.Assert.assertEquals
 import org.testng.Assert.assertTrue
@@ -81,7 +81,7 @@ class UnihexFontTypeTest {
     fun `basic rasterizing`() {
         val pixels = byteArrayOf(0x00, 0x00, 0x00, 0x0E, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x0E, 0x00, 0x0E)
 
-        val rasterizer = OBJENESIS.newInstance(UnifontRasterizer::class.java)
+        val rasterizer = UnifontRasterizer::class.java.allocate()
 
         val texture = UnifontTexture(1)
         assertEquals(texture.size, Vec2i(16, 16))
@@ -95,8 +95,8 @@ class UnihexFontTypeTest {
         val code = rasterizer.add(pixels) as UnicodeCodeRenderer
 
         assertEquals(code.width, 1.5f)
-        assertEquals(code.uvStart, Vec2(0.0f, 0.0f))
-        assertEquals(code.uvEnd, Vec2(0.18749f, 1.0f))
+        assertEquals(code.uvStart, Vec2f(0.0f, 0.0f))
+        assertEquals(code.uvEnd, Vec2f(0.1872f, 1.0f))
 
         assertEquals(remaining, intArrayOf(13))
         val data = texture.data.buffer.data.readRemaining()

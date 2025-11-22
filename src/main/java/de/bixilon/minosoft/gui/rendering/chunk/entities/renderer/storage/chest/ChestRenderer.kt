@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,30 +13,27 @@
 
 package de.bixilon.minosoft.gui.rendering.chunk.entities.renderer.storage.chest
 
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.block.container.storage.ChestBlockEntity
 import de.bixilon.minosoft.data.registries.blocks.properties.BlockProperties.getFacing
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.world.chunk.light.types.LightLevel
 import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.chunk.entities.renderer.storage.StorageBlockEntityRenderer
 import de.bixilon.minosoft.gui.rendering.skeletal.instance.SkeletalInstance
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.rad
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3fUtil.rad
 
 abstract class ChestRenderer(
     state: BlockState,
     skeletal: SkeletalInstance?,
-    blockPosition: BlockPosition,
-    light: Int,
+    val position: BlockPosition,
 ) : StorageBlockEntityRenderer<ChestBlockEntity>(state, skeletal) {
     val animation = skeletal?.let { ChestAnimation(it) }
 
-    init {
-        update(blockPosition, state, light)
-    }
 
-    override fun update(position: BlockPosition, state: BlockState, light: Int) {
-        super.update(position, state, light)
+    override fun update(light: LightLevel) {
+        super.update(light)
         val rotation = ROTATION[state.getFacing().ordinal - Directions.SIDE_OFFSET]
         skeletal?.update(position, rotation)
     }
@@ -51,10 +48,10 @@ abstract class ChestRenderer(
 
     private companion object {
         val ROTATION = arrayOf(
-            Vec3(0, 0, 0).rad,
-            Vec3(0, 180, 0).rad,
-            Vec3(0, 90, 0).rad,
-            Vec3(0, 270, 0).rad,
+            Vec3f(0, 0, 0).rad,
+            Vec3f(0, 180, 0).rad,
+            Vec3f(0, 90, 0).rad,
+            Vec3f(0, 270, 0).rad,
         )
     }
 }

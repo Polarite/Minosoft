@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,11 +13,14 @@
 
 package de.bixilon.minosoft
 
-import de.bixilon.kutil.concurrent.worker.task.TaskWorker
+import de.bixilon.kutil.concurrent.worker.tree.TaskTreeBuilder
+import de.bixilon.kutil.concurrent.worker.tree.TreeWorker
 import de.bixilon.kutil.environment.Environment
+import de.bixilon.kutil.file.PathUtil.div
+import de.bixilon.kutil.file.PathUtil.toPath
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.minosoft.assets.IntegratedAssets
-import de.bixilon.minosoft.data.registries.fallback.tags.FallbackTags
+import de.bixilon.minosoft.config.profile.ProfileOptions
 import de.bixilon.minosoft.gui.rendering.system.base.RenderSystemFactory
 import de.bixilon.minosoft.gui.rendering.system.dummy.DummyRenderSystem
 import de.bixilon.minosoft.gui.rendering.system.window.WindowFactory
@@ -25,75 +28,68 @@ import de.bixilon.minosoft.gui.rendering.system.window.dummy.DummyWindow
 import de.bixilon.minosoft.main.BootTasks
 import de.bixilon.minosoft.main.MinosoftBoot
 import de.bixilon.minosoft.terminal.RunConfiguration
-import de.bixilon.minosoft.test.IT
-import de.bixilon.minosoft.test.ITUtil
 import de.bixilon.minosoft.util.KUtil
+import de.bixilon.minosoft.util.collections.MemoryOptions
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
+import de.bixilon.minosoft.util.logging.LogOptions
 import org.testng.annotations.BeforeSuite
 import java.nio.file.Path
 
 
 internal object MinosoftSIT {
+    private var loaded = false
 
     private fun setupEnv() {
-        Log.ASYNC_LOGGING = false
-        RunConfiguration.VERBOSE_LOGGING = true
-        RunConfiguration.APPLICATION_NAME = "Minosoft it"
+        LogOptions.async = false
+        LogOptions.verbose = true
+        RunConfiguration.APPLICATION_NAME = "Minosoft Integration Test"
 
         if (Environment.isInCI()) {
-            RunConfiguration::HOME_DIRECTORY.forceSet(Path.of("./it"))
+            RunConfiguration::home.forceSet(Path.of("./it"))
         }
-        RunConfiguration::CONFIG_DIRECTORY.forceSet(Path.of(System.getProperty("java.io.tmpdir"), "minosoft").resolve("conf"))
-        RunConfiguration.PROFILES_HOT_RELOADING = false
+        ProfileOptions.path = System.getProperty("java.io.tmpdir").toPath() / "minosoft" / "conf"
+        ProfileOptions.hotReloading = false
 
         WindowFactory.factory = DummyWindow
         RenderSystemFactory.factory = DummyRenderSystem
+
+        MemoryOptions.native = false // prevent excessive memory usage in tests
     }
+
+    private fun boot() {
+        val builder = TaskTreeBuilder()
+        MinosoftBoot.register(builder)
+        builder -= BootTasks.PROFILES
+        builder -= BootTasks.LAN_SERVERS
+        builder -= BootTasks.MODS
+        builder -= BootTasks.CLI
+
+        TreeWorker(builder.build()).work(MinosoftBoot.LATCH)
+
+        MinosoftBoot.LATCH.dec()
+        MinosoftBoot.LATCH.await()
+    }
+
 
     @BeforeSuite
     fun setup() {
+        if (loaded) return
         setupEnv()
+        Log.init()
+
         Log.log(LogMessageType.OTHER, LogLevels.INFO) { "This is java version ${System.getProperty("java.version")}" }
-        KUtil.initBootClasses()
-        KUtil.initPlayClasses()
-        disableGC()
         Log.log(LogMessageType.OTHER, LogLevels.INFO) { "Setting up integration tests...." }
 
         IntegratedAssets.DEFAULT.load()
+        KUtil.init()
 
-        val worker = TaskWorker()
-        MinosoftBoot.register(worker)
-        worker -= BootTasks.PROFILES
-        worker -= BootTasks.LAN_SERVERS
-        worker -= BootTasks.MODS
-        worker -= BootTasks.CLI
-        worker.work(MinosoftBoot.LATCH)
-        MinosoftBoot.LATCH.dec()
-        MinosoftBoot.LATCH.await()
+        boot()
 
-        loadPixlyzerData()
+
+
         Log.log(LogMessageType.OTHER, LogLevels.INFO) { "Integration tests setup successfully!" }
-    }
-
-
-    @Deprecated("Not sure if that is needed")
-    fun disableGC() {
-        Thread {
-            val references = IT.references
-            // basically while (true)
-            for (i in 0 until Int.MAX_VALUE) {
-                Thread.sleep(100000L)
-            }
-            references.hashCode() // force keep reference to references
-        }.start()
-    }
-
-    fun loadPixlyzerData() {
-        val (version, registries) = ITUtil.loadPixlyzerData(IT.TEST_VERSION_NAME)
-        IT.VERSION = version
-        IT.REGISTRIES = registries
-        IT.FALLBACK_TAGS = FallbackTags.map(registries)
+        loaded = true
     }
 }

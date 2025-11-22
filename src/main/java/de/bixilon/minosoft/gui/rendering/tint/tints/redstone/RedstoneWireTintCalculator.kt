@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,27 +13,30 @@
 
 package de.bixilon.minosoft.gui.rendering.tint.tints.redstone
 
-import de.bixilon.kotlinglm.func.common.clamp
+import de.bixilon.kutil.math.simple.FloatMath.clamp
 import de.bixilon.kutil.primitive.IntUtil.toInt
 import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.registries.blocks.properties.BlockProperties
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
-import de.bixilon.minosoft.data.registries.blocks.state.PropertyBlockState
+import de.bixilon.minosoft.data.text.formatting.color.Colors
+import de.bixilon.minosoft.data.text.formatting.color.RGBArray
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.gui.rendering.tint.TintProvider
 
 object RedstoneWireTintCalculator : TintProvider {
-    private val COLORS = IntArray(16) {
+    private val COLORS = RGBArray(16) {
         val level = it / 15.0f
         val red = level * 0.6f + (if (it > 0) 0.4f else 0.3f)
         val green = (level * level * 0.7f - 0.5f).clamp(0.0f, 1.0f)
         val blue = (level * level * 0.6f - 0.7f).clamp(0.0f, 1.0f)
-        return@IntArray ((red * RGBColor.COLOR_FLOAT_DIVIDER).toInt() shl 16) or ((green * RGBColor.COLOR_FLOAT_DIVIDER).toInt() shl 8) or ((blue * RGBColor.COLOR_FLOAT_DIVIDER).toInt())
+        return@RGBArray RGBColor(red, green, blue)
     }
 
 
-    override fun getBlockColor(blockState: BlockState, biome: Biome?, x: Int, y: Int, z: Int, tintIndex: Int): Int {
-        if (blockState !is PropertyBlockState) return -1
-        return COLORS[blockState.properties[BlockProperties.REDSTONE_POWER]?.toInt() ?: return -1]
+    override fun getBlockColor(state: BlockState, biome: Biome?, position: BlockPosition, tintIndex: Int): RGBColor {
+        val power = state.properties[BlockProperties.REDSTONE_POWER]?.toInt() ?: return Colors.WHITE_RGB
+
+        return COLORS[power]
     }
 }

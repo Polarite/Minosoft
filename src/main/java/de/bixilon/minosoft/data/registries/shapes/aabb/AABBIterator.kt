@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,56 +13,80 @@
 
 package de.bixilon.minosoft.data.registries.shapes.aabb
 
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.world.World
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
 import de.bixilon.minosoft.data.world.iterator.WorldIterator
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.EMPTY
+import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.ceil
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.floor
 
-class AABBIterator(val range: Array<IntRange>) : Iterator<Vec3i> {
+class AABBIterator(
+    val min: BlockPosition,
+    val max: BlockPosition,
+    val order: IterationOrder = IterationOrder.OPTIMIZED,
+) : Iterator<BlockPosition> {
     private var count = 0
-    private var x = range[0].first
-    private var y = range[1].first
-    private var z = range[2].first
+    private var current = min
 
-    private val position = Vec3i.EMPTY
+    val size = maxOf(0, max.x - min.x + 1) * maxOf(0, max.y - min.y + 1) * maxOf(0, max.z - min.z + 1)
 
-    val size: Int = maxOf(0, range[0].last - range[0].first + 1) * maxOf(0, range[1].last - range[1].first + 1) * maxOf(0, range[2].last - range[2].first + 1)
-
-    constructor(aabb: AABB) : this(AABB.getRange(aabb.min.x, aabb.max.x), AABB.getRange(aabb.min.y, aabb.max.y), AABB.getRange(aabb.min.z, aabb.max.z))
-    constructor(x: IntRange, y: IntRange, z: IntRange) : this(arrayOf(x, y, z))
-    constructor(min: Vec3i, max: Vec3i) : this(min.x..max.x, min.y..max.y, min.z..max.z)
-    constructor(minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int) : this(minX..maxX, minY..maxY, minZ..maxZ)
-
+    constructor(min: Vec3d, max: Vec3d, order: IterationOrder) : this(min.floor, max.ceil - 1, order)
+    constructor(minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int) : this(BlockPosition(minX, minY, minZ), BlockPosition(maxX, maxY, maxZ))
 
     override fun hasNext(): Boolean {
         return count < size
     }
 
-    private fun updatePosition() {
-        position.x = x
-        position.y = y
-        position.z = z
-    }
+    override fun next(): BlockPosition {
+        if (!hasNext()) throw IllegalStateException("No positions available anymore!")
 
-    override fun next(): Vec3i {
-        if (count >= size) throw IllegalStateException("No positions available anymore!")
-
-
-        updatePosition()
-        if (z < range[2].last) z++ else {
-            z = range[2].first
-            if (y < range[1].last) y++ else {
-                y = range[1].first
-                if (x < range[0].last) x++
-            }
+        val current = current
+        val next = when (order) {
+            IterationOrder.OPTIMIZED -> nextOptimized()
+            IterationOrder.NATURAL -> nextNatural()
         }
+        this.current = next
 
         count++
-        return position
+        return current
+    }
+
+    private fun nextOptimized(): BlockPosition {
+        var next = current
+
+        if (next.x < max.x) next = next.plusX() else {
+            next = next.with(x = min.x)
+            if (next.z < max.z) next = next.plusZ() else {
+                next = next.with(z = min.z)
+
+                if (next.y < max.y) next = next.plusY()
+            }
+        }
+        return next
+    }
+
+    private fun nextNatural(): BlockPosition {
+        var next = current
+
+        if (next.z < max.z) next = next.plusZ() else {
+            next = next.with(z = min.z)
+            if (next.y < max.y) next = next.plusY() else {
+                next = next.with(y = min.y)
+
+                if (next.x < max.x) next = next.plusX()
+            }
+        }
+        return next
     }
 
     fun blocks(world: World, chunk: Chunk? = null): WorldIterator {
         return WorldIterator(this, world, chunk)
+    }
+
+    enum class IterationOrder {
+        NATURAL,
+        OPTIMIZED,
+        ;
     }
 }

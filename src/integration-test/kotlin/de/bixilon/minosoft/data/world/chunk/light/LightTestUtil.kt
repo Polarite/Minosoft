@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,21 +13,26 @@
 
 package de.bixilon.minosoft.data.world.chunk.light
 
-import de.bixilon.kotlinglm.vec3.Vec3i
-import de.bixilon.kutil.primitive.IntUtil.toHex
 import de.bixilon.minosoft.data.world.World
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
+import de.bixilon.minosoft.data.world.chunk.light.types.LightLevel
+import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.world.positions.InChunkPosition
 import org.testng.Assert
 
 object LightTestUtil {
 
-    fun Chunk.assertLight(x: Int, y: Int, z: Int, expected: Int) {
-        val light = this.light[x, y, z] and 0xFF
-        Assert.assertEquals(light.toHex(2), expected.toHex(2))
+    fun Chunk.assertLight(x: Int, y: Int, z: Int, expected: Int) = assertLight(x, y, z, LightLevel(expected.toByte()))
+    fun Chunk.assertLight(x: Int, y: Int, z: Int, expected: LightLevel) = assertLight(InChunkPosition(x, y, z), expected)
+    fun Chunk.assertLight(position: InChunkPosition, expected: LightLevel) {
+        val light = this.light[position]
+        Assert.assertEquals(light.toString(), expected.toString())
     }
 
-    fun World.assertLight(x: Int, y: Int, z: Int, expected: Int) {
-        val light = this.getLight(Vec3i(x, y, z)) and 0xFF
-        Assert.assertEquals(light.toHex(2), expected.toHex(2))
+    fun World.assertLight(x: Int, y: Int, z: Int, expected: Int) = assertLight(x, y, z, LightLevel(expected.toByte()))
+    fun World.assertLight(x: Int, y: Int, z: Int, expected: LightLevel) = assertLight(BlockPosition(x, y, z), expected)
+    fun World.assertLight(position: BlockPosition, expected: LightLevel) {
+        val light = this.getLight(position)
+        Assert.assertEquals(light.toString(), expected.toString())
     }
 }

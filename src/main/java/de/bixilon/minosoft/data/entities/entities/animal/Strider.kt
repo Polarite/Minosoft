@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.animal
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
@@ -27,7 +27,6 @@ import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.fluid.Fluid
 import de.bixilon.minosoft.data.registries.fluid.fluids.LavaFluid
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.item.items.fishing.rod.OnAStickItem
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
@@ -49,7 +48,7 @@ class Strider(session: PlaySession, entityType: EntityType, data: EntityData, po
         get() = data.get(HAS_SADDLE_DATA, false)
 
     override fun isSteerableWith(stack: ItemStack): Boolean {
-        return stack.item.item is OnAStickItem.WarpedFungusOnAStickItem
+        return stack.item is OnAStickItem.WarpedFungusOnAStickItem
     }
 
     override fun canWalkOnFluid(fluid: Fluid, state: BlockState): Boolean {
@@ -58,7 +57,7 @@ class Strider(session: PlaySession, entityType: EntityType, data: EntityData, po
 
 
     companion object : EntityFactory<Strider> {
-        override val identifier: ResourceLocation = minecraft("strider")
+        override val identifier = minecraft("strider")
         private val TIME_TO_BOOST_DATA = EntityDataField("STRIDER_TIME_TO_BOOST")
         private val IS_SUFFOCATING_DATA = EntityDataField("STRIDER_IS_SUFFOCATING")
         private val HAS_SADDLE_DATA = EntityDataField("STRIDER_HAS_SADDLE")

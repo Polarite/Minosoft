@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -18,6 +18,7 @@ import de.bixilon.kutil.latch.ParentLatch
 import de.bixilon.minosoft.gui.RenderLoop
 import de.bixilon.minosoft.gui.rendering.RenderLoader.awaitPlaying
 import de.bixilon.minosoft.gui.rendering.RenderLoader.load
+import de.bixilon.minosoft.gui.rendering.RenderUtil.unload
 import de.bixilon.minosoft.gui.rendering.events.WindowCloseEvent
 import de.bixilon.minosoft.gui.rendering.sound.AudioPlayer
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -53,13 +54,15 @@ class Rendering(private val session: PlaySession) {
                 audioPlayer.exit()
             } catch (exception: Throwable) {
                 exception.printStackTrace()
+                latch.minus(audioLatch.count)
+            } finally {
                 try {
                     audioPlayer.exit()
-                } catch (ignored: Throwable) {
+                } catch (error: Throwable) {
+                    error.printStackTrace()
                 }
+
                 session.terminate()
-                session.error = exception
-                latch.minus(audioLatch.count)
             }
         }, "Audio#${session.id}").start()
     }
@@ -71,29 +74,44 @@ class Rendering(private val session: PlaySession) {
     private fun startRenderWindow(latch: AbstractLatch) {
         try {
             Thread.currentThread().priority = Thread.MAX_PRIORITY
-            CONTEXT_MAP[Thread.currentThread()] = context
+            contexts.set(context)
             context.load(latch)
             latch.dec()
             val loop = RenderLoop(context)
             context.awaitPlaying()
             loop.startLoop()
         } catch (exception: Throwable) {
-            CONTEXT_MAP.remove(Thread.currentThread())
             exception.printStackTrace()
             try {
-                context.window.destroy()
                 session.events.fire(WindowCloseEvent(context, window = context.window))
-            } catch (ignored: Throwable) {
+            } catch (_: Throwable) {
             }
-            session.terminate()
             session.error = exception
+        } finally {
+            Log.log(LogMessageType.RENDERING) { "Destroying render window..." }
+            context.state = RenderingStates.STOPPED
+            context.window.forceClose()
+
+            try {
+                context.unload()
+            } catch (error: Throwable) {
+                error.printStackTrace()
+            }
+
+            context.system.destroy()
+            context.window.destroy()
+            Log.log(LogMessageType.RENDERING) { "Render window destroyed!" }
+
+            // disconnect
+            context.session.terminate()
+
+            contexts.remove()
         }
     }
 
     companion object {
-        private val CONTEXT_MAP: MutableMap<Thread, RenderContext> = mutableMapOf()
+        private val contexts = ThreadLocal<RenderContext>()
 
-        val currentContext: RenderContext?
-            get() = CONTEXT_MAP[Thread.currentThread()]
+        val currentContext: RenderContext? get() = contexts.get()
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,6 @@
 
 package de.bixilon.minosoft.gui.rendering.particle
 
-import de.bixilon.kotlinglm.vec3.Vec3d
 import de.bixilon.minosoft.config.profile.profiles.particle.ParticleProfile
 import de.bixilon.minosoft.gui.rendering.particle.types.norender.ExplosionEmitterParticle
 import de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.explosion.ExplosionParticle
@@ -37,9 +36,9 @@ object DefaultParticleBehavior {
                 return@listen
             }
             if (it.power >= 2.0f) {
-                renderer += ExplosionEmitterParticle(this, Vec3d(it.position), emitter.default())
+                renderer += ExplosionEmitterParticle(this, it.position, emitter.default())
             } else {
-                renderer += ExplosionParticle(this, Vec3d(it.position), explosion.default())
+                renderer += ExplosionParticle(this, it.position, explosion.default())
             }
         }
     }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,32 +13,39 @@
 
 package de.bixilon.minosoft.gui.rendering.entities.feature.hitbox
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kutil.cast.CastUtil.unsafeCast
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.data.entities.entities.player.RemotePlayerEntity
 import de.bixilon.minosoft.data.registries.entities.EntityFactory
 import de.bixilon.minosoft.gui.rendering.entities.EntityRendererTestUtil.create
-import de.bixilon.minosoft.gui.rendering.entities.EntityRendererTestUtil.isInvisible
-import de.bixilon.minosoft.gui.rendering.entities.feature.properties.MeshedFeature
+import de.bixilon.minosoft.gui.rendering.entities.EntityRendererTestUtil.setInvisible
+import de.bixilon.minosoft.gui.rendering.entities.feature.mesh.MeshedFeature
 import de.bixilon.minosoft.gui.rendering.input.key.manager.InputManager
-import de.bixilon.minosoft.gui.rendering.util.mesh.LineMesh
+import de.bixilon.minosoft.gui.rendering.util.mesh.Mesh
 import de.bixilon.minosoft.util.KUtil.startInit
 import org.testng.Assert.*
 import org.testng.annotations.Test
+import kotlin.time.Duration.Companion.seconds
 
 @Test(groups = ["entities", "rendering"])
 class HitboxFeatureTest {
-    private val mesh = MeshedFeature::class.java.getFieldOrNull("mesh")!!
+    private val MESH = MeshedFeature::class.java.getFieldOrNull("mesh")!!.field
 
-    val HitboxFeature.mesh: LineMesh? get() = this@HitboxFeatureTest.mesh.get(this).unsafeCast()
+    val HitboxFeature.mesh: Mesh?
+        get() {
+            enqueueUnload()
+            renderer.renderer.queue.work()
+            return MESH[this]
+        }
 
     private fun create(entity: EntityFactory<*>): HitboxFeature {
         val renderer = create().create(entity)
         renderer::hitbox.forceSet(null) // remove
         renderer.entity.startInit()
-        renderer.entity.draw(0L)
+        renderer.entity.draw(now())
         renderer.renderer.context::input.forceSet(InputManager(renderer.renderer.context))
         renderer.renderer.features.hitbox.init() // register listeners
 
@@ -47,49 +54,51 @@ class HitboxFeatureTest {
 
     fun `create simple hitbox`() {
         val hitbox = create(RemotePlayerEntity)
-        hitbox.update(0, 0.0f)
+        hitbox.update(0.0.seconds)
         assertNotNull(hitbox.mesh)
     }
 
+    @Test(enabled = false) // the hitbox is not unloaded anymore if the entity goes dark
     fun `unload if entity is invisible`() {
         val hitbox = create(RemotePlayerEntity)
-        hitbox.update(0, 0.0f)
-        hitbox.renderer.entity.isInvisible(true)
-        hitbox.update(0, 0.0f)
+        hitbox.update(0.0.seconds)
+        hitbox.renderer.entity.setInvisible(true)
+        hitbox.update(0.0.seconds)
         assertNull(hitbox.mesh)
     }
 
     fun `entity is invisible but invisibles are shown`() {
         val hitbox = create(RemotePlayerEntity)
-        hitbox.update(0, 0.0f)
-        hitbox.renderer.entity.isInvisible(true)
+        hitbox.update(0.0.seconds)
+        hitbox.renderer.entity.setInvisible(true)
         hitbox.renderer.renderer.profile.features.hitbox.showInvisible = true
-        hitbox.update(0, 0.0f)
+        hitbox.update(0.0.seconds)
         assertNotNull(hitbox.mesh)
     }
 
     fun `profile disabled`() {
         val hitbox = create(RemotePlayerEntity)
         hitbox.renderer.renderer.profile.features.hitbox.enabled = false
-        hitbox.update(0, 0.0f)
+        hitbox.update(0.0.seconds)
         assertNull(hitbox.mesh)
     }
 
     fun `don't update hitbox if unchanged`() {
         val hitbox = create(RemotePlayerEntity)
-        hitbox.update(100, 1.0f)
+        hitbox.update(1.0.seconds)
         val mesh = hitbox.mesh
-        hitbox.update(100, 1.0f)
+        hitbox.update(1.0.seconds)
         assertSame(mesh, hitbox.mesh)
     }
 
     fun `update hitbox if entity moved`() {
         val hitbox = create(RemotePlayerEntity)
-        hitbox.update(0, 0.0f)
+        val start = now()
+        hitbox.update(0.0.seconds)
         val mesh = hitbox.mesh
         hitbox.renderer.entity.physics.forceMove(Vec3d(0.5))
-        hitbox.renderer.entity.draw(1000)
-        hitbox.update(1000, 1.0f)
+        hitbox.renderer.entity.draw(start + 1.seconds)
+        hitbox.update(1.0.seconds)
         assertNotSame(mesh, hitbox.mesh)
     }
 

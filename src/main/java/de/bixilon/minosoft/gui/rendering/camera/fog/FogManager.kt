@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,16 +14,21 @@
 package de.bixilon.minosoft.gui.rendering.camera.fog
 
 import de.bixilon.kutil.math.interpolation.FloatInterpolation.interpolateLinear
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kutil.time.TimeUtil
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.data.registries.dimension.effects.FogEffects
 import de.bixilon.minosoft.data.registries.effects.vision.VisionEffect
 import de.bixilon.minosoft.data.text.formatting.color.ColorInterpolation.interpolateSine
 import de.bixilon.minosoft.data.text.formatting.color.Colors
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.data.world.chunk.ChunkSize
 import de.bixilon.minosoft.gui.rendering.RenderContext
+import de.bixilon.minosoft.gui.rendering.shader.AbstractShader
+import de.bixilon.minosoft.gui.rendering.shader.Shader
 import de.bixilon.minosoft.gui.rendering.shader.types.FogShader
 import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class FogManager(
     private val context: RenderContext,
@@ -39,7 +44,7 @@ class FogManager(
 
     fun draw() {
         update()
-        if (interpolation.change >= 0L) {
+        if (interpolation.change != TimeUtil.NULL) {
             interpolate()
         }
         updateShaders()
@@ -54,7 +59,7 @@ class FogManager(
             // TODO: void fog (if under minY)
             // TODO: powder snow
             else -> {
-                val end = (context.session.world.view.viewDistance - 1.0f) * ProtocolDefinition.SECTION_WIDTH_X
+                val end = (context.session.world.view.viewDistance - 1.0f) * ChunkSize.SECTION_WIDTH_X
                 val distance = end / 10.0f
 
                 FogOptions(effects.start * (end - distance), end)
@@ -76,14 +81,14 @@ class FogManager(
             return
         }
 
-        save()
         this.options = options
         state.revision++
-        context.camera.matrixHandler.invalidate()
+        save()
+        context.camera.matrix.invalidate()
     }
 
     private fun save() {
-        val time = millis()
+        val time = now()
         interpolate(time)
         interpolation.change = time
         interpolation.start = state.start
@@ -91,26 +96,26 @@ class FogManager(
         interpolation.color = state.color
     }
 
-    private fun interpolate(time: Long = millis()) {
+    private fun interpolate(time: ValueTimeMark = now()) {
         val delta = time - interpolation.change
-        val progress = delta / INTERPOLATE_DURATION.toFloat()
+        val progress = (delta / INTERPOLATE_DURATION).toFloat()
         state.start = interpolateLinear(progress, interpolation.start, options?.start ?: 0.0f)
         state.end = interpolateLinear(progress, interpolation.end, options?.end ?: 0.0f)
 
-        val sourceColor = interpolation.color ?: options?.color ?: Colors.TRANSPARENT
-        val targetColor = options?.color ?: RGBColor(sourceColor.red, sourceColor.green, sourceColor.blue, 0x00)
-        var color: RGBColor? = interpolateSine(progress, sourceColor, targetColor)
+        val sourceColor = interpolation.color ?: options?.color?.rgba() ?: Colors.TRANSPARENT
+        val targetColor = options?.color?.rgba() ?: Colors.TRANSPARENT
+        var color: RGBAColor? = interpolateSine(progress, sourceColor, targetColor)
         if (color == Colors.TRANSPARENT) {
             color = null
         }
         state.color = color
         if (progress >= 1.0f) {
-            interpolation.change = -1L // this avoid further interpolations with the same data
-            interpolation.color = options?.color
+            interpolation.change = TimeUtil.NULL // this avoid further interpolations with the same data
+            interpolation.color = options?.color?.rgba()
         }
 
         state.revision++
-        context.camera.matrixHandler.invalidate()
+        context.camera.matrix.invalidate()
     }
 
 
@@ -127,16 +132,16 @@ class FogManager(
         val color = state.color
         val flags = state.flags()
 
-        for (shader in context.system.shaders) {
+        for (shader in context.system.shader) {
             if (shader !is FogShader || shader.fog != this) {
                 continue
             }
-            shader.native.update(start, end, distance, color, flags)
+            shader.update(start, end, distance, color, flags)
         }
         this.shaderRevision = revision
     }
 
-    fun use(shader: NativeShader) {
+    fun use(shader: AbstractShader) {
         val start = state.start * state.start
         val end = state.end * state.end
         val distance = end - start
@@ -146,19 +151,21 @@ class FogManager(
         shader.update(start, end, distance, color, flags)
     }
 
-    private fun NativeShader.update(start: Float, end: Float, distance: Float, color: RGBColor?, flags: Int) {
+    private fun AbstractShader.update(start: Float, end: Float, distance: Float, color: RGBAColor?, flags: Int) {
         use()
 
-        this["uFogStart"] = start
-        this["uFogEnd"] = end
-        this["uFogDistance"] = distance
+        val native = native
 
-        color?.let { this["uFogColor"] = it }
-        this.setUInt("uFogFlags", flags)
+        native["uFogStart"] = start
+        native["uFogEnd"] = end
+        native["uFogDistance"] = distance
+
+        color?.let { native["uFogColor"] = it }
+        native.setUInt("uFogFlags", flags)
     }
 
 
     companion object {
-        private const val INTERPOLATE_DURATION = 300
+        private val INTERPOLATE_DURATION = 300.milliseconds
     }
 }

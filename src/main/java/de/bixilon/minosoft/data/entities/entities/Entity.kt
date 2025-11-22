@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,17 +12,18 @@
  */
 package de.bixilon.minosoft.data.entities.entities
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.bit.BitByte.isBitMask
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
+import de.bixilon.kutil.concurrent.lock.Lock
 import de.bixilon.kutil.primitive.BooleanUtil.toBoolean
 import de.bixilon.kutil.primitive.IntUtil.toInt
 import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kutil.time.TimeUtil
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.entities.EntityAnimations
 import de.bixilon.minosoft.data.entities.EntityRenderInfo
@@ -37,14 +38,15 @@ import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
+import de.bixilon.minosoft.gui.rendering.RenderingOptions
 import de.bixilon.minosoft.gui.rendering.entities.renderer.EntityRenderer
 import de.bixilon.minosoft.physics.entities.EntityPhysics
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
-import de.bixilon.minosoft.terminal.RunConfiguration
+import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
 import de.bixilon.minosoft.util.Initializable
 import java.util.*
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 abstract class Entity(
     val session: PlaySession,
@@ -53,12 +55,23 @@ abstract class Entity(
     private var initialPosition: Vec3d,
     private var initialRotation: EntityRotation,
 ) : Initializable, EntityAttachable {
+    private val lock = Lock.lock()
     private var flags: Int by data(FLAGS_DATA, 0x00) { it.toInt() }
     protected val random = Random()
-    val id: Int?
-        get() = session.world.entities.getId(this)
+    var _id: Int? = null
+    var _uuid: UUID? = null
+    open val id: Int?
+        get() {
+            if (_id != null) return _id
+            _id = session.world.entities.getId(this)
+            return _id
+        }
     open val uuid: UUID?
-        get() = session.world.entities.getUUID(this)
+        get() {
+            if (_uuid != null) return _uuid
+            _uuid = session.world.entities.getUUID(this)
+            return _uuid
+        }
 
     @Deprecated(message = "Use session.version", replaceWith = ReplaceWith("session.version.versionId"))
     protected val versionId: Int get() = session.version.versionId
@@ -67,8 +80,8 @@ abstract class Entity(
     open val primaryPassenger: Entity? = null
     open val clientControlled: Boolean get() = primaryPassenger is LocalPlayerEntity
 
-    open val dimensions = Vec2(type.width, type.height)
-    open val defaultAABB: AABB = AABB.EMPTY
+    open val dimensions = Vec2f(type.width, type.height)
+    open val defaultAABB: AABB = AABB.INVALID
 
     open val mountHeightOffset: Double get() = dimensions.y * 0.75
     open val heightOffset: Double get() = 0.0
@@ -76,24 +89,23 @@ abstract class Entity(
 
     protected fun createDefaultAABB(): AABB {
         val halfWidth = dimensions.x / 2
-        return AABB(Vec3(-halfWidth, 0.0f, -halfWidth), Vec3(halfWidth, dimensions.y, halfWidth))
+        return AABB(Vec3d(-halfWidth, 0.0f, -halfWidth), Vec3d(halfWidth, dimensions.y, halfWidth))
     }
 
-    open fun getDimensions(pose: Poses): Vec2? {
-        return dimensions
-    }
+    open fun getDimensions(pose: Poses): Vec2f? = dimensions
 
     open val eyeHeight: Float get() = dimensions.y * 0.85f
 
     val renderInfo: EntityRenderInfo = unsafeNull()
 
-    var lastTickTime = -1L
+    var lastTickTime = TimeUtil.NULL
 
     open var renderer: EntityRenderer<*>? = null
 
     open val physics: EntityPhysics<*> = unsafeNull()
 
     open val canRaycast: Boolean get() = true
+
 
     var age = 0
         private set
@@ -110,6 +122,8 @@ abstract class Entity(
     }
 
     open fun forceMove(delta: Vec3d) {
+        if (delta.length2() < 1.0E-7) return
+
         physics.forceMove(delta)
     }
 
@@ -180,33 +194,38 @@ abstract class Entity(
     @get:SynchronizedEntityData
     val ticksFrozen: Int by data(TICKS_FROZEN_DATA, 0)
 
-    open val hitboxColor: RGBColor?
+    open val hitboxColor: RGBAColor?
         get() = ChatColors.WHITE
 
 
-    fun forceTick(time: Long = millis()) {
+    fun forceTick(time: ValueTimeMark = now()) {
         try {
+            lock.lock()
             preTick()
             tick()
             postTick()
-        } catch (error: Throwable) {
-            error.printStackTrace()
+        } finally {
+            lastTickTime = time
+            lock.unlock()
         }
-        lastTickTime = time
     }
 
-    @Synchronized
     fun tryTick(): Boolean {
-        val time = millis()
+        val time = now()
 
-        if (time - lastTickTime >= ProtocolDefinition.TICK_TIME) {
+        if (time - lastTickTime < TickUtil.INTERVAL) return false
+        if (!lock.lock(TickUtil.INTERVAL / 2)) return false
+
+        try {
+            if (time - lastTickTime < TickUtil.INTERVAL) return false
             forceTick(time)
             return true
+        } finally {
+            lock.unlock()
         }
-        return false
     }
 
-    open fun draw(time: Long) {
+    open fun draw(time: ValueTimeMark) {
         renderInfo.draw(time)
     }
 
@@ -221,7 +240,7 @@ abstract class Entity(
 
     open fun postTick() {
         physics.postTick()
-        if (!RunConfiguration.DISABLE_RENDERING) {
+        if (!RenderingOptions.disabled) {
             renderInfo.tick()
         }
     }
@@ -246,7 +265,7 @@ abstract class Entity(
         PHYSICS.set(this, createPhysics())
         forceTeleport(initialPosition)
         forceRotate(initialRotation)
-        if (!RunConfiguration.DISABLE_RENDERING) {
+        if (!RenderingOptions.disabled) {
             RENDER_INFO.set(this, EntityRenderInfo(this))
         }
     }
@@ -255,9 +274,9 @@ abstract class Entity(
         physics.tickRiding()
     }
 
-    open fun isInvisible(camera: Entity): Boolean {
-        if (camera is PlayerEntity && camera.additional.gamemode == Gamemodes.SPECTATOR) return false
-        return isInvisible
+    open fun isVisibleTo(camera: Entity) = when {
+        camera is PlayerEntity && camera.gamemode == Gamemodes.SPECTATOR -> true
+        else -> !isInvisible
     }
 
 

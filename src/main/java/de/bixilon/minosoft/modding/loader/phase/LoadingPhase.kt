@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,6 +15,7 @@ package de.bixilon.minosoft.modding.loader.phase
 
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedList
 import de.bixilon.kutil.concurrent.worker.unconditional.UnconditionalWorker
+import de.bixilon.kutil.file.PathUtil.div
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.latch.AbstractLatch.Companion.child
 import de.bixilon.kutil.latch.ParentLatch
@@ -25,18 +26,18 @@ import de.bixilon.minosoft.modding.loader.ModLoader
 import de.bixilon.minosoft.modding.loader.ModLoadingUtil.construct
 import de.bixilon.minosoft.modding.loader.ModLoadingUtil.postInit
 import de.bixilon.minosoft.modding.loader.ModLoadingUtil.validate
+import de.bixilon.minosoft.modding.loader.ModOptions
 import de.bixilon.minosoft.modding.loader.error.DuplicateModError
 import de.bixilon.minosoft.modding.loader.error.DuplicateProvidedError
 import de.bixilon.minosoft.modding.loader.mod.MinosoftMod
 import de.bixilon.minosoft.modding.loader.mod.source.ModSource
-import de.bixilon.minosoft.terminal.RunConfiguration
 import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
 
 
 class LoadingPhase(val name: String) {
-    private val path = ModLoader.BASE_PATH.resolve(name.lowercase()).toFile()
+    private val path = (ModOptions.path / name.lowercase()).toFile()
 
     private var latch = SimpleLatch(1)
     var state by observed(PhaseStates.WAITING)
@@ -50,7 +51,7 @@ class LoadingPhase(val name: String) {
             val manifest = mod.manifest!!
             val name = manifest.name
 
-            if (name in RunConfiguration.MOD_PARAMETERS.ignoreMods) {
+            if (name in ModOptions.ignoreMods) {
                 mod.latch.count = 0
                 return
             }
@@ -77,7 +78,7 @@ class LoadingPhase(val name: String) {
 
     fun load(latch: AbstractLatch? = null) {
         if (this.latch.count == 0) throw IllegalStateException("Phase is already loaded!")
-        if (RunConfiguration.IGNORE_MODS || this.name in RunConfiguration.MOD_PARAMETERS.ignorePhases) {
+        if (ModOptions.disabled || this.name in ModOptions.ignorePhases) {
             this.latch.dec()
             return
         }
@@ -91,7 +92,7 @@ class LoadingPhase(val name: String) {
         }
 
         val files = path.listFiles() ?: emptyArray()
-        val additionalSources = RunConfiguration.MOD_PARAMETERS.additionalSources[this.name] ?: emptySet()
+        val additionalSources: Set<ModSource> = ModOptions.additional[this.name] ?: emptySet()
         if (files.isEmpty() && additionalSources.isEmpty()) {
             // no mods to load
             state = PhaseStates.COMPLETE
@@ -169,7 +170,7 @@ class LoadingPhase(val name: String) {
     }
 
     fun await() {
-        if (RunConfiguration.IGNORE_MODS) return
+        if (ModOptions.disabled) return
         latch.await()
     }
 }

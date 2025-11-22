@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,29 +15,27 @@ package de.bixilon.minosoft.data.registries.item.items.pixlyzer
 
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.primitive.IntUtil.toInt
+import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.item.factory.PixLyzerItemFactory
 import de.bixilon.minosoft.data.registries.registries.Registries
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asRGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
 
 open class SpawnEggItem(
-    resourceLocation: ResourceLocation,
+    identifier: ResourceLocation,
     registries: Registries,
     data: Map<String, Any>,
-) : PixLyzerItem(resourceLocation, registries, data) {
-    val color1 = data["spawn_egg_color_1"]?.toInt()?.asRGBColor()
-    val color2 = data["spawn_egg_color_2"]?.toInt()?.asRGBColor()
-    val entityType: EntityType = unsafeNull()
-
-    init {
-        this::entityType.inject(data["spawn_egg_entity_type"])
-    }
+) : PixLyzerItem(identifier, registries, data) {
+    val color1 = data["spawn_egg_color_1"]?.toInt()?.rgb()
+    val color2 = data["spawn_egg_color_2"]?.toInt()?.rgb()
+    val entityType: EntityType = ENTITY_TYPE.inject(data["spawn_egg_entity_type"])
 
     companion object : PixLyzerItemFactory<SpawnEggItem> {
+        private val ENTITY_TYPE = SpawnEggItem::entityType.field
 
-        override fun build(resourceLocation: ResourceLocation, registries: Registries, data: Map<String, Any>): SpawnEggItem {
-            return SpawnEggItem(resourceLocation, registries, data)
+        override fun build(identifier: ResourceLocation, registries: Registries, data: Map<String, Any>): SpawnEggItem {
+            return SpawnEggItem(identifier, registries, data)
         }
     }
 }

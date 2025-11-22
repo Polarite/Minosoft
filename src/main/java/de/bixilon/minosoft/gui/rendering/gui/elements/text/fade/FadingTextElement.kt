@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,19 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.text.fade
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.background.TextBackground
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.fade.FadePhase.Companion.createPhase
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions.Companion.copy
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class FadingTextElement(
     guiRenderer: GUIRenderer,
@@ -40,7 +41,7 @@ class FadingTextElement(
         get() {
             if (!super.cacheEnabled) return false
             if (this.phase == null) return true
-            updatePhase(millis())
+            updatePhase(now())
             return phase != null
         }
         set(value) {
@@ -60,11 +61,11 @@ class FadingTextElement(
     }
 
     private fun updateSize(phase: FadePhase?) {
-        this._size = if (phase == null) Vec2.EMPTY else info.size.withBackgroundSize()
+        this._size = if (phase == null) Vec2f.EMPTY else MVec2f(info.size).withBackgroundSize().unsafe
     }
 
     fun show() {
-        val time = millis()
+        val time = now()
         // TODO: extend time on call if already showing text
         val phase = times.createPhase(time)
         this.phase = phase
@@ -75,13 +76,13 @@ class FadingTextElement(
     }
 
     fun hide(force: Boolean = false) {
-        this.phase = if (force) null else this.phase?.stop(millis())
+        this.phase = if (force) null else this.phase?.stop(now())
         parent?.onChildChange(this)
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         if (phase == null) return
-        val millis = millis()
+        val millis = now()
         this.updatePhase(millis)
         val phase = this.phase ?: return
         val alpha = phase.getAlpha(millis)
@@ -89,7 +90,7 @@ class FadingTextElement(
         super.forceRender(offset, consumer, options.copy(alpha = alpha))
     }
 
-    private fun updatePhase(millis: Long) {
+    private fun updatePhase(millis: ValueTimeMark) {
         val phase = this.phase ?: return
         if (!phase.isDone(millis)) return
         val next = phase.next(millis)

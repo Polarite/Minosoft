@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,19 +13,20 @@
 
 package de.bixilon.minosoft.util.collections.floats
 
-import de.bixilon.kutil.collections.primitive.floats.AbstractFloatList
+import de.bixilon.kutil.cast.CastUtil.unsafeCast
+import de.bixilon.kutil.collections.primitive.floats.FloatList
+import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
 import org.junit.jupiter.api.Test
+import java.nio.FloatBuffer
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 
 class FragmentedFloatListTest : DirectFloatListTest() {
 
-    override fun create(initialSize: Int): AbstractFloatList {
-        return FragmentedArrayFloatList(initialSize)
-    }
+    override fun create(initialSize: Int) = FragmentedFloatList(initialSize)
 
 
-    private fun AbstractFloatList.putMixed() {
+    private fun FloatList.putMixed() {
         ensureSize(7)
         add(1.0f)
         add(2.0f)
@@ -37,7 +38,7 @@ class FragmentedFloatListTest : DirectFloatListTest() {
 
     @Test
     fun testMixed() {
-        val list = FragmentedArrayFloatList(1000)
+        val list = FragmentedFloatList(1000)
         for (i in 0 until 2000) {
             list.putMixed()
         }
@@ -51,13 +52,13 @@ class FragmentedFloatListTest : DirectFloatListTest() {
             assertEquals(expected, array[i])
             assertEquals(expected, buffer[i])
         }
-        assertEquals(14, list.complete.size)
-        assertEquals(0, list.incomplete.size)
+        assertEquals(14, list._complete.size)
+        assertEquals(0, list._incomplete.size)
     }
 
     @Test
     fun `batch adding 7 floats`() {
-        val list = FragmentedArrayFloatList(1)
+        val list = FragmentedFloatList(1)
         for (i in 0 until 100) {
             val offset = i * 7.0f
             list.add(offset + 0, offset + 1, offset + 2, offset + 3, offset + 4, offset + 5, offset + 6)
@@ -70,7 +71,7 @@ class FragmentedFloatListTest : DirectFloatListTest() {
 
     @Test
     fun `batch adding 7 floats and ensuring size`() {
-        val list = FragmentedArrayFloatList(100)
+        val list = FragmentedFloatList(100)
         for (i in 0 until 100) {
             list.ensureSize(21)
             val offset = i * 7.0f
@@ -84,7 +85,7 @@ class FragmentedFloatListTest : DirectFloatListTest() {
 
     @Test
     fun `batch adding float array`() {
-        val list = FragmentedArrayFloatList(1)
+        val list = FragmentedFloatList(1)
         for (i in 0 until 100) {
             val offset = i * 7.0f
             list += floatArrayOf(offset + 0, offset + 1, offset + 2, offset + 3, offset + 4, offset + 5, offset + 6)
@@ -94,4 +95,7 @@ class FragmentedFloatListTest : DirectFloatListTest() {
         val array = list.toArray()
         assertContentEquals(expected, array)
     }
+
+    private val FragmentedFloatList._complete get() = FragmentedFloatList::class.java.getFieldOrNull("complete")!!.get(this).unsafeCast<List<FloatBuffer>>()
+    private val FragmentedFloatList._incomplete get() = FragmentedFloatList::class.java.getFieldOrNull("incomplete")!!.get(this).unsafeCast<List<FloatBuffer>>()
 }

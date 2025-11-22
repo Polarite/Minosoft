@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -24,13 +24,11 @@ import de.bixilon.minosoft.data.container.slots.RemoveOnlySlotType
 import de.bixilon.minosoft.data.container.slots.SlotType
 import de.bixilon.minosoft.data.registries.containers.ContainerFactory
 import de.bixilon.minosoft.data.registries.containers.ContainerType
-import de.bixilon.minosoft.data.registries.identified.AliasedIdentified
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
-class CraftingContainer(session: PlaySession, type: ContainerType, title: ChatComponent?) : InventorySynchronizedContainer(session, type, title, RangeSection(CRAFTING_SLOTS + 1, PlayerInventory.MAIN_SLOTS)) {
+class CraftingContainer(session: PlaySession, type: ContainerType, title: ChatComponent?, id: Int) : InventorySynchronizedContainer(session, type, title, RangeSection(CRAFTING_SLOTS + 1, PlayerInventory.MAIN_SLOTS), id = id) {
     override val sections: Array<ContainerSection> get() = SECTIONS
 
     override fun getSlotType(slotId: Int): SlotType? {
@@ -51,9 +49,8 @@ class CraftingContainer(session: PlaySession, type: ContainerType, title: ChatCo
     }
 
 
-    companion object : ContainerFactory<CraftingContainer>, AliasedIdentified {
-        override val identifier: ResourceLocation = "minecraft:crafting".toResourceLocation()
-        override val identifiers: Set<ResourceLocation> = setOf("minecraft:crafting_table".toResourceLocation())
+    companion object : ContainerFactory<CraftingContainer> {
+        override val identifier = minecraft("crafting")
         const val CRAFTING_SLOTS = 3 * 3
         val SECTIONS: Array<ContainerSection> = arrayOf(
             // crafting slots are not shift clickable, no section
@@ -62,8 +59,8 @@ class CraftingContainer(session: PlaySession, type: ContainerType, title: ChatCo
         )
 
 
-        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int): CraftingContainer {
-            return CraftingContainer(session, type, title)
+        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int, id: Int): CraftingContainer {
+            return CraftingContainer(session, type, title, id)
         }
     }
 }

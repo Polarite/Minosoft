@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,19 +13,18 @@
 
 package de.bixilon.minosoft.gui.rendering.font.renderer.element
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.gui.rendering.font.renderer.CodePointAddResult
 import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments
 import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments.Companion.getOffset
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 
 class TextOffset(
-    val initial: Vec2 = Vec2.EMPTY,
+    val initial: Vec2f = Vec2f.EMPTY,
 ) {
-    var offset = Vec2(initial)
+    var offset = initial.mutable()
 
 
-    fun align(alignment: HorizontalAlignments, width: Float, size: Vec2) {
+    fun align(alignment: HorizontalAlignments, width: Float, size: Vec2f) {
         this.offset.x = initial.x + alignment.getOffset(size.x, width)
     }
 
@@ -68,7 +67,7 @@ class TextOffset(
 
         this.offset.y += height
         if (consuming) {
-            align(properties.alignment, info.lines[info.lineIndex].width, info.size)
+            align(properties.alignment, info.lines[info.lineIndex].width, info.size.unsafe)
         } else {
             info.lines += LineRenderInfo()
             this.offset.x = this.initial.x

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,94 +13,90 @@
 
 package de.bixilon.minosoft.data.world.chunk.manager.size
 
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kutil.observer.DataObserver.Companion.observed
+import de.bixilon.kmath.vec.vec2.i.MVec2i
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.minosoft.data.world.World
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
 
 class WorldSizeManager(private val world: World) {
-    var size by observed(WorldSize.EMPTY)
-        private set
+    val size = WorldSize()
 
 
     fun onCreate(position: ChunkPosition) {
-        val min = Vec2i(size.min)
-        val max = Vec2i(size.max)
+        val min = size.min
+        val max = size.max
         if (!addExtreme(position, min, max)) return
 
         val size = calculateSize(min, max)
-
-        this.size = WorldSize(min, max, size)
+        this.size.size.x = size.x; this.size.size.y = size.y
 
         world.view.updateServerDistance()
     }
 
     fun onUnload(position: ChunkPosition) {
         val size = this.size
-        if (position.x == size.min.x || position.y == size.min.y || position.x == size.max.x || position.y == size.max.y) {
+        if (position.x == size.min.x || position.z == size.min.y || position.x == size.max.x || position.z == size.max.y) {
             recalculate(false)
         }
     }
 
     fun clear() {
-        size = WorldSize.EMPTY
+        size.clear()
     }
 
     private fun recalculate(lock: Boolean = true) {
         if (lock) world.lock.acquire()
 
-        val min = Vec2i(Int.MAX_VALUE)
-        val max = Vec2i(Int.MIN_VALUE)
+        this.size.clear()
 
         for ((position, _) in world.chunks.chunks.unsafe) {
-            addExtreme(position, min, max)
+            addExtreme(position, this.size.min, this.size.max)
         }
-        val size = calculateSize(min, max)
+        val size = calculateSize(this.size.min, this.size.max)
+        this.size.size.x = size.x; this.size.size.y = size.y
 
-        this.size = WorldSize(min, max, size)
         if (lock) world.lock.release()
 
         world.view.updateServerDistance()
     }
 
 
-    private fun addExtreme(position: ChunkPosition, min: Vec2i, max: Vec2i): Boolean {
+    private fun addExtreme(position: ChunkPosition, min: MVec2i, max: MVec2i): Boolean {
         var changes = 0
         if (position.x < min.x) {
             min.x = position.x
             changes++
         }
-        if (position.y < min.y) {
-            min.y = position.y
+        if (position.z < min.y) {
+            min.y = position.z
             changes++
         }
         if (position.x > max.x) {
             max.x = position.x
             changes++
         }
-        if (position.y > max.y) {
-            max.y = position.y
+        if (position.z > max.y) {
+            max.y = position.z
             changes++
         }
         return changes > 0
     }
 
-    private fun calculateSize(min: Vec2i, max: Vec2i, empty: Boolean = world.chunks.chunks.unsafe.isEmpty()): Vec2i {
+    private fun calculateSize(min: MVec2i, max: MVec2i, empty: Boolean = world.chunks.chunks.unsafe.isEmpty()): Vec2i {
         if (empty) return Vec2i.EMPTY
         val size = (max - min) + 1
+        
         if (size.x > World.MAX_CHUNKS_SIZE) {
             size.x = World.MAX_CHUNKS_SIZE
-        }
-        if (size.x < 0) {
+        } else if (size.x < 0) {
             size.x = 0
         }
+
         if (size.y > World.MAX_CHUNKS_SIZE) {
             size.y = World.MAX_CHUNKS_SIZE
-        }
-        if (size.y < 0) {
+        } else if (size.y < 0) {
             size.y = 0
         }
-        return size
+        return size.unsafe
     }
 }

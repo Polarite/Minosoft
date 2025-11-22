@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,10 @@
 
 package de.bixilon.minosoft.physics.entities.living.player.local
 
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.cast.CastUtil.nullCast
+import de.bixilon.kutil.primitive.d
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.entities.Poses
 import de.bixilon.minosoft.data.entities.entities.Entity
@@ -31,7 +32,6 @@ import de.bixilon.minosoft.data.registries.enchantment.armor.MovementEnchantment
 import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.physics.entities.living.player.PlayerPhysics
 import de.bixilon.minosoft.physics.handlers.movement.SneakAdjuster
 import de.bixilon.minosoft.physics.input.MovementInput
@@ -77,14 +77,14 @@ class LocalPlayerPhysics(entity: LocalPlayerEntity) : PlayerPhysics<LocalPlayerE
         if (isSwimming) {
             entity.isSwimming = canSwim
         } else {
-            entity.isSwimming = canSwim && positionInfo.block?.block?.nullCast<FluidFilled>()?.fluid is WaterFluid
+            entity.isSwimming = canSwim && positionInfo.state?.block?.nullCast<FluidFilled>()?.fluid is WaterFluid
         }
     }
 
     fun getAABB(pose: Poses): AABB {
         val dimensions = entity.getDimensions(pose) ?: entity.dimensions
-        val halfWidth = dimensions.x / 2
-        return AABB(Vec3(-halfWidth, 0.0f, -halfWidth), Vec3(halfWidth, dimensions.y, halfWidth))
+        val halfWidth = dimensions.x / 2.0f
+        return AABB(Vec3d(-halfWidth, 0.0f, -halfWidth), Vec3d(halfWidth, dimensions.y, halfWidth))
     }
 
     fun wouldPoseCollide(pose: Poses): Boolean {
@@ -95,20 +95,22 @@ class LocalPlayerPhysics(entity: LocalPlayerEntity) : PlayerPhysics<LocalPlayerE
         return !entity.abilities.flying && entity.input.sneak
     }
 
-    override fun shouldAdjustForSneaking(movement: Vec3d): Boolean {
+    override fun shouldAdjustForSneaking(movement: MVec3d): Boolean {
         if (!entity.input.sneak) return false
         if (movement.y > 0.0) return false
         if (entity.abilities.flying) return false
         if (!onGround) return false
 
-        return (fallDistance < stepHeight && !entity.session.world.isSpaceEmpty(entity, aabb.offset(Vec3d(0.0, fallDistance - stepHeight, 0.0)), positionInfo.chunk))
+        return (fallDistance < stepHeight && !entity.session.world.isSpaceEmpty(entity, aabb.offset(Vec3d(0.0, fallDistance.toDouble() - stepHeight, 0.0)), positionInfo.chunk))
     }
 
     fun wouldCollideAt(position: BlockPosition, predicate: CollisionPredicate? = null): Boolean {
         val aabb = aabb
         val offset = AABB(position.x + 0.0, aabb.min.y, position.z + 0.0, position.x + 1.0, aabb.max.y, position.z + 1.0).shrink(1.0E-7)
         val collisions = collectCollisions(Vec3d.EMPTY, offset, predicate = predicate)
-        return collisions.intersect(aabb)
+        val intersects = collisions.intersects(aabb)
+        collisions.free()
+        return intersects
     }
 
     private fun shouldSprint(): Boolean {
@@ -208,12 +210,12 @@ class LocalPlayerPhysics(entity: LocalPlayerEntity) : PlayerPhysics<LocalPlayerE
         val movement = entity.input.upwards
 
         if (movement == 0.0f) return
-       this.velocity = velocity + Vec3d(0.0, movement * entity.abilities.flyingSpeed * 3.0f, 0.0)
+        this.velocity.y += movement * entity.abilities.flyingSpeed * 3.0f
     }
 
     private fun sink() {
         if (submersion[WaterFluid] <= 0.0 || !entity.input.sneak || !canJumpOrSwim) return
-        this.velocity = velocity + Vec3d(0.0, -0.04f, 0.0)
+        this.velocity.y -= FLUID_GRAVITY
     }
 
     override fun tickMovement() {
@@ -251,13 +253,11 @@ class LocalPlayerPhysics(entity: LocalPlayerEntity) : PlayerPhysics<LocalPlayerE
 
     private fun travelSwimming(input: MovementInput) {
         val pitch = rotation.front.y
-        val fluid = positionInfo.chunk?.get(positionInfo.inChunkPosition.x, (position.y + 0.9).toInt(), positionInfo.inChunkPosition.z)
+        val fluid = positionInfo.chunk?.get(positionInfo.position.inChunkPosition.with(y = (position.y + 0.9).toInt()))
 
         if (pitch <= 0.0 || input.jumping || (fluid != null && fluid.block is FluidHolder)) {
             val speed = if (pitch < -0.2) 0.085 else 0.06
-            val velocity = Vec3d(velocity)
-            velocity.y += (pitch - velocity.y) * speed
-            this.velocity = velocity
+            this.velocity.y += (pitch - velocity.y) * speed
         }
 
         super.travel(input)
@@ -273,8 +273,7 @@ class LocalPlayerPhysics(entity: LocalPlayerEntity) : PlayerPhysics<LocalPlayerE
         }
 
         super.travel(input)
-        val velocity = velocity
-        this.velocity = Vec3d(velocity.x, upwards, velocity.z)
+        this.velocity.y = upwards
 
 
         this.airSpeed = previousAirSpeed
@@ -333,5 +332,9 @@ class LocalPlayerPhysics(entity: LocalPlayerEntity) : PlayerPhysics<LocalPlayerE
         if (vehicle is InputSteerable) {
             vehicle.input = entity.input
         }
+    }
+
+    companion object {
+        val FLUID_GRAVITY = 0.04f.d
     }
 }

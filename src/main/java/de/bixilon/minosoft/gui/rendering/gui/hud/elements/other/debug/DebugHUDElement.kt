@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,29 +13,27 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.other.debug
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kotlinglm.vec4.Vec4
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kmath.vec.vec4.f.Vec4f
 import de.bixilon.kutil.concurrent.Reference
 import de.bixilon.kutil.math.simple.DoubleMath.rounded10
 import de.bixilon.kutil.math.simple.FloatMath.rounded10
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
 import de.bixilon.kutil.string.StringUtil.truncate
-import de.bixilon.kutil.unit.UnitFormatter.formatBytes
-import de.bixilon.kutil.unit.UnitFormatter.formatNanos
+import de.bixilon.kutil.unit.Bytes.Companion.bytes
+import de.bixilon.kutil.unit.UnitFormatter.format
 import de.bixilon.minosoft.config.key.KeyActions
 import de.bixilon.minosoft.config.key.KeyBinding
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.direction.Directions
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.text.BaseComponent
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
 import de.bixilon.minosoft.data.world.chunk.chunk.Chunk
-import de.bixilon.minosoft.data.world.chunk.light.SectionLight
 import de.bixilon.minosoft.gui.rendering.chunk.ChunkRenderer
 import de.bixilon.minosoft.gui.rendering.entities.EntitiesRenderer
-import de.bixilon.minosoft.gui.rendering.events.ResizeWindowEvent
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -49,24 +47,21 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.text.AutoTextElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.text.TextElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.LayoutedGUIElement
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.HUDBuilder
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.particle.ParticleRenderer
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.blockPosition
-import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.properties.MinosoftProperties
 import de.bixilon.minosoft.properties.MinosoftPropertiesLoader
 import de.bixilon.minosoft.terminal.RunConfiguration
 import de.bixilon.minosoft.util.Initializable
 import de.bixilon.minosoft.util.KUtil.format
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.SystemInformation
 
 class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedElement, Initializable {
     private val session = context.session
     private val layout = GridLayout(guiRenderer, Vec2i(3, 1)).apply { parent = this@DebugHUDElement }
-    override val layoutOffset: Vec2 = Vec2.EMPTY
+    override val layoutOffset: Vec2f = Vec2f.EMPTY
 
 
     init {
@@ -86,21 +81,21 @@ class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
         layout[Vec2i(0, 0)] = initLeft()
         layout[Vec2i(2, 0)] = initRight()
 
-        this.prefMaxSize = Vec2(-1, Int.MAX_VALUE)
+        this.prefMaxSize = Vec2f(-1.0f, Float.MAX_VALUE)
         this.ignoreDisplaySize = true
     }
 
     private fun initLeft(): Element {
         val layout = RowLayout(guiRenderer)
-        layout.margin = Vec4(2)
+        layout.margin = Vec4f(2)
         layout += TextElement(guiRenderer, TextComponent(RunConfiguration.APPLICATION_NAME, ChatColors.RED))
-        layout += AutoTextElement(guiRenderer, 1) { "FPS §d${context.renderStats.smoothAvgFPS.rounded10}§r; t=§d${context.renderStats.avgDrawTime.avg.formatNanos().replace('µ', 'u')}" } // rendering of µ eventually broken
+        layout += AutoTextElement(guiRenderer, 1) { "FPS §d${context.renderStats.smoothAvgFPS.rounded10}§r, t=§d${context.renderStats.avgDrawTime.avg.format().replace('µ', 'u')}" } // rendering of µ eventually broken
         context.renderer[ChunkRenderer]?.apply {
-            layout += AutoTextElement(guiRenderer, 1) { "C v=${visible.sizeString}, l=${loaded.size.format()}, cQ=${culledQueue.size.format()}, q=${meshingQueue.size.format()}, pT=${meshingQueue.tasks.size.format()}/${meshingQueue.tasks.max.format()}, lQ=${loadingQueue.size.format()}/${meshingQueue.maxMeshesToLoad.format()}, w=${session.world.chunks.chunks.size.format()}" }
+            layout += AutoTextElement(guiRenderer, 1) { "C v=${visibility.meshes.sizeString}, l=${loaded.size.format()}, cq=${culledQueue.size.format()}, m=${meshingQueue.size.format()}, mqt=${meshingQueue.tasks.size.format()}/${meshingQueue.tasks.max.format()}, lq=${loadingQueue.size.format()}/${loadingQueue.max.format()}, w=${session.world.chunks.chunks.size.format()}" }
         }
 
         layout += context.renderer[EntitiesRenderer]?.let {
-            AutoTextElement(guiRenderer, 1) { BaseComponent("E v=", it.visibility.size, ",ov=", it.visibility.opaqueSize, ",tv=", it.visibility.translucentSize, ", t=", it.renderers.size, ", w=", session.world.entities.size) }
+            AutoTextElement(guiRenderer, 1) { BaseComponent("E v=", it.drawer.size, ", t=", it.renderers.size, ", w=", session.world.entities.size) }
         } ?: AutoTextElement(guiRenderer, 1) { "E w=${session.world.entities.size.format()}" }
 
         context.renderer[ParticleRenderer]?.apply {
@@ -139,13 +134,13 @@ class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
         session.camera.entity.physics.apply {
             // ToDo: Only update when the position changes
             layout += AutoTextElement(guiRenderer, 1) { with(position) { "XYZ ${x.format()} / ${y.format()} / ${z.format()}" } }
-            layout += AutoTextElement(guiRenderer, 1) { with(positionInfo.blockPosition) { "Block ${x.format()} ${y.format()} ${z.format()}" } }
-            layout += AutoTextElement(guiRenderer, 1) { with(positionInfo) { "Chunk ${inSectionPosition.format()} in (${chunkPosition.x.format()} ${sectionHeight.format()} ${chunkPosition.y.format()})" } }
+            layout += AutoTextElement(guiRenderer, 1) { with(positionInfo.position) { "Block ${x.format()} ${y.format()} ${z.format()}" } }
+            layout += AutoTextElement(guiRenderer, 1) { with(positionInfo) { "Chunk ${position.inSectionPosition.format()} in (${chunkPosition.x.format()} ${position.sectionHeight.format()} ${chunkPosition.z.format()})" } }
             layout += AutoTextElement(guiRenderer, 1) {
                 val text = BaseComponent("Facing ")
 
                 Directions.byDirection(rotation.front).apply {
-                    text += this
+                    text += TextComponent(name.lowercase()).color(ChatColors.YELLOW)
                     text += " "
                     text += vector
                 }
@@ -197,38 +192,38 @@ class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
 
     private fun initRight(): Element {
         val layout = RowLayout(guiRenderer, HorizontalAlignments.RIGHT)
-        layout.margin = Vec4(2)
+        layout.margin = Vec4f(2)
         layout += TextElement(guiRenderer, "Java ${Runtime.version()} ${System.getProperty("sun.arch.data.model")}bit", properties = RIGHT)
         layout += TextElement(guiRenderer, "OS ${SystemInformation.OS_TEXT}", properties = RIGHT)
 
         layout += LineSpacerElement(guiRenderer)
 
-        layout += AutoTextElement(guiRenderer, 1, RIGHT) { "Allocation rate ${AllocationRate.allocationRate.formatBytes()}/s" }
+        layout += AutoTextElement(guiRenderer, 1, RIGHT) { "Allocation rate ${AllocationRate.allocationRate}/s" }
 
         SystemInformation.RUNTIME.apply {
             layout += AutoTextElement(guiRenderer, 1, RIGHT) {
-                val total = maxMemory()
-                val used = totalMemory() - freeMemory()
-                "Memory ${(used * 100.0 / total).rounded10}% ${used.formatBytes()} / ${total.formatBytes()}"
+                val total = maxMemory().bytes
+                val used = totalMemory().bytes - freeMemory().bytes
+                "Memory ${(used.bytes * 100.0 / total.bytes).rounded10}% $used / $total"
             }
             layout += AutoTextElement(guiRenderer, 1, RIGHT) {
-                val total = maxMemory()
-                val allocated = totalMemory()
-                "Allocated ${(allocated * 100.0 / total).rounded10}% ${allocated.formatBytes()} / ${total.formatBytes()}"
+                val total = maxMemory().bytes
+                val allocated = totalMemory().bytes
+                "Allocated ${(allocated.bytes * 100.0 / total.bytes).rounded10}% $allocated / $total"
             }
         }
 
         layout += LineSpacerElement(guiRenderer)
 
         layout += TextElement(guiRenderer, "CPU ${SystemInformation.PROCESSOR_TEXT}", properties = RIGHT)
-        layout += TextElement(guiRenderer, "Memory ${SystemInformation.SYSTEM_MEMORY.formatBytes()}", properties = RIGHT)
+        layout += TextElement(guiRenderer, "Memory ${SystemInformation.SYSTEM_MEMORY}", properties = RIGHT)
 
 
         layout += LineSpacerElement(guiRenderer)
 
         layout += TextElement(guiRenderer, "Display <?>", properties = RIGHT).apply {
-            guiRenderer.context.session.events.listen<ResizeWindowEvent> {
-                text = "Display ${it.size.x.format()}x${it.size.y.format()}"
+            context.window::size.observe(this, true) {
+                text = "Display ${it.x.format()}x${it.y.format()}"
             }
         }
 
@@ -267,7 +262,6 @@ class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
     private class DebugWorldInfo(guiRenderer: GUIRenderer) : RowLayout(guiRenderer) {
         private val chunk = Reference<Chunk?>(null)
         private var lastChunk = Reference<Chunk?>(null)
-        private val world = guiRenderer.context.session.world
         private val entity = guiRenderer.context.session.player
 
         // TODO: Cleanup this class
@@ -299,7 +293,7 @@ class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
 
                 this@DebugWorldInfo += AutoTextElement(guiRenderer, 1) { BaseComponent("Sky properties ", entity.session.world.dimension.effects) }
                 this@DebugWorldInfo += AutoTextElement(guiRenderer, 1) { BaseComponent("Biome ", biome) }
-                this@DebugWorldInfo += AutoTextElement(guiRenderer, 1) { with(entity.session.world.getLight(entity.renderInfo.eyePosition.blockPosition)) { BaseComponent("Light block=", (this and SectionLight.BLOCK_LIGHT_MASK), ", sky=", ((this and SectionLight.SKY_LIGHT_MASK) shr 4)) } }
+                this@DebugWorldInfo += AutoTextElement(guiRenderer, 1) { with(entity.session.world.getLight(entity.renderInfo.eyePosition.blockPosition)) { BaseComponent("Light block=", this.block, ", sky=", this.sky) } }
                 this@DebugWorldInfo += AutoTextElement(guiRenderer, 1) { BaseComponent("Fully loaded: ", chunk.neighbours.complete) }
 
                 lastChunk.value = chunk
@@ -314,7 +308,7 @@ class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
         }
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         layout.forceRender(offset, consumer, options)
     }
 
@@ -332,8 +326,8 @@ class DebugHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
     }
 
     companion object : HUDBuilder<LayoutedGUIElement<DebugHUDElement>> {
-        override val identifier: ResourceLocation = "minosoft:debug_hud".toResourceLocation()
-        override val ENABLE_KEY_BINDING_NAME: ResourceLocation = "minosoft:enable_debug_hud".toResourceLocation()
+        override val identifier = minosoft("debug_hud")
+        override val ENABLE_KEY_BINDING_NAME = minosoft("enable_debug_hud")
         override val DEFAULT_ENABLED: Boolean = false
         override val ENABLE_KEY_BINDING: KeyBinding = KeyBinding(
             KeyActions.STICKY to setOf(KeyCodes.KEY_F3),

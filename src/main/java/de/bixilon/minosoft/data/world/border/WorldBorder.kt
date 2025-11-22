@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,17 +13,15 @@
 
 package de.bixilon.minosoft.data.world.border
 
-import de.bixilon.kotlinglm.vec2.Vec2d
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
-import de.bixilon.minosoft.data.world.World
+import de.bixilon.kmath.vec.vec2.d.Vec2d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.world.border.area.BorderArea
 import de.bixilon.minosoft.data.world.border.area.DynamicBorderArea
 import de.bixilon.minosoft.data.world.border.area.StaticBorderArea
+import de.bixilon.minosoft.data.world.chunk.ChunkSize
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2dUtil.EMPTY
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import kotlin.math.abs
+import kotlin.time.Duration
 
 class WorldBorder {
     var center = Vec2d.EMPTY
@@ -33,7 +31,7 @@ class WorldBorder {
 
     var area: BorderArea = StaticBorderArea(MAX_RADIUS)
 
-    fun isOutside(blockPosition: Vec3i): Boolean {
+    fun isOutside(blockPosition: BlockPosition): Boolean {
         return isOutside(blockPosition.x.toDouble(), blockPosition.z.toDouble()) && isOutside(blockPosition.x + 1.0, blockPosition.z + 1.0)
     }
 
@@ -67,12 +65,12 @@ class WorldBorder {
         )
     }
 
-    fun interpolate(oldRadius: Double, newRadius: Double, millis: Long) {
-        if (millis <= 0L || oldRadius == newRadius) {
+    fun interpolate(oldRadius: Double, newRadius: Double, time: Duration) {
+        if (time <= Duration.ZERO || oldRadius == newRadius) {
             area = StaticBorderArea(newRadius)
             return
         }
-        area = DynamicBorderArea(this, oldRadius, newRadius, millis)
+        area = DynamicBorderArea(this, oldRadius, newRadius, time)
     }
 
     fun tick() {
@@ -84,6 +82,6 @@ class WorldBorder {
     }
 
     companion object {
-        const val MAX_RADIUS = (World.MAX_SIZE - ProtocolDefinition.SECTION_WIDTH_X).toDouble()
+        const val MAX_RADIUS = (BlockPosition.MAX_X - ChunkSize.SECTION_WIDTH_X).toDouble()
     }
 }

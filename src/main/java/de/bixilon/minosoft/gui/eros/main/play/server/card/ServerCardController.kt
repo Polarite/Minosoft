@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,9 +15,9 @@ package de.bixilon.minosoft.gui.eros.main.play.server.card
 
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.primitive.IntUtil.thousands
-import de.bixilon.kutil.unit.UnitFormatter.formatNanos
+import de.bixilon.kutil.unit.UnitFormatter.format
 import de.bixilon.minosoft.data.language.IntegratedLanguage
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.gui.eros.card.AbstractCardController
 import de.bixilon.minosoft.gui.eros.card.CardFactory
@@ -28,7 +28,6 @@ import de.bixilon.minosoft.gui.eros.util.JavaFXUtil
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.ctext
 import de.bixilon.minosoft.gui.eros.util.JavaFXUtil.text
 import de.bixilon.minosoft.util.KUtil.text
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 import de.bixilon.minosoft.util.PixelImageView
 import de.bixilon.minosoft.util.delegate.JavaFXDelegate.observeFX
 import javafx.fxml.FXML
@@ -130,12 +129,12 @@ class ServerCardController : AbstractCardController<ServerCard>() {
                 // error already occurred, not setting any data
                 return@observeFX
             }
-            pingFX.text = it.latency.formatNanos()
+            pingFX.text = it.latency.format()
             serverList?.onPingUpdate(item)
         }
     }
 
     companion object : CardFactory<ServerCardController> {
-        override val LAYOUT: ResourceLocation = "minosoft:eros/main/play/server/server_card.fxml".toResourceLocation()
+        override val LAYOUT = minosoft("eros/main/play/server/server_card.fxml")
     }
 }

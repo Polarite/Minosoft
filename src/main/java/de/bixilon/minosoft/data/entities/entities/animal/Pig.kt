@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.animal
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
@@ -23,7 +23,6 @@ import de.bixilon.minosoft.data.entities.entities.properties.riding.ItemRideable
 import de.bixilon.minosoft.data.registries.entities.EntityFactory
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.registries.item.items.fishing.rod.OnAStickItem
 import de.bixilon.minosoft.physics.entities.living.animal.PigPhysics
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
@@ -43,13 +42,13 @@ class Pig(session: PlaySession, entityType: EntityType, data: EntityData, positi
 
 
     override fun isSteerableWith(stack: ItemStack): Boolean {
-        return stack.item.item is OnAStickItem.CarrotOnAStickItem
+        return stack.item is OnAStickItem.CarrotOnAStickItem
     }
 
     override fun createPhysics() = PigPhysics(this)
 
     companion object : EntityFactory<Pig> {
-        override val identifier: ResourceLocation = minecraft("pig")
+        override val identifier = minecraft("pig")
         val SADDLED = EntityDataField("PIG_HAS_SADDLE")
         private val BOOST_TIME_DATA = EntityDataField("PIG_BOOST_TIME")
 

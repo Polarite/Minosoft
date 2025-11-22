@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen.menu
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
@@ -22,10 +22,9 @@ import de.bixilon.minosoft.gui.rendering.gui.gui.AbstractLayout
 import de.bixilon.minosoft.gui.rendering.gui.gui.screen.Screen
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
 
 abstract class Menu(
     guiRenderer: GUIRenderer,
@@ -46,7 +45,7 @@ abstract class Menu(
         var totalHeight = 0.0f
         for (element in elements) {
             val currentElementSize = element.size
-            val elementSize = Vec2(elementWidth, currentElementSize.y)
+            val elementSize = Vec2f(elementWidth, currentElementSize.y)
             element.size = elementSize
             maxElementWidth = maxOf(maxElementWidth, element.size.x) // width may not be changeable
             totalHeight += currentElementSize.y
@@ -66,23 +65,23 @@ abstract class Menu(
 
     operator fun plusAssign(element: Element) = add(element)
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         val size = size
         super.forceRender(offset, consumer, options)
         val maxElementWidth = maxElementWidth
-        val startOffset = (size - Vec2i(maxElementWidth, totalHeight)) / 2
+        val startOffset = MVec2f((size - Vec2f(maxElementWidth, totalHeight)) / 2)
         for (element in elements) {
-            element.render(offset + startOffset + Vec2((maxElementWidth - element.size.x) / 2, 0), consumer, options)
+            element.render(offset + startOffset + Vec2f((maxElementWidth - element.size.x) / 2, 0f), consumer, options)
             startOffset.y += BUTTON_Y_MARGIN + element.size.y
         }
     }
 
-    override fun onMouseEnter(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseEnter(position: Vec2f, absolute: Vec2f): Boolean {
         super<AbstractLayout>.onMouseEnter(position, absolute)
         return true
     }
 
-    override fun onMouseMove(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseMove(position: Vec2f, absolute: Vec2f): Boolean {
         super<AbstractLayout>.onMouseMove(position, absolute)
         return true
     }
@@ -92,7 +91,7 @@ abstract class Menu(
         return true
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         val (element, delta) = getAt(position) ?: return true
         element.onMouseAction(delta, button, action, count)
         return true
@@ -102,9 +101,9 @@ abstract class Menu(
         forceSilentApply()
     }
 
-    override fun getAt(position: Vec2): Pair<Element, Vec2>? {
+    override fun getAt(position: Vec2f): Pair<Element, Vec2f>? {
         var element: Element? = null
-        val delta = Vec2(position)
+        val delta = MVec2f(position)
         val elementWidth = maxElementWidth
         val size = size
         val xStart = (size.x - elementWidth) / 2
@@ -140,7 +139,7 @@ abstract class Menu(
             return null
         }
 
-        return Pair(element, delta)
+        return Pair(element, delta.unsafe)
     }
 
     override fun tick() {
@@ -176,7 +175,7 @@ abstract class Menu(
             }
 
             activeElement?.onMouseLeave()
-            element.onMouseEnter(Vec2.EMPTY, Vec2.EMPTY)
+            element.onMouseEnter(Vec2f.EMPTY, Vec2f.EMPTY)
             activeElement = element
             return true // no passthrough the key to current active element
         }
@@ -190,7 +189,7 @@ abstract class Menu(
         return true
     }
 
-    override fun onScroll(position: Vec2, scrollOffset: Vec2): Boolean {
+    override fun onScroll(position: Vec2f, scrollOffset: Vec2f): Boolean {
         val (element, delta) = getAt(position) ?: return true
         element.onScroll(delta, scrollOffset)
         return true

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.projectile
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
@@ -22,7 +22,6 @@ import de.bixilon.minosoft.data.entities.entities.SynchronizedEntityData
 import de.bixilon.minosoft.data.registries.entities.EntityFactory
 import de.bixilon.minosoft.data.registries.entities.EntityType
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
 class FireworkRocketEntity(session: PlaySession, entityType: EntityType, data: EntityData, position: Vec3d, rotation: EntityRotation) : Projectile(session, entityType, data, position, rotation) {
@@ -46,7 +45,7 @@ class FireworkRocketEntity(session: PlaySession, entityType: EntityType, data: E
     override fun onAttack(attacker: Entity): Boolean = false
 
     companion object : EntityFactory<FireworkRocketEntity> {
-        override val identifier: ResourceLocation = minecraft("firework_rocket")
+        override val identifier = minecraft("firework_rocket")
         private val ITEM_DATA = EntityDataField("FIREWORK_ROCKET_ENTITY_ITEM")
         private val ATTACHED_ENTITY_DATA = EntityDataField("FIREWORK_ROCKET_ENTITY_ATTACHED_ENTITY")
         private val SHOT_AT_ANGLE_DATA = EntityDataField("FIREWORK_ROCKET_ENTITY_SHOT_AT_ANGLE")

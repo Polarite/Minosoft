@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,28 +13,28 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types.norender.emitter
 
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kutil.random.RandomUtil.nextFloat
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.gui.rendering.particle.ParticleFactory
 import de.bixilon.minosoft.gui.rendering.particle.types.norender.NoRenderParticle
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
+import de.bixilon.minosoft.util.Backports.nextFloatPort
 
 class EntityEmitterParticle(
     session: PlaySession,
     val entity: Entity,
     val particleFactory: ParticleFactory<*>,
-    velocity: Vec3d = Vec3d.EMPTY,
+    velocity: MVec3d = MVec3d.EMPTY,
     maxAge: Int = 3,
-) : NoRenderParticle(session, entity.physics.velocity, velocity, null) {
+) : NoRenderParticle(session, entity.physics.position, velocity, null) {
     private val particleData = session.registries.particleType[particleFactory.identifier]!!.default()
 
 
     init {
         val cameraPosition = entity.renderInfo.position
-        this.position(Vec3d(cameraPosition.x, cameraPosition.y + entity.type.height * 0.5, cameraPosition.z))
+        this.position = Vec3d(cameraPosition.x, cameraPosition.y + entity.type.height * 0.5, cameraPosition.z)
         this.maxAge = maxAge
         movement = false
         tick()
@@ -45,7 +45,7 @@ class EntityEmitterParticle(
         val particle = session.world.particle ?: return
         val position = entity.physics.position
         for (i in 0 until 16) {
-            val scale = Vec3(random.nextFloat(-1.0f, 1.0f), random.nextFloat(-1.0f, 1.0f), random.nextFloat(-1.0f, 1.0f))
+            val scale = Vec3f(random.nextFloatPort(-1.0f, 1.0f), random.nextFloatPort(-1.0f, 1.0f), random.nextFloatPort(-1.0f, 1.0f))
 
             if (scale.length2() < 1.0f) {
                 continue
@@ -56,7 +56,7 @@ class EntityEmitterParticle(
                 position.y + (entity.type.height * (0.5f + scale.y / 4.0f)),
                 position.z + (entity.type.width * (scale.z / 4.0f)),
             )
-            particle += particleFactory.build(session, particlePosition, Vec3d(scale.x, scale.y, scale.z), particleData) ?: continue// ToDo: Velocity.y is getting added with 0.2
+            particle += particleFactory.build(session, particlePosition, MVec3d(scale.x, scale.y, scale.z), particleData) ?: continue// ToDo: Velocity.y is getting added with 0.2
         }
     }
 

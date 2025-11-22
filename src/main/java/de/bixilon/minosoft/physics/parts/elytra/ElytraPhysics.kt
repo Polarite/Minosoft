@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,9 @@
 
 package de.bixilon.minosoft.physics.parts.elytra
 
-import de.bixilon.kotlinglm.func.rad
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.swizzle.xz
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.math.Trigonometry
+import de.bixilon.kutil.primitive.FloatUtil.rad
 import de.bixilon.minosoft.data.container.equipment.EquipmentSlots
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.entities.Entity
@@ -34,8 +33,7 @@ object ElytraPhysics {
 
     private fun LocalPlayerPhysics.startElytraFalling() {
         entity.isFlyingWithElytra = true
-        val id = entity.session.world.entities.getId(entity) ?: return
-        entity.session.connection.send(EntityActionC2SP(id, EntityActionC2SP.EntityActions.START_ELYTRA_FLYING))
+        entity.session.connection.send(EntityActionC2SP(entity.id, EntityActionC2SP.EntityActions.START_ELYTRA_FLYING))
     }
 
     private fun LocalPlayerPhysics.canStartElytraFlight(): Boolean {
@@ -43,7 +41,7 @@ object ElytraPhysics {
         if (isClimbing()) return false
 
         val chestplate = entity.equipment[EquipmentSlots.CHEST]
-        val item = chestplate?.item?.item
+        val item = chestplate?.item
         if (item !is ElytraItem || !item.isUsable(chestplate)) {
             return false
         }
@@ -92,8 +90,7 @@ object ElytraPhysics {
     fun LivingEntityPhysics<*>.travelElytra(gravity: Double) {
         limitFallDistance()
 
-        val initialVelocity = velocity
-        val velocity = Vec3d(initialVelocity)
+        val horizontal = velocity.xz
         val rotation = rotation
         val front = rotation.elytra()
         val pitch = rotation.pitch.rad
@@ -113,7 +110,7 @@ object ElytraPhysics {
                 velocity += Vec3d(front.x * rot / length, rot, front.z * rot / length)
             }
 
-            val horizontalLength = initialVelocity.xz.length()
+            val horizontalLength = horizontal.length()
             if (pitch < 0.0f) {
                 // steering down
                 val rot = horizontalLength * -Trigonometry.sin(pitch) * 0.04
@@ -126,8 +123,8 @@ object ElytraPhysics {
         }
 
 
-        this.velocity = velocity * FRICTION
+        this.velocity *= FRICTION
 
-        move(this.velocity)
+        move()
     }
 }

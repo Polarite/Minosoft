@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,15 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.camera.view
 
-import de.bixilon.kotlinglm.vec2.Vec2d
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec2.d.Vec2d
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.camera.Camera
 import de.bixilon.minosoft.gui.rendering.camera.CameraDefinition.CAMERA_UP_VEC3
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.input.camera.MovementInputActions
 import de.bixilon.minosoft.input.camera.PlayerMovementInput
 
@@ -33,7 +32,7 @@ class DebugView(private val camera: Camera) : CameraView {
     override var eyePosition = Vec3d.EMPTY
 
     override var rotation = EntityRotation.EMPTY
-    override var front = Vec3.EMPTY
+    override var front = Vec3f.EMPTY
 
 
     override fun onInput(input: PlayerMovementInput, actions: MovementInputActions, delta: Double) {
@@ -48,7 +47,7 @@ class DebugView(private val camera: Camera) : CameraView {
             speedMultiplier /= 3
         }
 
-        val movement = Vec3d.EMPTY
+        val movement = MVec3d()
 
         if (input.forwards != 0.0f) {
             movement += front * input.forwards
@@ -64,7 +63,7 @@ class DebugView(private val camera: Camera) : CameraView {
         movement *= speedMultiplier
         movement *= delta
 
-        eyePosition = eyePosition + movement
+        eyePosition += movement
     }
 
     override fun onMouse(delta: Vec2d) {
@@ -79,6 +78,6 @@ class DebugView(private val camera: Camera) : CameraView {
     override fun onAttach(previous: CameraView?) {
         this.eyePosition = previous?.eyePosition ?: Vec3d.EMPTY
         this.rotation = previous?.rotation ?: EntityRotation.EMPTY
-        this.front = previous?.front ?: Vec3.EMPTY
+        this.front = previous?.front ?: Vec3f.EMPTY
     }
 }

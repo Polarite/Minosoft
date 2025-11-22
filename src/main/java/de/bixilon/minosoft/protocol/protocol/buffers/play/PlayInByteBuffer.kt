@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,9 +12,8 @@
  */
 package de.bixilon.minosoft.protocol.protocol.buffers.play
 
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kutil.buffer.arbitrary.ArbitraryByteArray
 import de.bixilon.kutil.enums.ValuesEnum
 import de.bixilon.kutil.json.JsonUtil.asJsonObject
 import de.bixilon.kutil.json.JsonUtil.toMutableJsonObject
@@ -31,16 +30,18 @@ import de.bixilon.minosoft.data.registries.particle.data.*
 import de.bixilon.minosoft.data.registries.particle.data.vibration.VibrationSource
 import de.bixilon.minosoft.data.registries.particle.data.vibration.VibrationSources
 import de.bixilon.minosoft.data.registries.registries.registry.AbstractRegistry
-import de.bixilon.minosoft.data.registries.registries.registry.EnumRegistry
 import de.bixilon.minosoft.data.registries.registries.registry.Registry
 import de.bixilon.minosoft.data.registries.registries.registry.RegistryItem
+import de.bixilon.minosoft.data.registries.registries.registry.enums.EnumRegistry
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TextComponent
-import de.bixilon.minosoft.datafixer.rls.ResourceLocationFixer
+import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.world.positions.ChunkPosition
 import de.bixilon.minosoft.protocol.PlayerPublicKey
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.s2c.play.sound.PlayedSound
 import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition.VELOCITY_NETWORK_DIVIDER
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions.V_14W04A
 import de.bixilon.minosoft.protocol.protocol.ProtocolVersions.V_14W21A
@@ -68,40 +69,38 @@ class PlayInByteBuffer : InByteBuffer {
     val session: PlaySession
     val versionId: Int
 
-    constructor(bytes: ByteArray, session: PlaySession) : super(bytes) {
+    constructor(data: ArbitraryByteArray, session: PlaySession) : super(data) {
         this.session = session
         versionId = session.version.versionId
     }
 
-    constructor(buffer: PlayInByteBuffer) : super(buffer) {
-        session = buffer.session
+    constructor(data: ByteArray, session: PlaySession) : super(data) {
+        this.session = session
         versionId = session.version.versionId
     }
 
+
     fun readByteArray(): ByteArray {
-        val length: Int = if (versionId < V_14W21A) {
-            readUnsignedShort()
-        } else {
-            readVarInt()
-        }
+        val length = if (versionId < V_14W21A) readUnsignedShort() else readVarInt()
+
         return super.readByteArray(length)
     }
 
 
-    fun readBlockPosition(): Vec3i {
+    fun readBlockPosition(): BlockPosition {
         // ToDo: protocol id 7
         val raw = readLong()
-        val x = raw shr 38
-        val y: Long
-        val z: Long
+        val x = (raw shr 38).toInt()
+        val y: Int
+        val z: Int
         if (versionId < V_18W43A) {
-            y = raw shr 26 and 0xFFF
-            z = raw shl 38 shr 38
+            y = (raw shr 26 and 0xFFF).toInt()
+            z = (raw shl 38 shr 38).toInt()
         } else {
-            y = raw shl 52 shr 52
-            z = raw shl 26 shr 38
+            y = (raw shl 52 shr 52).toInt()
+            z = (raw shl 26 shr 38).toInt()
         }
-        return Vec3i(x, y, z)
+        return BlockPosition(x, y, z)
     }
 
     override fun readChatComponent(): ChatComponent {
@@ -130,18 +129,17 @@ class PlayInByteBuffer : InByteBuffer {
 
     @Deprecated("Should be made with factories")
     fun readParticleData(type: ParticleType): ParticleData {
-        // ToDo: Replace with dynamic particle type calling
-        if (this.versionId < V_17W45A) {
-            return when (type.identifier.toString()) {
-                "minecraft:iconcrack" -> ItemParticleData.read(this, type)
-                "minecraft:blockcrack", "minecraft:blockdust", "minecraft:falling_dust" -> BlockParticleData.read(this, type)
-                else -> ParticleData(type)
-            }
+        type.factory?.read(session, this, type)?.let { return it }
+
+        // TODO: Implement those particles
+        if (this.versionId < V_17W45A) return when (type.identifier.toString()) {
+            "minecraft:iconcrack" -> ItemParticleData.read(this, type)
+            "minecraft:blockcrack", "minecraft:blockdust", "minecraft:falling_dust" -> BlockParticleData.read(this, type)
+            else -> ParticleData(type)
         }
 
         return when (type.identifier.toString()) {
-            "minecraft:block", "minecraft:falling_dust", "minecraft:block_marker" -> BlockParticleData.read(this, type)
-            "minecraft:dust" -> DustParticleData.read(this, type)
+            "minecraft:falling_dust", "minecraft:block_marker" -> BlockParticleData.read(this, type)
             "minecraft:item" -> ItemParticleData.read(this, type)
             "minecraft:shriek" -> ShriekParticleData.read(this, type)
             "minecraft:sculk_charge" -> SculkChargeParticleData.read(this, type)
@@ -156,7 +154,7 @@ class PlayInByteBuffer : InByteBuffer {
 
     private fun readLegacyItemStack(): ItemStack? {
         val id = readShort().toInt()
-        if (id <= ProtocolDefinition.AIR_BLOCK_ID) {
+        if (id <= ProtocolDefinition.AIR_ID) {
             return null
         }
         val count = readUnsignedByte()
@@ -166,13 +164,8 @@ class PlayInByteBuffer : InByteBuffer {
         }
         val nbt = readNBT()?.toMutableJsonObject()
         val item = session.registries.item.getOrNull(id shl 16 or meta) ?: return null // TODO: only if item is not an ItemWithMeta
-        return ItemStackUtil.of(
-            item = item,
-            session = session,
-            count = count,
-            meta = meta,
-            nbt = nbt ?: mutableMapOf(),
-        )
+
+        return ItemStackUtil.of(item, count, meta, session, nbt ?: mutableMapOf())
     }
 
     fun readItemStack(): ItemStack? {
@@ -181,12 +174,13 @@ class PlayInByteBuffer : InByteBuffer {
         }
 
         return readOptional {
-            ItemStackUtil.of(
-                item = session.registries.item[readVarInt()],
-                session = session,
-                count = readUnsignedByte(),
-                nbt = readNBT()?.toMutableJsonObject() ?: mutableMapOf(),
-            )
+            val item = readRegistryItemOrNull(session.registries.item)
+            val count = readUnsignedByte()
+            val nbt = readNBT()?.toMutableJsonObject()
+
+            if (item == null) return null
+
+            ItemStackUtil.of(item, count, session, nbt ?: mutableMapOf())
         }
     }
 
@@ -285,10 +279,13 @@ class PlayInByteBuffer : InByteBuffer {
         return registry[readVarInt()]
     }
 
-    fun <T : RegistryItem> readLegacyRegistryItem(registry: Registry<T>, fixer: ResourceLocationFixer? = null): T? {
-        var name = readResourceLocation()
-        fixer?.fix(name)?.let { name = it }
-        return registry[name]
+    fun <T> readRegistryItemOrNull(registry: AbstractRegistry<T>): T? {
+        return registry.getOrNull(readVarInt())
+    }
+
+    fun <T : RegistryItem> readLegacyRegistryItem(registry: Registry<T>): T? {
+        val identifier = readResourceLocation()
+        return registry[identifier]
     }
 
     fun <T : Enum<*>> readEnum(registry: EnumRegistry<T>): T? {
@@ -307,7 +304,7 @@ class PlayInByteBuffer : InByteBuffer {
             return readNBT()?.let { PlayerPublicKey(it.asJsonObject()) }
         }
         if (versionId > ProtocolVersions.V_22W42A) {
-            val uuid = readUUID()
+            readUUID()
         }
         if (versionId < ProtocolVersions.V_22W43A) {
             if (!readBoolean()) {
@@ -378,7 +375,7 @@ class PlayInByteBuffer : InByteBuffer {
     }
 
     fun readVelocity(): Vec3d {
-        return Vec3d(readShort(), readShort(), readShort()) / ProtocolDefinition.VELOCITY_NETWORK_DIVIDER
+        return Vec3d(readShort() * (1.0 / VELOCITY_NETWORK_DIVIDER), readShort() * (1.0 / VELOCITY_NETWORK_DIVIDER), readShort() * (1.0 / VELOCITY_NETWORK_DIVIDER))
     }
 
     fun readVibrationSource(): VibrationSource {
@@ -410,8 +407,8 @@ class PlayInByteBuffer : InByteBuffer {
         return PlayedSound(name, attenuation)
     }
 
-    fun readLongChunkPosition(): Vec2i {
+    fun readLongChunkPosition(): ChunkPosition {
         val long = readLong()
-        return Vec2i(long.toInt(), (long shr 32).toInt())
+        return ChunkPosition(long.toInt(), (long shr 32).toInt())
     }
 }

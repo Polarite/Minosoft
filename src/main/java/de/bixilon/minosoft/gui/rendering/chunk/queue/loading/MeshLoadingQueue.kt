@@ -13,143 +13,114 @@
 
 package de.bixilon.minosoft.gui.rendering.chunk.queue.loading
 
-import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.concurrent.lock.Lock
-import de.bixilon.kutil.time.TimeUtil
+import de.bixilon.kutil.concurrent.lock.LockUtil.locked
+import de.bixilon.kutil.profiler.stack.StackedProfiler.Companion.invoke
+import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.kutil.unit.Bytes.Companion.bytes
+import de.bixilon.kutil.unit.Bytes.Companion.gigabytes
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
+import de.bixilon.minosoft.data.world.positions.SectionPosition
 import de.bixilon.minosoft.gui.rendering.chunk.ChunkRenderer
 import de.bixilon.minosoft.gui.rendering.chunk.mesh.ChunkMeshes
-import de.bixilon.minosoft.gui.rendering.chunk.queue.QueuePosition
 import de.bixilon.minosoft.gui.rendering.chunk.util.ChunkRendererUtil.maxBusyTime
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 
 class MeshLoadingQueue(
     private val renderer: ChunkRenderer,
 ) {
-    private val meshes: MutableList<ChunkMeshes> = mutableListOf() // prepared meshes, that can be loaded in the (next) frame
-    private val positions: MutableSet<QueuePosition> = HashSet()
+    private val comparator = LoadingQueueComparator()
+    private val meshes = ArrayDeque<ChunkMeshes>(100)
+    private val positions: MutableSet<SectionPosition> = HashSet()
     private val lock = Lock.lock()
 
-    val size: Int get() = meshes.size
 
+    val max = if (Runtime.getRuntime().maxMemory().bytes > 1.gigabytes) 120 else 60
+    val size get() = meshes.size
+
+
+    fun sort() = lock.locked {
+        comparator.update(renderer.visibility.eyePosition)
+        meshes.sortWith(comparator)
+    }
 
     fun work() {
-        lock()
-        if (meshes.isEmpty()) {
-            unlock()
-            return
+        if (meshes.isEmpty()) return
+        lock.lock()
+
+        val start = now()
+        val maxTime = renderer.maxBusyTime
+
+        var index = 0
+        while (meshes.isNotEmpty()) {
+            if (index++ % BATCH_SIZE == 0 && now() - start >= maxTime) break
+
+            val mesh = this.meshes.removeFirst()
+            this.positions -= mesh.position
+
+            renderer.context.profiler("load$index") { mesh.load() }
+
+            renderer.loaded += mesh
         }
 
-        var count = 0
-        val start = TimeUtil.millis()
-        val maxTime = renderer.maxBusyTime // If the player is still, then we can load more chunks (to not cause lags)
+        lock.unlock()
+    }
 
-        var meshes: Int2ObjectOpenHashMap<ChunkMeshes> = unsafeNull()
-        var position: ChunkPosition? = null
 
-        renderer.loaded.lock()
-        while (this.meshes.isNotEmpty() && (TimeUtil.millis() - start < maxTime)) {
-            val mesh = this.meshes.removeAt(0)
-            this.positions -= QueuePosition(mesh)
+    operator fun plusAssign(mesh: ChunkMeshes) = lock.locked {
+        this.meshes += mesh
+        sort()
 
-            mesh.load()
+        this.positions += mesh.position
+    }
 
-            if (position != mesh.chunkPosition) {
-                meshes = renderer.loaded.meshes.getOrPut(mesh.chunkPosition) { Int2ObjectOpenHashMap() }
-                position = mesh.chunkPosition
+
+    fun removeIf(requeue: Boolean, predicate: (position: SectionPosition) -> Boolean) = lock.locked {
+        val iterator = meshes.iterator()
+        while (iterator.hasNext()) {
+            val mesh = iterator.next()
+            if (!predicate.invoke(mesh.position)) continue
+
+            iterator.remove()
+            this.positions -= mesh.position
+
+            mesh.drop()
+
+            if (requeue) {
+                renderer.invalidate(mesh.section)
+            } else {
+                renderer.cache -= mesh.position
             }
-
-
-            meshes.put(mesh.sectionHeight, mesh)?.let {
-                renderer.visible.removeMesh(it)
-                it.unload()
-            }
-
-            val visible = renderer.visibilityGraph.isSectionVisible(mesh.chunkPosition, mesh.sectionHeight, mesh.minPosition, mesh.maxPosition, true)
-            if (visible) {
-                count++
-                renderer.visible.addMesh(mesh)
-            }
-        }
-        renderer.loaded.unlock()
-
-        unlock()
-
-        if (count > 0) {
-            renderer.visible.sort()
         }
     }
 
+    operator fun minusAssign(position: ChunkPosition) = removeIf(false) { it.chunkPosition == position }
 
-    fun queue(mesh: ChunkMeshes) {
-        lock()
-        if (!this.positions.add(QueuePosition(mesh))) {
-            // already inside, remove
-            meshes.remove(mesh)
+    operator fun minusAssign(position: SectionPosition) = lock.locked {
+        if (!this.positions.remove(position)) return@locked
+
+        val iterator = meshes.iterator()
+        while (iterator.hasNext()) {
+            val mesh = iterator.next()
+            if (mesh.position != position) continue
+
+            iterator.remove()
+
+            mesh.drop()
+            renderer.cache -= mesh.position
+            break
         }
-        if (mesh.chunkPosition == renderer.cameraChunkPosition) {
-            // still higher priority
-            meshes.add(0, mesh)
-        } else {
-            meshes += mesh
+    }
+
+    fun clear() = lock.locked {
+        for (mesh in meshes) {
+            mesh.drop()
+            renderer.cache -= mesh.position
         }
-        unlock()
+        meshes.clear()
+        positions.clear()
     }
 
-    fun abort(position: ChunkPosition, lock: Boolean = true) {
-        if (lock) lock()
-        val positions: MutableSet<QueuePosition> = mutableSetOf()
-        this.positions.removeAll {
-            if (it.position != position) {
-                return@removeAll false
-            }
-            positions += it
-            return@removeAll true
-        }
-        this.meshes.removeAll { QueuePosition(it.chunkPosition, it.sectionHeight) in positions }
-        if (lock) unlock()
-    }
-
-    fun abort(position: QueuePosition, lock: Boolean = true) {
-        if (lock) lock()
-        if (this.positions.remove(position)) {
-            this.meshes.removeAll { it.chunkPosition == position.position && it.sectionHeight == position.sectionHeight }
-        }
-        if (lock) unlock()
-    }
-
-
-    fun cleanup(lock: Boolean) {
-        val remove: MutableSet<QueuePosition> = mutableSetOf()
-
-        if (lock) lock()
-        this.positions.removeAll {
-            if (renderer.visibilityGraph.isChunkVisible(it.position)) {
-                return@removeAll false
-            }
-            remove += it
-            return@removeAll true
-        }
-
-        this.meshes.removeAll { QueuePosition(it) in remove; }
-        if (lock) unlock()
-    }
-
-    fun clear(lock: Boolean) {
-        if (lock) lock()
-        this.positions.clear()
-        this.meshes.clear()
-        if (lock) unlock()
-    }
-
-
-    fun lock() {
-        renderer.lock.acquire()
-        this.lock.lock()
-    }
-
-    fun unlock() {
-        this.lock.unlock()
-        renderer.lock.release()
+    companion object {
+        const val BATCH_SIZE = 5
     }
 }

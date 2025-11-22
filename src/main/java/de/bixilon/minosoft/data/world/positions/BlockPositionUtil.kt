@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2022 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,6 +13,9 @@
 
 package de.bixilon.minosoft.data.world.positions
 
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.minosoft.config.DebugOptions
+
 object BlockPositionUtil {
 
     fun generatePositionHash(x: Int, y: Int, z: Int): Long {
@@ -21,7 +24,26 @@ object BlockPositionUtil {
         return hash shr 16
     }
 
-    inline val BlockPosition.positionHash: Long
-        get() = generatePositionHash(x, y, z)
+    inline fun assertPosition(condition: Boolean) {
+        if (!DebugOptions.VERIFY_COORDINATES) return
+        if (!condition) throw AssertionError("Position assert failed!")
+    }
 
+    inline fun assertPosition(condition: Boolean, message: String) {
+        if (!DebugOptions.VERIFY_COORDINATES) return
+        if (!condition) throw AssertionError("Position assert failed: $message")
+    }
+
+    inline fun assertPosition(value: Int, min: Int, max: Int) {
+        if (!DebugOptions.VERIFY_COORDINATES) return
+        if (value < min) throw AssertionError("coordinate out of range: $value < $min")
+        if (value > max) throw AssertionError("coordinate out of range: $value > $max")
+    }
+
+
+    val BlockPosition.center: Vec3d
+        get() = Vec3d(x + 0.5, y + 0.5, z + 0.5)
+
+    val BlockPosition.entityPosition: Vec3d
+        get() = Vec3d(x + 0.5, y + 0.0, z + 0.5) // ToDo: Confirm
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2022 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,17 +13,17 @@
 
 package de.bixilon.minosoft.gui.rendering.shader.types
 
-import de.bixilon.kotlinglm.mat4x4.Mat4
+import de.bixilon.kmath.mat.mat4.f.Mat4f
 import de.bixilon.minosoft.gui.rendering.shader.AbstractShader
-import de.bixilon.minosoft.gui.rendering.shader.uniform.ShaderUniform
+import de.bixilon.minosoft.gui.rendering.shader.uniform.AnyShaderUniform
 import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
 import de.bixilon.minosoft.gui.rendering.system.base.shader.ShaderUniforms
 
 interface ViewProjectionShader : AbstractShader {
-    var viewProjectionMatrix: Mat4
+    var viewProjectionMatrix: Mat4f
 
 
-    fun viewProjectionMatrix(): ShaderUniform<Mat4> {
-        return uniform(ShaderUniforms.VIEW_PROJECTION_MATRIX, Mat4(), NativeShader::setMat4)
+    fun viewProjectionMatrix(): AnyShaderUniform<Mat4f> {
+        return uniform(ShaderUniforms.VIEW_PROJECTION_MATRIX, Mat4f(), NativeShader::setMat4f)
     }
 }

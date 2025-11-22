@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,36 +12,42 @@
  */
 package de.bixilon.minosoft.data.direction
 
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kmath.vec.vec3.f.Vec3f
+import de.bixilon.kmath.vec.vec3.i.SVec3i
+import de.bixilon.kmath.vec.vec3.i.Vec3i
+import de.bixilon.kmath.vec.vec3.i._Vec3i
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.cast.CastUtil.unsafeNull
 import de.bixilon.kutil.enums.EnumUtil
 import de.bixilon.kutil.enums.ValuesEnum
-import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
-import de.bixilon.kutil.reflection.ReflectionUtil.jvmField
+import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.minosoft.data.Axes
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.get
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3fUtil
 
 enum class Directions(
-    val vector: Vec3i,
-    val index: Vec3i,
-) {
-    DOWN(Vec3i(0, -1, 0), Vec3i(1, -1, 1)),
-    UP(Vec3i(0, 1, 0), Vec3i(3, -1, 3)),
-    NORTH(Vec3i(0, 0, -1), Vec3i(0, 0, -1)),
-    SOUTH(Vec3i(0, 0, 1), Vec3i(2, 2, -1)),
-    WEST(Vec3i(-1, 0, 0), Vec3i(-1, 3, 2)),
-    EAST(Vec3i(1, 0, 0), Vec3i(-1, 1, 0)),
+    val axis: Axes,
+    val index: SVec3i,
+) : _Vec3i {
+    DOWN(Axes.Y, SVec3i(1, -1, 1)),  // y-
+    UP(Axes.Y, SVec3i(3, -1, 3)),    // y+
+    NORTH(Axes.Z, SVec3i(0, 0, -1)), // z-
+    SOUTH(Axes.Z, SVec3i(2, 2, -1)), // z+
+    WEST(Axes.X, SVec3i(-1, 3, 2)),  // x-
+    EAST(Axes.X, SVec3i(-1, 1, 0)),  // x+
     ;
+
+    override val x get() = vector.x
+    override val y get() = vector.y
+    override val z get() = vector.z
 
     val negative = ordinal % 2 == 0
 
-    val vectorf = Vec3(vector)
+    val vector = DirectionVector().with(this)
+    val vectori = Vec3i(vector)
+    val vectorf = Vec3f(vector)
     val vectord = Vec3d(vector)
 
-    val axis: Axes = unsafeNull()
     val inverted: Directions = unsafeNull()
 
     private fun invert(): Directions {
@@ -83,11 +89,11 @@ enum class Directions(
         private const val MIN_ERROR = 0.0001f
 
         @Deprecated("outsource")
-        fun byDirection(direction: Vec3): Directions {
+        fun byDirection(direction: Vec3f): Directions {
             var minDirection = VALUES[0]
-            var minError = 2.0f
+            var minError = 2.0f * 2.0f
             for (testDirection in VALUES) {
-                val error = (testDirection.vectorf - direction).length()
+                val error = Vec3fUtil.distance2(testDirection.vectorf, direction)
                 if (error < MIN_ERROR) {
                     return testDirection
                 } else if (error < minError) {
@@ -99,11 +105,9 @@ enum class Directions(
         }
 
         init {
-            val inverted = Directions::inverted.jvmField
-            val axis = Directions::axis.jvmField
+            val inverted = Directions::inverted.field
             for (direction in VALUES) {
-                inverted.forceSet(direction, direction.invert())
-                axis.forceSet(direction, Axes[direction])
+                inverted[direction] = direction.invert()
             }
             NAME_MAP.unsafeCast<MutableMap<String, Directions>>()["bottom"] = DOWN
         }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2022 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,13 +13,14 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.layout.grid
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec4.Vec4
+import de.bixilon.kmath.vec.vec2.f.MVec2f
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec4.f.Vec4f
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIMeshCache
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.GuiMeshCache
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 class GridCell(
     guiRenderer: GUIRenderer,
@@ -30,39 +31,36 @@ class GridCell(
 ) : Element(guiRenderer, 0) {
     override var cacheUpToDate: Boolean by child::cacheUpToDate
     override var cacheEnabled: Boolean by child::cacheEnabled
-    override var prefMaxSize: Vec2 by child::prefMaxSize
-    override var size: Vec2 by child::size
-    override var margin: Vec4 by child::margin
-    override var prefSize: Vec2 by child::prefSize
-    override val cache: GUIMeshCache by child::cache
+    override var prefMaxSize: Vec2f by child::prefMaxSize
+    override var size: Vec2f by child::size
+    override var margin: Vec4f by child::margin
+    override var prefSize: Vec2f by child::prefSize
+    override val cache: GuiMeshCache by child::cache
 
     init {
         _parent = parent
     }
 
-    override val maxSize: Vec2
-        get() {
-            val maxSize = Vec2(super.maxSize)
+    override fun applyMaxSize(max: MVec2f) {
+        super.applyMaxSize(max)
 
-            if (columnConstraint.width < maxSize.x) {
-                maxSize.x = columnConstraint.width
-            }
-            if (rowConstraint.height < maxSize.y) {
-                maxSize.y = rowConstraint.height
-            }
-
-            return maxSize
+        if (columnConstraint.width < max.x) {
+            max.x = columnConstraint.width
         }
+        if (rowConstraint.height < max.y) {
+            max.y = rowConstraint.height
+        }
+    }
 
     init {
         child.parent = this
     }
 
-    override fun render(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun render(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         return child.render(offset, consumer, options)
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         return child.forceRender(offset, consumer, options)
     }
 

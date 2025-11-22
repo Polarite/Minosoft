@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.projectile
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.data.EntityData
 import de.bixilon.minosoft.data.entities.entities.Entity
@@ -32,7 +32,7 @@ class LargeFireball(session: PlaySession, entityType: EntityType, data: EntityDa
 
     companion object : EntityFactory<LargeFireball> {
         private val DEFAULT_ITEM = minecraft("fire_charge")
-        override val identifier: ResourceLocation = minecraft("fireball")
+        override val identifier = minecraft("fireball")
 
         override fun build(session: PlaySession, entityType: EntityType, data: EntityData, position: Vec3d, rotation: EntityRotation): LargeFireball {
             return LargeFireball(session, entityType, data, position, rotation)

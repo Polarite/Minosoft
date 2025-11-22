@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,23 +13,23 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.damage
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.particle.data.ParticleData
 import de.bixilon.minosoft.gui.rendering.particle.ParticleFactory
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
-class EnchantedHitParticle(session: PlaySession, position: Vec3d, velocity: Vec3d, data: ParticleData? = null) : DamageParticle(session, position, velocity, data) {
+class EnchantedHitParticle(session: PlaySession, position: Vec3d, velocity: MVec3d, data: ParticleData? = null) : DamageParticle(session, position, velocity, data) {
 
     init {
-        color = color.with(red = color.floatRed * 0.3f, green = color.floatGreen * 0.8f)
+        color = color.with(red = color.redf * 0.3f, green = color.greenf * 0.8f)
     }
 
     companion object : ParticleFactory<EnchantedHitParticle> {
-        override val identifier: ResourceLocation = "minecraft:enchanted_hit".toResourceLocation()
+        override val identifier = minecraft("enchanted_hit")
 
-        override fun build(session: PlaySession, position: Vec3d, velocity: Vec3d, data: ParticleData): EnchantedHitParticle {
+        override fun build(session: PlaySession, position: Vec3d, velocity: MVec3d, data: ParticleData): EnchantedHitParticle {
             return EnchantedHitParticle(session, position, velocity, data)
         }
     }

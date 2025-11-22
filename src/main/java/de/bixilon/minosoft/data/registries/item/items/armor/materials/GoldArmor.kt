@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -26,11 +26,12 @@ import de.bixilon.minosoft.data.registries.item.items.armor.slots.HelmetItem
 import de.bixilon.minosoft.data.registries.item.items.armor.slots.LeggingsItem
 import de.bixilon.minosoft.data.registries.registries.Registries
 
-abstract class GoldArmor(resourceLocation: ResourceLocation) : ArmorItem(resourceLocation), WearableItem, DefendingArmorItem {
+abstract class GoldArmor(identifier: ResourceLocation) : ArmorItem(identifier), WearableItem, DefendingArmorItem {
 
 
-    open class GoldBoots(resourceLocation: ResourceLocation = this.identifier) : GoldArmor(resourceLocation), BootsItem {
+    open class GoldBoots(identifier: ResourceLocation = this.identifier) : GoldArmor(identifier), BootsItem {
         override val defense: Int get() = 1
+        override val maxDurability get() = 91
 
         companion object : ItemFactory<GoldBoots> {
             override val identifier = minecraft("gold_boots")
@@ -39,8 +40,9 @@ abstract class GoldArmor(resourceLocation: ResourceLocation) : ArmorItem(resourc
         }
     }
 
-    open class GoldLeggings(resourceLocation: ResourceLocation = this.identifier) : GoldArmor(resourceLocation), LeggingsItem {
+    open class GoldLeggings(identifier: ResourceLocation = this.identifier) : GoldArmor(identifier), LeggingsItem {
         override val defense: Int get() = 3
+        override val maxDurability get() = 105
 
         companion object : ItemFactory<GoldLeggings> {
             override val identifier = minecraft("gold_leggings")
@@ -49,8 +51,9 @@ abstract class GoldArmor(resourceLocation: ResourceLocation) : ArmorItem(resourc
         }
     }
 
-    open class GoldChestplate(resourceLocation: ResourceLocation = this.identifier) : GoldArmor(resourceLocation), ChestplateItem {
+    open class GoldChestplate(identifier: ResourceLocation = this.identifier) : GoldArmor(identifier), ChestplateItem {
         override val defense: Int get() = 5
+        override val maxDurability get() = 112
 
         companion object : ItemFactory<GoldChestplate> {
             override val identifier = minecraft("gold_chestplate")
@@ -59,8 +62,9 @@ abstract class GoldArmor(resourceLocation: ResourceLocation) : ArmorItem(resourc
         }
     }
 
-    open class GoldHelmet(resourceLocation: ResourceLocation = this.identifier) : GoldArmor(resourceLocation), HelmetItem {
+    open class GoldHelmet(identifier: ResourceLocation = this.identifier) : GoldArmor(identifier), HelmetItem {
         override val defense: Int get() = 2
+        override val maxDurability get() = 77
 
         companion object : ItemFactory<GoldHelmet> {
             override val identifier = minecraft("gold_helmet")

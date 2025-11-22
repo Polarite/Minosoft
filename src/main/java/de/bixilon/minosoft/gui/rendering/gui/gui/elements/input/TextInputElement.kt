@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2022 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,11 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.elements.input
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.kutil.string.StringUtil.codePointAtOrNull
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.text.TextComponent
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.RenderConstants
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
@@ -30,12 +29,10 @@ import de.bixilon.minosoft.gui.rendering.gui.elements.text.mark.TextCursorStyles
 import de.bixilon.minosoft.gui.rendering.gui.input.ModifierKeys
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.CursorShapes
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2iUtil.EMPTY
 
 open class TextInputElement(
     guiRenderer: GUIRenderer,
@@ -44,15 +41,15 @@ open class TextInputElement(
     val cursorStyles: TextCursorStyles = TextCursorStyles.CLICKED,
     var editable: Boolean = true,
     var onChangeCallback: () -> Unit = {},
-    val background: RGBColor? = RenderConstants.TEXT_BACKGROUND_COLOR,
+    val background: RGBAColor? = RenderConstants.TEXT_BACKGROUND_COLOR,
     properties: TextRenderProperties = TextRenderProperties.DEFAULT,
     val cutAtSize: Boolean = false,
     parent: Element? = null,
 ) : Element(guiRenderer) {
-    protected val cursor = ColorElement(guiRenderer, size = Vec2(minOf(1.0f, properties.scale), properties.lineHeight))
+    protected val cursor = ColorElement(guiRenderer, size = Vec2f(minOf(1.0f, properties.scale), properties.lineHeight))
     protected val textElement = MarkTextElement(guiRenderer, "", background = null, parent = this, properties = properties)
-    protected val backgroundElement = ColorElement(guiRenderer, Vec2.EMPTY, RenderConstants.TEXT_BACKGROUND_COLOR)
-    protected var cursorOffset: Vec2i = Vec2i.EMPTY
+    protected val backgroundElement = ColorElement(guiRenderer, Vec2f.EMPTY, RenderConstants.TEXT_BACKGROUND_COLOR)
+    protected var cursorOffset: Vec2f = Vec2f.EMPTY
     val _value = StringBuffer(256)
     var value: String
         get() = _value.toString()
@@ -75,7 +72,7 @@ open class TextInputElement(
         forceSilentApply()
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         if (background != null) {
             backgroundElement.render(offset, consumer, options)
         }
@@ -135,18 +132,18 @@ open class TextInputElement(
             textUpToDate = true
             cutOffText()
         }
-        _size = Vec2(textElement.size)
+        _size = textElement.size
         backgroundElement.size = prefMaxSize
 
         cursorOffset = if (_pointer == 0) {
-            Vec2i.EMPTY
+            Vec2f.EMPTY
         } else {
             val preCursorText = if (_pointer == value.length) {
                 textElement
             } else {
                 TextElement(guiRenderer, value.substring(0, _pointer), properties = textElement.properties, parent = this)
             }
-            Vec2i(preCursorText.info.lines.lastOrNull()?.width ?: 0, maxOf(preCursorText.info.lines.size - 1, 0) * preCursorText.properties.lineHeight)
+            Vec2f(preCursorText.info.lines.lastOrNull()?.width ?: 0.0f, maxOf(preCursorText.info.lines.size - 1.0f, 0.0f) * preCursorText.properties.lineHeight)
         }
         cacheUpToDate = false
     }
@@ -320,7 +317,7 @@ open class TextInputElement(
         return true
     }
 
-    override fun onMouseEnter(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseEnter(position: Vec2f, absolute: Vec2f): Boolean {
         context.window.cursorShape = CursorShapes.IBEAM
         return true
     }
@@ -330,12 +327,12 @@ open class TextInputElement(
         return true
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         if (action != MouseActions.PRESS) {
             return true
         }
         val leftText = TextElement(guiRenderer, value, background = null)
-        leftText.prefMaxSize = Vec2(position.x, size.y)
+        leftText.prefMaxSize = Vec2f(position.x, size.y)
         var pointer = 0
         var heightLeft = position.y
         for (line in leftText.info.lines) {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.protocol.packets.s2c.play.map.legacy
 
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.minosoft.data.world.map.MapPin
 import de.bixilon.minosoft.data.world.map.MapPinTypes
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
@@ -31,7 +31,7 @@ class PinsLegacyMapS2CP(
         val pins: MutableMap<Vec2i, MapPin> = mutableMapOf()
         for (i in 0 until buffer.size / 3) {
             val rawDirection = buffer.readUnsignedByte()
-            val position = Vec2i(buffer.readByte(), buffer.readByte())
+            val position = Vec2i(buffer.readByte().toInt(), buffer.readByte().toInt())
 
             val direction = rawDirection shr 4
             val type = MapPinTypes[rawDirection and 0x0F]

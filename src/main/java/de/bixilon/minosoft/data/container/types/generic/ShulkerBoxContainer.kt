@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,15 +16,16 @@ package de.bixilon.minosoft.data.container.types.generic
 import de.bixilon.minosoft.data.container.Container
 import de.bixilon.minosoft.data.container.slots.SlotType
 import de.bixilon.minosoft.data.container.stack.ItemStack
+import de.bixilon.minosoft.data.registries.blocks.types.entity.storage.ShulkerBoxBlock
 import de.bixilon.minosoft.data.registries.containers.ContainerFactory
 import de.bixilon.minosoft.data.registries.containers.ContainerType
-import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.minosoft.data.registries.item.items.block.BlockItem
+import de.bixilon.minosoft.data.registries.item.items.block.legacy.PixLyzerBlockItem
 import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
 
-class ShulkerBoxContainer(session: PlaySession, type: ContainerType, title: ChatComponent?) : Generic9x3Container(session, type, title) {
+class ShulkerBoxContainer(session: PlaySession, type: ContainerType, title: ChatComponent?, id: Int) : Generic9x3Container(session, type, title, id) {
 
     override fun getSlotType(slotId: Int): SlotType? {
         if (slotId in 0 until rows * SLOTS_PER_ROW) {
@@ -33,18 +34,21 @@ class ShulkerBoxContainer(session: PlaySession, type: ContainerType, title: Chat
         return super.getSlotType(slotId)
     }
 
-    private object ShulkerBoxSlotType : SlotType {
+    object ShulkerBoxSlotType : SlotType {
 
         override fun canPut(container: Container, slot: Int, stack: ItemStack): Boolean {
-            return stack.item.item.identifier == identifier // TODO: don't compare identifier
+            if (stack.item is BlockItem<*> && stack.item.block is ShulkerBoxBlock) return false
+            if (stack.item is PixLyzerBlockItem && stack.item.block is ShulkerBoxBlock) return false
+
+            return stack.item.identifier != ShulkerBoxBlock.identifier // TODO: don't compare identifier
         }
     }
 
     companion object : ContainerFactory<ShulkerBoxContainer> {
-        override val identifier: ResourceLocation = minecraft("shulker_box")
+        override val identifier = ShulkerBoxBlock.identifier
 
-        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int): ShulkerBoxContainer {
-            return ShulkerBoxContainer(session, type, title)
+        override fun build(session: PlaySession, type: ContainerType, title: ChatComponent?, slots: Int, id: Int): ShulkerBoxContainer {
+            return ShulkerBoxContainer(session, type, title, id)
         }
     }
 }

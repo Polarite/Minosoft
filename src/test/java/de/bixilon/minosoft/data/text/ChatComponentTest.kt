@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -26,7 +26,7 @@ import de.bixilon.minosoft.data.text.events.click.SuggestChatClickEvent
 import de.bixilon.minosoft.data.text.events.hover.EntityHoverEvent
 import de.bixilon.minosoft.data.text.events.hover.TextHoverEvent
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
 import org.junit.jupiter.api.Test
 import org.opentest4j.AssertionFailedError
 import kotlin.test.assertEquals
@@ -144,7 +144,7 @@ internal class ChatComponentTest {
 
     @Test
     fun testHexColor() {
-        val expected = TextComponent("Test").color("#123456".asColor())
+        val expected = TextComponent("Test").color("#123456".rgb())
         val actual = """{"text":"Test", "color": "#123456"}""".chat()
         assertEquals(expected, actual)
     }
@@ -180,25 +180,25 @@ internal class ChatComponentTest {
     @Test
     fun testJson1() {
         val text = TextComponent("dummy")
-        assertEquals(text.getJson(), mapOf("text" to "dummy"))
+        assertEquals(text.toJson(), mapOf("text" to "dummy"))
     }
 
     @Test
     fun testJson2() {
         val text = ChatComponent.of("dummy")
-        assertEquals(text.getJson(), mapOf("text" to "dummy"))
+        assertEquals(text.toJson(), mapOf("text" to "dummy"))
     }
 
     @Test
     fun testJson3() {
         val text = ChatComponent.of("dummy§knext")
-        assertEquals(text.getJson(), listOf(mapOf("text" to "dummy"), mapOf("text" to "next", "obfuscated" to true)))
+        assertEquals(text.toJson(), listOf(mapOf("text" to "dummy"), mapOf("text" to "next", "obfuscated" to true)))
     }
 
     @Test
     fun testJson4() {
         val text = ChatComponent.of("dummy§anext")
-        assertEquals(text.getJson(), listOf(mapOf("text" to "dummy"), mapOf("text" to "next", "color" to "green")))
+        assertEquals(text.toJson(), listOf(mapOf("text" to "dummy"), mapOf("text" to "next", "color" to "green")))
     }
 
     @Test
@@ -334,9 +334,9 @@ internal class ChatComponentTest {
     private fun assertEquals(expected: ChatComponent, actual: ChatComponent) {
         when (expected) {
             is BaseComponent -> {
-                if (actual !is BaseComponent) throw AssertionFailedError("Type mismatch", "BaseComponent", actual::class.java.name)
+                if (actual !is BaseComponent) assert("Type mismatch", "BaseComponent", actual::class.java.name)
 
-                if (expected.parts.size != actual.parts.size) throw AssertionFailedError("Count of parts does not match", expected.parts, actual.parts)
+                if (expected.parts.size != actual.parts.size) assert("Count of parts does not match", expected.parts, actual.parts)
 
                 for (index in expected.parts.indices) {
                     val first = expected.parts[index]
@@ -347,20 +347,20 @@ internal class ChatComponentTest {
             }
 
             is TextComponent -> {
-                if (actual !is TextComponent) throw AssertionFailedError("Type mismatch", "TextComponent", actual::class.java.name)
-                if (expected.message != actual.message) {
-                    throw AssertionFailedError("Message mismatch", expected.message, actual.message)
-                }
-                if (expected.clickEvent != actual.clickEvent) {
-                    throw AssertionFailedError("Click event mismatch: $expected", expected.clickEvent, actual.clickEvent)
-                }
-                if (expected.hoverEvent != actual.hoverEvent) {
-                    throw AssertionFailedError("Click event mismatch: $expected", expected.hoverEvent, actual.hoverEvent)
-                }
+                if (actual !is TextComponent) assert("Type mismatch", "TextComponent", actual::class.java.name)
+                if (expected.message != actual.message) assert("Message mismatch", expected.message, actual.message)
+                if (expected.clickEvent != actual.clickEvent) assert("Click event mismatch: $expected", expected.clickEvent, actual.clickEvent)
+                if (expected.hoverEvent != actual.hoverEvent) assert("Click event mismatch: $expected", expected.hoverEvent, actual.hoverEvent)
+                if (expected.color != actual.color) assert("Color mismatch", expected.color, actual.color)
+                if (expected.font != actual.font) assert("Font mismatch: $expected", expected.font, actual.font)
+                if (expected.formatting != actual.formatting) assert("Formatting mismatch: $expected", expected.formatting, actual.formatting)
+
                 assertEquals(expected as Any, actual)
             }
 
             else -> assertEquals(expected as Any, actual)
         }
     }
+
+    private fun assert(message: String, expected: Any?, actual: Any?): Nothing = throw AssertionFailedError("$message: expected=$expected, actual=$actual", expected, actual)
 }

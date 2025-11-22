@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,39 +14,29 @@
 package de.bixilon.minosoft.gui.rendering.skeletal.model.elements
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
-import de.bixilon.minosoft.gui.rendering.skeletal.baked.BakedSkeletalTransform
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.SkeletalBakeContext
-import de.bixilon.minosoft.gui.rendering.skeletal.mesh.AbstractSkeletalMesh
-import de.bixilon.minosoft.gui.rendering.skeletal.model.textures.SkeletalTextureInstance
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
-import de.bixilon.minosoft.util.json.SkeletalFaceDeserializer
-import de.bixilon.minosoft.util.json.SkeletalRotationDeserializer
+import de.bixilon.minosoft.util.json.skeltal.SkeletalFaceDeserializer
+import de.bixilon.minosoft.util.json.skeltal.SkeletalRotationDeserializer
 
 data class SkeletalElement(
-    val from: Vec3,
-    val to: Vec3,
-    val offset: Vec3 = Vec3.EMPTY,
-    @JsonDeserialize(using = SkeletalRotationDeserializer::class) val rotation: SkeletalRotation? = null,
+    val from: Vec3f,
+    val to: Vec3f,
+    val offset: Vec3f = Vec3f.EMPTY,
+    @field:JsonDeserialize(using = SkeletalRotationDeserializer::class) val rotation: SkeletalRotation? = null,
     val inflate: Float = 0.0f,
     val texture: ResourceLocation? = null,
     val uv: Vec2i? = null,
     val transform: String? = null,
-    @JsonDeserialize(using = SkeletalFaceDeserializer::class)
-    val faces: Map<Directions, SkeletalFace>,
+    @field:JsonDeserialize(using = SkeletalFaceDeserializer::class) val faces: Map<Directions, SkeletalFace>,
     val children: Map<String, SkeletalElement> = emptyMap(),
 ) {
 
-    fun bake(consumer: AbstractSkeletalMesh, textures: Map<ResourceLocation, SkeletalTextureInstance>, transform: BakedSkeletalTransform, path: String) {
-        val context = SkeletalBakeContext(transform = transform, textures = textures, consumer = consumer)
-        return bake(context, path)
-    }
-
-    private fun bake(context: SkeletalBakeContext, path: String) {
-        val context = context.copy(this)
+    fun bake(context: SkeletalBakeContext, path: String) {
+        val context = context.copy(element = this)
 
 
         val transform = context.transform.id

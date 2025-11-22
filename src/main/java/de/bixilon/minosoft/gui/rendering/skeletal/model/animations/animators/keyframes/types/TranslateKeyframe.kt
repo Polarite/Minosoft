@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,28 +13,35 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal.model.animations.animators.keyframes.types
 
-import de.bixilon.kotlinglm.vec3.Vec3
+import com.fasterxml.jackson.annotation.JsonCreator
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.gui.rendering.skeletal.baked.animation.keyframe.instance.Vec3KeyframeInstance
 import de.bixilon.minosoft.gui.rendering.skeletal.instance.TransformInstance
 import de.bixilon.minosoft.gui.rendering.skeletal.model.animations.animators.AnimationLoops
 import de.bixilon.minosoft.gui.rendering.skeletal.model.animations.animators.keyframes.KeyframeInterpolation
 import de.bixilon.minosoft.gui.rendering.skeletal.model.animations.animators.keyframes.SkeletalKeyframe
+import de.bixilon.minosoft.gui.rendering.skeletal.model.animations.animators.keyframes.SkeletalKeyframe.Companion.toKeyframes
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.time.Duration
 
 data class TranslateKeyframe(
     val interpolation: KeyframeInterpolation = KeyframeInterpolation.NONE,
     override val loop: AnimationLoops,
-    val data: TreeMap<Float, Vec3>,
+    val data: List<KeyframeData<Vec3f>>,
 ) : SkeletalKeyframe {
     override val type get() = TYPE
+
+    @JsonCreator
+    constructor(interpolation: KeyframeInterpolation, loop: AnimationLoops, data: Map<Any, Any>) : this(interpolation, loop, data.toKeyframes())
 
     init {
         if (data.size < 2) throw IllegalArgumentException("Must have at least 2 keyframes!")
     }
 
     override fun instance() = object : Vec3KeyframeInstance(data, loop, interpolation) {
-        override fun apply(value: Vec3, transform: TransformInstance) {
-            transform.value
+        override fun apply(value: Vec3f, transform: TransformInstance) {
+            transform.matrix
                 .translateAssign(value)
         }
     }

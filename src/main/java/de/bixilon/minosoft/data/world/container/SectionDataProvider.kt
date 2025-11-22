@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,50 +13,35 @@
 
 package de.bixilon.minosoft.data.world.container
 
-import de.bixilon.kotlinglm.vec3.Vec3i
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
-import de.bixilon.kutil.collections.iterator.EmptyIterator
 import de.bixilon.kutil.concurrent.lock.Lock
-import de.bixilon.minosoft.data.world.chunk.ChunkSection
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3iUtil.EMPTY
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
+import de.bixilon.minosoft.data.world.chunk.ChunkSize
+import de.bixilon.minosoft.data.world.positions.InSectionPosition
 
-open class SectionDataProvider<T>(
+// Dump section: provider.joinToString(";") { it?.block?.identifier?.path ?: "" }
+abstract class SectionDataProvider<T>(
     var lock: Lock?,
     val checkSize: Boolean = false,
-) : Iterable<T> {
-    protected var data: Array<Any?>? = null
+) {
+    protected var data: Array<T?>? = null
         private set
     var count: Int = 0
         private set
-    val isEmpty: Boolean
-        get() = count == 0
-    var minPosition = Vec3i(ProtocolDefinition.CHUNK_SECTION_SIZE)
+    val isEmpty get() = data == null || count == 0
+    var minPosition = InSectionPosition(ChunkSize.SECTION_MAX_X, ChunkSize.SECTION_MAX_Y, ChunkSize.SECTION_MAX_Z)
         private set
-    var maxPosition = Vec3i.EMPTY
+    var maxPosition = InSectionPosition(0, 0, 0)
         private set
+
+
+    protected abstract fun create(): Array<T?>
 
     @Suppress("UNCHECKED_CAST")
-    open operator fun get(index: Int): T {
-        return data?.get(index) as T
-    }
-
-    open operator fun get(x: Int, y: Int, z: Int): T {
-        return get(ChunkSection.getIndex(x, y, z))
-    }
-
-    @Deprecated("no locking", ReplaceWith("this[index]"))
-    fun unsafeGet(index: Int): T {
-        return this[index]
-    }
-
-    @Deprecated("no locking", ReplaceWith("this[x, y, z]"))
-    fun unsafeGet(x: Int, y: Int, z: Int): T {
-        return this[x, y, z]
-    }
+    open operator fun get(position: InSectionPosition) = data?.get(position.index)
+    open operator fun get(x: Int, y: Int, z: Int) = this[InSectionPosition(x, y, z)]
 
 
-    protected open fun recalculate() {
+    protected open fun recalculateSize() {
         val data = data
         if (data == null) {
             count = 0
@@ -64,26 +49,21 @@ open class SectionDataProvider<T>(
         }
         var count = 0
 
-        var minX = ProtocolDefinition.SECTION_WIDTH_X
-        var minY = ProtocolDefinition.SECTION_HEIGHT_Y
-        var minZ = ProtocolDefinition.SECTION_WIDTH_Z
+        var minX = ChunkSize.SECTION_MAX_X
+        var minY = ChunkSize.SECTION_MAX_Y
+        var minZ = ChunkSize.SECTION_MAX_Z
 
         var maxX = 0
         var maxY = 0
         var maxZ = 0
 
-        var x: Int
-        var y: Int
-        var z: Int
-        for (index in 0 until ProtocolDefinition.BLOCKS_PER_SECTION) {
-            data[index] ?: continue
+        for (index in 0 until ChunkSize.BLOCKS_PER_SECTION) {
+            if (data[index] == null) continue
             count++
             if (!checkSize) {
                 continue
             }
-            x = index and 0x0F
-            z = (index shr 4) and 0x0F
-            y = index shr 8
+            val (x, y, z) = InSectionPosition(index)
 
             if (x < minX) {
                 minX = x
@@ -106,25 +86,22 @@ open class SectionDataProvider<T>(
             }
         }
 
-        this.minPosition = Vec3i(minX, minY, minZ)
-        this.maxPosition = Vec3i(maxX, maxY, maxZ)
+        this.minPosition = InSectionPosition(minX, minY, minZ)
+        this.maxPosition = InSectionPosition(maxX, maxY, maxZ)
         this.count = count
         if (count == 0) {
             this.data = null
         }
     }
 
-    operator fun set(x: Int, y: Int, z: Int, value: T): T? {
-        return set(ChunkSection.getIndex(x, y, z), value)
+    protected open fun recalculate() {
+        recalculateSize()
     }
 
-    fun unsafeSet(x: Int, y: Int, z: Int, value: T): T? {
-        return unsafeSet(ChunkSection.getIndex(x, y, z), value)
-    }
 
-    open fun unsafeSet(index: Int, value: T): T? {
+    open fun unsafeSet(position: InSectionPosition, value: T?): T? {
         var data = data
-        val previous = data?.get(index)
+        val previous = data?.get(position.index)
         if (value == null) {
             if (previous == null) {
                 return null
@@ -138,63 +115,70 @@ open class SectionDataProvider<T>(
             count++
         }
         if (data == null) {
-            data = arrayOfNulls<Any?>(ProtocolDefinition.BLOCKS_PER_SECTION).unsafeCast()!!
+            data = create()
             this.data = data
         }
-        data[index] = value
+        data[position.index] = value
 
         if (checkSize) {
-            val x = index and 0x0F
-            val z = (index shr 4) and 0x0F
-            val y = index shr 8
-
             if (value == null) {
-                if ((minPosition.x == x && minPosition.y == y && minPosition.z == z) || (maxPosition.x == x && maxPosition.y == y && maxPosition.z == z)) {
-                    recalculate()
+                if ((minPosition.x == position.x && minPosition.y == position.y && minPosition.z == position.z) || (maxPosition.x == position.x && maxPosition.y == position.y && maxPosition.z == position.z)) {
+                    recalculateSize()
                 }
             } else {
-                if (minPosition.x > x) minPosition.x = x
-                if (minPosition.y > y) minPosition.y = y
-                if (minPosition.z > z) minPosition.z = z
+                if (minPosition.x > position.x) minPosition = minPosition.with(x = position.x)
+                if (minPosition.y > position.y) minPosition = minPosition.with(y = position.y)
+                if (minPosition.z > position.z) minPosition = minPosition.with(z = position.z)
 
-                if (maxPosition.x < x) maxPosition.x = x
-                if (maxPosition.y < y) maxPosition.y = y
-                if (maxPosition.z < z) maxPosition.z = z
+                if (maxPosition.x < position.x) maxPosition = maxPosition.with(x = position.x)
+                if (maxPosition.y < position.y) maxPosition = maxPosition.with(y = position.y)
+                if (maxPosition.z < position.z) maxPosition = maxPosition.with(z = position.z)
             }
         }
         return previous.unsafeCast()
     }
 
-    open operator fun set(index: Int, value: T): T? {
+    operator fun set(x: Int, y: Int, z: Int, value: T?) = this.set(InSectionPosition(x, y, z), value)
+    open operator fun set(position: InSectionPosition, value: T?): T? {
         lock?.lock()
-        val previous = unsafeSet(index, value)
+        val previous = unsafeSet(position, value)
         lock?.unlock()
         return previous
     }
 
 
-    @Suppress("UNCHECKED_CAST")
-    fun setData(data: Array<T>) {
+    fun setData(data: Array<T?>) {
         lock?.lock()
-        check(data.size == ProtocolDefinition.BLOCKS_PER_SECTION) { "Size does not match!" }
-        this.data = data as Array<Any?>
+        assert(data.size == ChunkSize.BLOCKS_PER_SECTION) { "Size does not match!" }
+        this.data = data
         recalculate()
         lock?.unlock()
     }
 
 
     fun clear() {
+        if (isEmpty) return
         lock?.lock()
         this.data = null
         recalculate()
         lock?.unlock()
     }
 
-    @Suppress("UNCHECKED_CAST")
-    override fun iterator(): Iterator<T> {
-        val data = this.data ?: return EmptyIterator.unsafeCast()
-        if (this.isEmpty) return EmptyIterator.unsafeCast()
+    inline fun forEach(consumer: (position: InSectionPosition, value: T) -> Unit) {
+        if (isEmpty) return
 
-        return data.iterator().unsafeCast()
+        val min = minPosition
+        val max = maxPosition
+
+        for (y in min.y..max.y) {
+            for (z in min.z..max.z) {
+                for (x in min.x..max.x) {
+                    val position = InSectionPosition(x, y, z)
+                    val value = this[position] ?: continue
+
+                    consumer.invoke(position, value)
+                }
+            }
+        }
     }
 }

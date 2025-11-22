@@ -13,21 +13,21 @@
 
 package de.bixilon.minosoft.gui.rendering.sound
 
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedListOf
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedList
 import de.bixilon.kutil.concurrent.queue.Queue
 import de.bixilon.kutil.latch.AbstractLatch
 import de.bixilon.kutil.observer.DataObserver.Companion.observe
+import de.bixilon.kutil.time.TimeUtil.sleep
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.data.world.audio.AbstractAudioPlayer
 import de.bixilon.minosoft.gui.rendering.Rendering
 import de.bixilon.minosoft.gui.rendering.camera.CameraDefinition.CAMERA_UP_VEC3
 import de.bixilon.minosoft.gui.rendering.events.CameraPositionChangeEvent
 import de.bixilon.minosoft.gui.rendering.sound.sounds.Sound
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.toVec3
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.util.logging.Log
@@ -98,7 +98,7 @@ class AudioPlayer(
 
         session.events.listen<CameraPositionChangeEvent> {
             queue += {
-                listener.position = Vec3(it.newPosition)
+                listener.position = Vec3f(it.position)
                 listener.setOrientation(it.context.camera.view.view.front, CAMERA_UP_VEC3)
             }
         }
@@ -124,21 +124,21 @@ class AudioPlayer(
         latch.dec()
     }
 
-    override fun playSound(sound: ResourceLocation, position: Vec3d?, volume: Float, pitch: Float) {
+    override fun play(sound: ResourceLocation, position: Vec3d?, volume: Float, pitch: Float) {
         if (!initialized) {
             return
         }
         queue += add@{ playSound(soundManager[sound] ?: return@add, position, volume, pitch) }
     }
 
-    override fun play2DSound(sound: ResourceLocation, volume: Float, pitch: Float) {
+    override fun play2D(sound: ResourceLocation, volume: Float, pitch: Float) {
         if (!session.profiles.audio.gui.enabled) {
             return
         }
-        super.play2DSound(sound, volume, pitch)
+        super.play2D(sound, volume, pitch)
     }
 
-    override fun stopSound(sound: ResourceLocation) {
+    override fun stop(sound: ResourceLocation) {
         if (!profile.enabled) {
             return
         }
@@ -155,7 +155,7 @@ class AudioPlayer(
         }
     }
 
-    override fun stopAllSounds() {
+    override fun stopAll() {
         queue += {
             for (source in sources) {
                 if (!source.isPlaying) {
@@ -185,7 +185,7 @@ class AudioPlayer(
 
     private fun shouldPlay(sound: Sound, position: Vec3d?): Boolean {
         if (position == null) return true
-        val distance = (this.listener.position - position.toVec3).length2()
+        val distance = Vec3dUtil.distance2(position, this.listener.position)
         if (distance >= sound.attenuationDistance * sound.attenuationDistance) {
             return false
         }
@@ -208,9 +208,9 @@ class AudioPlayer(
             }
             position?.let {
                 source.relative = false
-                source.position = it.toVec3
+                source.position = Vec3f(it)
             } ?: let {
-                source.position = Vec3.EMPTY
+                source.position = Vec3f.EMPTY
                 source.relative = true
             }
             source.sound = sound
@@ -238,7 +238,7 @@ class AudioPlayer(
             queue.workBlocking(500.milliseconds)
             calculateAvailableSources()
             while (!enabled) {
-                Thread.sleep(1L)
+                sleep(1.milliseconds)
                 if (session.established || session.error != null) {
                     break
                 }

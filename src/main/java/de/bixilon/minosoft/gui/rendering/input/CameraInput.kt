@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,19 +13,19 @@
 
 package de.bixilon.minosoft.gui.rendering.input
 
-import de.bixilon.kotlinglm.GLM
-import de.bixilon.kotlinglm.vec2.Vec2d
+import de.bixilon.kmath.vec.vec2.d.Vec2d
+import de.bixilon.kutil.math.simple.DoubleMath.clamp
 import de.bixilon.minosoft.config.key.KeyActions
 import de.bixilon.minosoft.config.key.KeyBinding
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.EntityRotation.Companion.CIRCLE_DEGREE
 import de.bixilon.minosoft.data.entities.EntityRotation.Companion.HALF_CIRCLE_DEGREE
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.camera.MatrixHandler
 import de.bixilon.minosoft.input.camera.MovementInputActions
 import de.bixilon.minosoft.input.camera.PlayerMovementInput
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
 class CameraInput(
     private val context: RenderContext,
@@ -122,26 +122,26 @@ class CameraInput(
             yaw += CIRCLE_DEGREE
         }
         yaw %= HALF_CIRCLE_DEGREE
-        val pitch = GLM.clamp(delta.y + rotation.pitch, -89.9, 89.9)
+        val pitch = (delta.y + rotation.pitch).clamp(-89.9, 89.9)
         return EntityRotation(yaw.toFloat(), pitch.toFloat())
     }
 
     private companion object {
-        private val MOVE_SPRINT_KEYBINDING = "minosoft:move_sprint".toResourceLocation()
-        private val MOVE_FORWARDS_KEYBINDING = "minosoft:move_forward".toResourceLocation()
-        private val MOVE_BACKWARDS_KEYBINDING = "minosoft:move_backwards".toResourceLocation()
-        private val MOVE_LEFT_KEYBINDING = "minosoft:move_left".toResourceLocation()
-        private val MOVE_RIGHT_KEYBINDING = "minosoft:move_right".toResourceLocation()
+        private val MOVE_SPRINT_KEYBINDING = minosoft("move_sprint")
+        private val MOVE_FORWARDS_KEYBINDING = minosoft("move_forward")
+        private val MOVE_BACKWARDS_KEYBINDING = minosoft("move_backwards")
+        private val MOVE_LEFT_KEYBINDING = minosoft("move_left")
+        private val MOVE_RIGHT_KEYBINDING = minosoft("move_right")
 
-        private val SNEAK_KEYBINDING = "minosoft:move_sneak".toResourceLocation()
-        private val JUMP_KEYBINDING = "minosoft:move_jump".toResourceLocation()
+        private val SNEAK_KEYBINDING = minosoft("move_sneak")
+        private val JUMP_KEYBINDING = minosoft("move_jump")
 
-        private val START_ELYTRA_FLY_KEYBINDING = "minosoft:move_start_elytra_fly".toResourceLocation()
+        private val START_ELYTRA_FLY_KEYBINDING = minosoft("move_start_elytra_fly")
 
-        private val CHANGE_FLY_KEYBINDING = "minosoft:move_change_fly".toResourceLocation()
-        private val FLY_UP_KEYBINDING = "minosoft:move_fly_up".toResourceLocation()
-        private val FLY_DOWN_KEYBINDING = "minosoft:move_fly_down".toResourceLocation()
+        private val CHANGE_FLY_KEYBINDING = minosoft("move_change_fly")
+        private val FLY_UP_KEYBINDING = minosoft("move_fly_up")
+        private val FLY_DOWN_KEYBINDING = minosoft("move_fly_down")
 
-        private val ZOOM_KEYBINDING = "minosoft:zoom".toResourceLocation()
+        private val ZOOM_KEYBINDING = minosoft("zoom")
     }
 }

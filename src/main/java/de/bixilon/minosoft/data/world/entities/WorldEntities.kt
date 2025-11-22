@@ -13,14 +13,16 @@
 
 package de.bixilon.minosoft.data.world.entities
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kutil.concurrent.lock.LockUtil.acquired
 import de.bixilon.kutil.concurrent.lock.RWLock
 import de.bixilon.kutil.observer.set.SetObserver.Companion.observedSet
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.data.entities.entities.player.PlayerEntity
 import de.bixilon.minosoft.data.entities.entities.player.local.LocalPlayerEntity
-import de.bixilon.minosoft.data.registries.shapes.voxel.AbstractVoxelShape
+import de.bixilon.minosoft.data.registries.shapes.shape.Shape
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap
@@ -96,6 +98,8 @@ class WorldEntities : Iterable<Entity> {
 
     fun remove(entity: Entity) {
         lock.lock()
+        entity._id = null
+        entity._uuid = null
         if (entity !is LocalPlayerEntity && !entities.remove(entity)) {
             lock.unlock()
             return
@@ -112,6 +116,8 @@ class WorldEntities : Iterable<Entity> {
             lock.unlock()
             return
         }
+        entity._id = null
+        entity._uuid = null
         if (entity is LocalPlayerEntity) {
             idEntityMap.put(entityId, entity)
             lock.unlock()
@@ -137,7 +143,7 @@ class WorldEntities : Iterable<Entity> {
 
         val distance2 = distance * distance
         for (entity in this) {
-            if ((entity.physics.position - position).length2() > distance2) {
+            if (Vec3dUtil.distance2(entity.physics.position, position) > distance2) {
                 continue
             }
             if (check(entity)) {
@@ -154,7 +160,7 @@ class WorldEntities : Iterable<Entity> {
         var closestEntity: Entity? = null
 
         for (entity in entities) {
-            val currentDistance = (entity.physics.position - position).length2()
+            val currentDistance = Vec3dUtil.distance2(entity.physics.position, position)
             if (currentDistance < closestDistance) {
                 closestDistance = currentDistance
                 closestEntity = entity
@@ -164,23 +170,18 @@ class WorldEntities : Iterable<Entity> {
         return closestEntity
     }
 
-    fun isEntityIn(shape: AbstractVoxelShape): Boolean {
-        try {
-            lock.acquire()
-            for (entity in this) {
-                if (!entity.canRaycast) {
-                    continue
-                }
-                val aabb = entity.physics.aabb
-
-                if (shape.intersect(aabb)) {
-                    return true
-                }
+    fun isEntityIn(shape: Shape, local: Boolean) = lock.acquired {
+        for (entity in this) {
+            if (!entity.canRaycast && (entity !is LocalPlayerEntity || !local)) {
+                continue
             }
-        } finally {
-            lock.release()
+            val aabb = entity.physics.aabb
+
+            if (shape.intersects(aabb)) {
+                return@acquired true
+            }
         }
-        return false
+        return@acquired false
     }
 
     fun tick() {
@@ -192,6 +193,8 @@ class WorldEntities : Iterable<Entity> {
     fun clear(session: PlaySession, local: Boolean = false) {
         this.lock.lock()
         for (entity in this.entities) {
+            entity._id = null
+            entity._uuid = null
             if (!local && entity is LocalPlayerEntity) continue
             entityIdMap.remove(entity)?.let { idEntityMap.remove(it) }
             entityUUIDMap.remove(entity)?.let { uuidEntityMap.remove(it) }

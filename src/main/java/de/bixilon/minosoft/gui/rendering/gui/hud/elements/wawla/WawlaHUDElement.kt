@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,40 +13,41 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.wawla
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.camera.target.targets.BlockTarget
 import de.bixilon.minosoft.camera.target.targets.EntityTarget
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asRGBAColor
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.asRGBColor
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor.Companion.rgba
+import de.bixilon.minosoft.data.text.formatting.color.RGBColor.Companion.rgb
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.LayoutedElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ColorElement
 import de.bixilon.minosoft.gui.rendering.gui.gui.LayoutedGUIElement
+import de.bixilon.minosoft.gui.rendering.gui.hud.Skippable
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.HUDBuilder
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.wawla.block.BlockWawlaElement
 import de.bixilon.minosoft.gui.rendering.gui.hud.elements.wawla.entity.EntityWawlaElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.renderer.drawable.AsyncDrawable
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
-class WawlaHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedElement, AsyncDrawable {
+class WawlaHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), LayoutedElement, AsyncDrawable, Skippable {
     private var element: WawlaElement? = null
 
     val profile = guiRenderer.session.profiles.gui.hud.wawla
 
-    override val layoutOffset: Vec2
-        get() = Vec2((guiRenderer.scaledSize.x - ((element?.size?.x ?: 0.0f) + BACKGROUND_SIZE)) / 2, BACKGROUND_SIZE)
-    override val skipDraw: Boolean
-        get() = !profile.enabled
+    override val layoutOffset: Vec2f
+        get() = Vec2f((guiRenderer.scaledSize.x - ((element?.size?.x ?: 0.0f) + BACKGROUND_SIZE)) / 2, BACKGROUND_SIZE)
+
+    override val skip get() = !profile.enabled
 
 
     override fun drawAsync() {
         val target = context.session.camera.target.target
 
         if (target == null) {
+            if (this.element == null) return
             this.element = null
             forceSilentApply()
             return
@@ -63,11 +64,11 @@ class WawlaHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
         forceSilentApply()
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         val element = this.element ?: return
         val size = element.size
-        ColorElement(guiRenderer, size + BACKGROUND_SIZE * 2, 0x3c05aa.asRGBColor()).render(offset, consumer, options)
-        ColorElement(guiRenderer, size + (BACKGROUND_SIZE - 2) * 2, 0x160611A0.asRGBAColor()).render(offset + (BACKGROUND_SIZE - (BACKGROUND_SIZE - 2)), consumer, options)
+        ColorElement(guiRenderer, size + BACKGROUND_SIZE * 2, 0x3c05aa.rgb().rgba()).render(offset, consumer, options)
+        ColorElement(guiRenderer, size + (BACKGROUND_SIZE - 2) * 2, 0x160611A0.rgba()).render(offset + (BACKGROUND_SIZE - (BACKGROUND_SIZE - 2)), consumer, options)
         element.forceRender(offset + BACKGROUND_SIZE, consumer, options)
     }
 
@@ -81,8 +82,8 @@ class WawlaHUDElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Layouted
     }
 
     companion object : HUDBuilder<LayoutedGUIElement<WawlaHUDElement>> {
-        private const val BACKGROUND_SIZE = 5
-        override val identifier: ResourceLocation = "minosoft:wawla".toResourceLocation()
+        private const val BACKGROUND_SIZE = 5.0f
+        override val identifier = minosoft("wawla")
 
         override fun build(guiRenderer: GUIRenderer): LayoutedGUIElement<WawlaHUDElement> {
             return LayoutedGUIElement(WawlaHUDElement(guiRenderer))

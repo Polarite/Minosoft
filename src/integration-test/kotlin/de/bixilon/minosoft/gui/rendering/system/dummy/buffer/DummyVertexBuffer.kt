@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,42 +13,28 @@
 
 package de.bixilon.minosoft.gui.rendering.system.dummy.buffer
 
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.RenderableBufferStates
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.RenderableBufferTypes
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.FloatVertexBuffer
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.GpuBufferStates
 import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.PrimitiveTypes
-import de.bixilon.minosoft.gui.rendering.util.mesh.MeshStruct
-import java.nio.FloatBuffer
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.vertex.VertexBuffer
+import de.bixilon.minosoft.gui.rendering.util.mesh.struct.MeshStruct
 
 class DummyVertexBuffer(
     override val struct: MeshStruct,
-    override var buffer: FloatBuffer,
-    override val type: RenderableBufferTypes = RenderableBufferTypes.ARRAY_BUFFER,
-) : FloatVertexBuffer {
-    override val state: RenderableBufferStates = RenderableBufferStates.PREPARING
+) : VertexBuffer {
+    override val state: GpuBufferStates = GpuBufferStates.PREPARING
 
     override fun init() {
         // TODO: memFree buffer
-    }
-
-    override fun initialUpload() {
-    }
-
-    override fun upload() {
-    }
-
-    override fun bind() {
-    }
-
-    override fun unbind() {
     }
 
     override fun unload() {
     }
 
     override val vertices: Int = 0
-    override val primitiveType: PrimitiveTypes = PrimitiveTypes.QUAD
+    override val primitive: PrimitiveTypes = PrimitiveTypes.QUAD
 
     override fun draw() {
     }
+
+    override fun drop() = Unit
 }

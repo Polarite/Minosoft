@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.models
 
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minosoft
 import de.bixilon.minosoft.gui.rendering.models.ModelTestUtil.block
@@ -27,7 +27,7 @@ import de.bixilon.minosoft.gui.rendering.models.block.element.face.ModelFace.Com
 import de.bixilon.minosoft.gui.rendering.models.raw.display.DisplayPositions
 import de.bixilon.minosoft.gui.rendering.models.raw.display.ModelDisplay
 import de.bixilon.minosoft.gui.rendering.models.raw.light.GUILights
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3Util.rad
+import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3fUtil.rad
 import org.testng.Assert.assertEquals
 import org.testng.annotations.Test
 
@@ -67,8 +67,8 @@ class BlockModelTest {
     }
 
     fun fallbackUV1() {
-        val start = Vec3(0)
-        val end = Vec3(1)
+        val start = Vec3f(0)
+        val end = Vec3f(1)
 
         assertEquals(fallbackUV(Directions.DOWN, start, end), FaceUV(0, 16, 16, 0))
         assertEquals(fallbackUV(Directions.UP, start, end), FaceUV(0, 16, 16, 0))
@@ -79,8 +79,8 @@ class BlockModelTest {
     }
 
     fun fallbackUV2() {
-        val start = Vec3(block(1, 2, 3))
-        val end = Vec3(block(13, 14, 15))
+        val start = Vec3f(block(1, 2, 3))
+        val end = Vec3f(block(13, 14, 15))
 
         assertEquals(fallbackUV(Directions.DOWN, start, end), FaceUV(1, 13, 13, 1))
         assertEquals(fallbackUV(Directions.UP, start, end), FaceUV(1, 15, 13, 3))
@@ -91,8 +91,8 @@ class BlockModelTest {
     }
 
     fun fallbackUV3() {
-        val start = Vec3(block(5, 3, 1))
-        val end = Vec3(block(15, 13, 11))
+        val start = Vec3f(block(5, 3, 1))
+        val end = Vec3f(block(15, 13, 11))
 
         assertEquals(fallbackUV(Directions.DOWN, start, end), FaceUV(5, 15, 15, 5))
         assertEquals(fallbackUV(Directions.UP, start, end), FaceUV(5, 11, 15, 1))
@@ -125,64 +125,66 @@ class BlockModelTest {
             "block/block" to BLOCK,
         )
 
-        val CUBE_ALL_MODEL: BlockModel = BlockModel(
-            GUILights.SIDE,
-            display = mapOf(
-                DisplayPositions.GUI to ModelDisplay(
-                    rotation = Vec3(30, 225, 0).rad,
-                    translation = Vec3(0, 0, 0),
-                    scale = Vec3(0.625, 0.625, 0.625),
+        val CUBE_ALL_MODEL: BlockModel by lazy {
+            BlockModel(
+                GUILights.SIDE,
+                display = mapOf(
+                    DisplayPositions.GUI to ModelDisplay(
+                        rotation = Vec3f(30, 225, 0).rad,
+                        translation = Vec3f(0, 0, 0),
+                        scale = Vec3f(0.625f, 0.625f, 0.625f),
+                    ),
+                    DisplayPositions.GROUND to ModelDisplay(
+                        rotation = Vec3f(0, 0, 0),
+                        translation = Vec3f(0f, 3f / 16.0f, 0f),
+                        scale = Vec3f(0.25f, 0.25f, 0.25f),
+                    ),
+                    DisplayPositions.FIXED to ModelDisplay(
+                        rotation = Vec3f(0, 0, 0),
+                        translation = Vec3f(0, 0, 0),
+                        scale = Vec3f(0.5f, 0.5f, 0.5f),
+                    ),
+                    DisplayPositions.THIRD_PERSON_RIGHT_HAND to ModelDisplay(
+                        rotation = Vec3f(75, 45, 0).rad,
+                        translation = Vec3f(0f, 2.5f / 16.0f, 0f),
+                        scale = Vec3f(0.375f, 0.375f, 0.375f),
+                    ),
+                    DisplayPositions.FIRST_PERSON_RIGHT_HAND to ModelDisplay(
+                        rotation = Vec3f(0, 45, 0).rad,
+                        translation = Vec3f(0, 0, 0),
+                        scale = Vec3f(0.40f, 0.40f, 0.40f),
+                    ),
+                    DisplayPositions.FIRST_PERSON_LEFT_HAND to ModelDisplay(
+                        rotation = Vec3f(0, 225, 0).rad,
+                        translation = Vec3f(0, 0, 0),
+                        scale = Vec3f(0.40f, 0.40f, 0.40f),
+                    )
                 ),
-                DisplayPositions.GROUND to ModelDisplay(
-                    rotation = Vec3(0, 0, 0),
-                    translation = Vec3(0, 3 / 16.0f, 0),
-                    scale = Vec3(0.25, 0.25, 0.25),
+                elements = listOf(ModelElement(
+                    from = Vec3f(0, 0, 0),
+                    to = Vec3f(1, 1, 1),
+                    faces = mapOf(
+                        Directions.DOWN to ModelFace("#down", null, 0, -1),
+                        Directions.UP to ModelFace("#up", null, 0, -1),
+                        Directions.NORTH to ModelFace("#north", null, 0, -1),
+                        Directions.SOUTH to ModelFace("#south", null, 0, -1),
+                        Directions.WEST to ModelFace("#west", null, 0, -1),
+                        Directions.EAST to ModelFace("#east", null, 0, -1),
+                    ),
+                    shade = true,
+                    rotation = null,
+                )),
+                textures = mapOf(
+                    "particle" to "all",
+                    "down" to "all",
+                    "up" to "all",
+                    "north" to "all",
+                    "east" to "all",
+                    "south" to "all",
+                    "west" to "all"
                 ),
-                DisplayPositions.FIXED to ModelDisplay(
-                    rotation = Vec3(0, 0, 0),
-                    translation = Vec3(0, 0, 0),
-                    scale = Vec3(0.5, 0.5, 0.5),
-                ),
-                DisplayPositions.THIRD_PERSON_RIGHT_HAND to ModelDisplay(
-                    rotation = Vec3(75, 45, 0).rad,
-                    translation = Vec3(0, 2.5 / 16.0f, 0),
-                    scale = Vec3(0.375, 0.375, 0.375),
-                ),
-                DisplayPositions.FIRST_PERSON_RIGHT_HAND to ModelDisplay(
-                    rotation = Vec3(0, 45, 0).rad,
-                    translation = Vec3(0, 0, 0),
-                    scale = Vec3(0.40, 0.40, 0.40),
-                ),
-                DisplayPositions.FIRST_PERSON_LEFT_HAND to ModelDisplay(
-                    rotation = Vec3(0, 225, 0).rad,
-                    translation = Vec3(0, 0, 0),
-                    scale = Vec3(0.40, 0.40, 0.40),
-                )
-            ),
-            elements = listOf(ModelElement(
-                from = Vec3(0, 0, 0),
-                to = Vec3(1, 1, 1),
-                faces = mapOf(
-                    Directions.DOWN to ModelFace("#down", null, 0, -1),
-                    Directions.UP to ModelFace("#up", null, 0, -1),
-                    Directions.NORTH to ModelFace("#north", null, 0, -1),
-                    Directions.SOUTH to ModelFace("#south", null, 0, -1),
-                    Directions.WEST to ModelFace("#west", null, 0, -1),
-                    Directions.EAST to ModelFace("#east", null, 0, -1),
-                ),
-                shade = true,
-                rotation = null,
-            )),
-            textures = mapOf(
-                "particle" to "all",
-                "down" to "all",
-                "up" to "all",
-                "north" to "all",
-                "east" to "all",
-                "south" to "all",
-                "west" to "all"
-            ),
-            ambientOcclusion = true,
-        )
+                ambientOcclusion = true,
+            )
+        }
     }
 }

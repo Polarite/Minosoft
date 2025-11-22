@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,20 +13,23 @@
 
 package de.bixilon.minosoft.gui.rendering.system.base.buffer.frame
 
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.texture.FramebufferTexture
-import de.bixilon.minosoft.gui.rendering.system.base.buffer.render.Renderbuffer
+import de.bixilon.kmath.vec.vec2.i.Vec2i
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.depth.DepthAttachment
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.stencil.StencilAttachment
+import de.bixilon.minosoft.gui.rendering.system.base.buffer.frame.attachment.texture.TextureAttachment
 
 interface Framebuffer {
     val state: FramebufferState
 
+    val depth: DepthAttachment?
+    val stencil: StencilAttachment?
+    val texture: TextureAttachment?
+
+    val size: Vec2i
+    val scale: Float
+
     fun init()
     fun delete()
 
-    fun attach(renderbuffer: Renderbuffer)
-    fun attach(texture: FramebufferTexture)
-
     fun bindTexture()
-
-    fun resize(size: Vec2i, scale: Float = 1.0f)
 }

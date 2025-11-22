@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,44 +13,41 @@
 
 package de.bixilon.minosoft.gui.rendering.skeletal.instance
 
-import de.bixilon.kotlinglm.mat4x4.Mat4
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.minosoft.gui.rendering.util.mat.mat4.Mat4Util.reset
+import de.bixilon.kmath.mat.mat4.f.MMat4f
+import de.bixilon.kmath.mat.mat4.f.Mat4Operations
+import de.bixilon.kmath.mat.mat4.f.Mat4f
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import java.nio.FloatBuffer
 
 class TransformInstance(
     val id: Int,
-    val pivot: Vec3,
+    val pivot: Vec3f,
     val children: Map<String, TransformInstance>,
 ) {
     private val array = children.values.toTypedArray()
     val nPivot = -pivot
-    val value = Mat4()
+    val matrix = MMat4f()
 
 
     fun reset() {
-        this.value.reset()
+        this.matrix.clearAssign()
 
         for (child in array) {
             child.reset()
         }
     }
 
-    fun pack(parent: Mat4) {
-        parent.times(value, value)
+    fun transform(parent: Mat4f) {
+        Mat4Operations.times(parent, matrix.unsafe, matrix)
 
         for (child in array) {
-            child.pack(this.value)
+            child.transform(this.matrix.unsafe)
         }
     }
 
     fun pack(buffer: FloatBuffer) {
-        val array = value.array
-
-        val offset = this.id * Mat4.length
-        for (index in 0 until Mat4.length) {
-            buffer.put(offset + index, array[index])
-        }
+        buffer.position(this.id * Mat4f.LENGTH)
+        buffer.put(matrix._0.array, 0, Mat4f.LENGTH)
 
         for (child in this.array) {
             child.pack(buffer)

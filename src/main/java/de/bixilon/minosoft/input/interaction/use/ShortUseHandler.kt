@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.input.interaction.use
 
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.camera.target.targets.BlockTarget
 import de.bixilon.minosoft.camera.target.targets.EntityTarget
 import de.bixilon.minosoft.camera.target.targets.GenericTarget
@@ -58,10 +58,10 @@ class ShortUseHandler(
         if (stack == null) {
             return InteractionResults.IGNORED
         }
-        if (interactionHandler.interactions.isCoolingDown(stack.item.item)) {
+        if (interactionHandler.interactions.isCoolingDown(stack.item)) {
             return InteractionResults.IGNORED // ToDo: Check
         }
-        val item = stack.item.item
+        val item = stack.item
         if (item is ItemInteractBlockHandler) {
             return item.interactBlock(session.player, target, hand, stack)
         }
@@ -74,8 +74,6 @@ class ShortUseHandler(
             return true
         }
 
-        val copy = stack?.copy()
-
         val result = interactBlock(target, stack, hand)
 
         if (result == InteractionResults.INVALID) {
@@ -84,8 +82,8 @@ class ShortUseHandler(
         session.connection.send(BlockInteractC2SP(
             position = target.blockPosition,
             direction = target.direction,
-            cursorPosition = Vec3(target.cursor),
-            item = copy,
+            cursorPosition = target.cursor,
+            item = stack,
             hand = hand,
             insideBlock = target.inside,
             sequence = session.sequence.getAndIncrement()
@@ -105,7 +103,7 @@ class ShortUseHandler(
         val entityId = session.world.entities.getId(target.entity) ?: return InteractionResults.IGNORED
         // used in armor stands
         val player = session.player
-        session.connection.send(EntityInteractPositionC2SP(entityId, Vec3(target.position), hand, player.isSneaking))
+        session.connection.send(EntityInteractPositionC2SP(entityId, Vec3f(target.position), hand, player.isSneaking))
 
         if (player.gamemode == Gamemodes.SPECTATOR) {
             return InteractionResults.IGNORED
@@ -157,7 +155,7 @@ class ShortUseHandler(
     }
 
     fun tryUse(hand: Hands, stack: ItemStack): Boolean {
-        val item = stack.item.item
+        val item = stack.item
 
         if (item !is ItemUseHandler) {
             return false

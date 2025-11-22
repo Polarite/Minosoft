@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -22,7 +22,7 @@ import de.bixilon.minosoft.gui.rendering.models.block.state.DirectBlockModel
 import de.bixilon.minosoft.gui.rendering.models.block.state.apply.BlockStateApply
 import de.bixilon.minosoft.gui.rendering.models.block.state.builder.condition.AndCondition
 import de.bixilon.minosoft.gui.rendering.models.block.state.builder.condition.BuilderCondition
-import de.bixilon.minosoft.gui.rendering.models.block.state.builder.condition.PrimitiveCondition
+import de.bixilon.minosoft.gui.rendering.models.block.state.builder.condition.NoCondition
 import de.bixilon.minosoft.gui.rendering.models.loader.BlockLoader
 import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureManager
 
@@ -30,10 +30,11 @@ class BuilderBlockModel(
     val parts: List<Apply>,
 ) : DirectBlockModel {
 
-    override fun choose(properties: Map<BlockProperty<*>, Any>): BlockStateApply? {
+    override fun choose(properties: Map<BlockProperty<*>, Any>, unconditional: Boolean): BlockStateApply? {
         val applies: MutableList<BlockStateApply> = mutableListOf()
 
         for ((condition, apply) in parts) {
+            if (!unconditional && condition is NoCondition) continue
             if (!condition.matches(properties)) continue
 
             applies += apply
@@ -61,12 +62,12 @@ class BuilderBlockModel(
     companion object {
 
         fun deserialize(loader: BlockLoader, block: Block, data: List<JsonObject>): BuilderBlockModel? {
-            val parts: MutableList<Apply> = mutableListOf()
+            val parts: MutableList<Apply> = ArrayList(data.size)
 
             for (entry in data) {
                 val apply = entry["apply"]?.let { BlockStateApply.deserialize(loader, it) } ?: continue
 
-                val condition = entry["when"]?.asJsonObject()?.let { AndCondition.deserialize(block, it) } ?: PrimitiveCondition.TRUE
+                val condition = entry["when"]?.asJsonObject()?.let { AndCondition.deserialize(block, it) } ?: NoCondition
 
                 parts += Apply(condition, apply)
             }

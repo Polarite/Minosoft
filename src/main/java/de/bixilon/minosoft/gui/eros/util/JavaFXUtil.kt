@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -17,9 +17,8 @@ import afester.javafx.svg.SvgLoader
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.exception.ExceptionUtil.catchAll
-import de.bixilon.kutil.reflection.ReflectionUtil.forceSet
+import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
-import de.bixilon.kutil.reflection.ReflectionUtil.jvmField
 import de.bixilon.kutil.unsafe.UnsafeUtil.setUnsafeAccessible
 import de.bixilon.kutil.url.URLUtil.toURL
 import de.bixilon.minosoft.assets.IntegratedAssets
@@ -41,11 +40,7 @@ import javafx.beans.property.BooleanPropertyBase
 import javafx.css.StyleableProperty
 import javafx.fxml.FXMLLoader
 import javafx.scene.*
-import javafx.scene.control.Alert
-import javafx.scene.control.Labeled
-import javafx.scene.control.TableColumnBase
-import javafx.scene.control.TextField
-import javafx.scene.control.Tooltip
+import javafx.scene.control.*
 import javafx.scene.image.Image
 import javafx.scene.input.KeyCode
 import javafx.scene.input.KeyEvent
@@ -143,7 +138,7 @@ object JavaFXUtil {
 
         val controller = fxmlLoader.getController<T>()
 
-        controller::root.jvmField.forceSet(controller, pane)
+        controller::root.field[controller] = pane
         controller.postInit()
 
         return controller
@@ -205,13 +200,13 @@ object JavaFXUtil {
         this.cursorProperty().unsafeCast<StyleableProperty<Cursor>>().applyStyle(null, Cursor.HAND)
     }
 
-    fun runLater(runnable: Runnable) {
+    inline fun runLater(crossinline runnable: () -> Unit) {
         if (Thread.currentThread() === JAVA_FX_THREAD) {
-            runnable.run()
+            runnable.invoke()
             return
         }
 
-        Platform.runLater(runnable)
+        Platform.runLater { runnable.invoke() }
     }
 
     fun Stage.bringToFront() {

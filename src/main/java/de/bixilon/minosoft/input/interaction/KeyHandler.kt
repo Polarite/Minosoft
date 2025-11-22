@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,42 +16,40 @@ package de.bixilon.minosoft.input.interaction
 import de.bixilon.kutil.concurrent.pool.ThreadPool
 import de.bixilon.kutil.concurrent.schedule.RepeatedTask
 import de.bixilon.kutil.concurrent.schedule.TaskScheduler
-import de.bixilon.kutil.exception.Broken
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
+import de.bixilon.minosoft.protocol.network.session.play.tick.TickUtil
 
 abstract class KeyHandler {
     private var task: RepeatedTask? = null
-    var isPressed: Boolean = false
-        private set
 
     private fun queueTick() {
-        val task = RepeatedTask(ProtocolDefinition.TICK_TIME, maxDelay = ProtocolDefinition.TICK_TIME, priority = ThreadPool.HIGH) { onTick() }
+        var skip = true // first tick is scheduled instantly, avoid double ticking
+        val task = RepeatedTask(TickUtil.INTERVAL, priority = ThreadPool.Priorities.HIGH) {
+            if (skip) {
+                skip = false
+                return@RepeatedTask
+            }
+            if (task == null) return@RepeatedTask
+            onTick()
+        }
         this.task = task
         TaskScheduler += task
     }
 
     fun press() {
-        if (isPressed) return
-        this.isPressed = true
+        val task = task
+        if (task != null) return
         onPress()
         queueTick()
     }
 
     fun release() {
-        if (!isPressed) return
-        val task = this.task ?: Broken("Not pressed!")
+        val task = this.task ?: return
         TaskScheduler -= task
         this.task = null
-        this.isPressed = false
         this.onRelease()
     }
 
     protected abstract fun onPress()
-    protected abstract fun onRelease()
     protected abstract fun onTick()
-
-
-    fun change(pressed: Boolean) {
-        if (pressed) press() else release()
-    }
+    protected abstract fun onRelease()
 }

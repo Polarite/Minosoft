@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,30 +14,33 @@
 package de.bixilon.minosoft.data.registries.item
 
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
+import de.bixilon.minosoft.data.registries.blocks.types.air.AirBlock
 import de.bixilon.minosoft.data.registries.item.factory.ItemFactories
 import de.bixilon.minosoft.data.registries.item.factory.ItemFactory
 import de.bixilon.minosoft.data.registries.item.items.Item
 import de.bixilon.minosoft.data.registries.item.items.pixlyzer.PixLyzerItem
 import de.bixilon.minosoft.data.registries.registries.registry.MetaTypes
 import de.bixilon.minosoft.data.registries.registries.registry.Registry
+import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 
 class ItemRegistry(
     parent: Registry<Item>? = null,
-    flattened: Boolean = false,
+    flattened: Boolean = true,
 ) : Registry<Item>(parent = parent, codec = PixLyzerItem, integrated = ItemFactories, flattened = flattened, metaType = MetaTypes.ITEM) {
 
     override fun getOrNull(id: Int): Item? {
         if (flattened) {
+            if (id == ProtocolDefinition.AIR_ID) return null
             return super.getOrNull(id)
         }
         val itemId = id ushr 16
-        val meta = id and 0xFFFF
+        if (itemId == ProtocolDefinition.AIR_ID) return null
 
-        var versionItemId = itemId shl 16
-        if (meta > 0) {
-            versionItemId = versionItemId or meta
-        }
-        return super.getOrNull(versionItemId) ?: super.getOrNull(itemId shl 16) // ignore meta?
+        val item = super.getOrNull(id) ?: super.getOrNull(itemId shl 16) // ignore meta
+
+        if (item?.identifier == AirBlock.Air.identifier) return null // TODO: use AirItem
+
+        return item
     }
 
     operator fun <T : Item> get(factory: ItemFactory<T>): T? {

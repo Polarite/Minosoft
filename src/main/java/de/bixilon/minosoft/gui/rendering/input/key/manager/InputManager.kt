@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.input.key.manager
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2d
+import de.bixilon.kmath.vec.vec2.d.Vec2d
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.kutil.enums.BitEnumSet
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kutil.time.TimeUtil.now
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.gui.rendering.RenderContext
 import de.bixilon.minosoft.gui.rendering.events.input.CharInputEvent
@@ -28,25 +28,24 @@ import de.bixilon.minosoft.gui.rendering.input.CameraInput
 import de.bixilon.minosoft.gui.rendering.input.interaction.InteractionManagerKeys
 import de.bixilon.minosoft.gui.rendering.input.key.manager.binding.BindingsManager
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2dUtil.EMPTY
 import de.bixilon.minosoft.modding.EventPriorities
 import de.bixilon.minosoft.modding.event.listener.CallbackEventListener.Companion.listen
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import it.unimi.dsi.fastutil.objects.Object2LongMap
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap
+import java.util.*
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class InputManager(
     val context: RenderContext,
 ) {
     val session: PlaySession = context.session
-    val cameraInput = CameraInput(context, context.camera.matrixHandler)
+    val cameraInput = CameraInput(context, context.camera.matrix)
     val bindings = BindingsManager(this)
     val handler = InputHandlerManager(this)
     val interaction = InteractionManagerKeys(this, session.camera.interactions)
 
 
     private val pressed: BitEnumSet<KeyCodes> = KeyCodes.set()
-    private val times: Object2LongMap<KeyCodes> = Object2LongOpenHashMap<KeyCodes>().apply { defaultReturnValue(-1L) }
+    private val times: EnumMap<KeyCodes, ValueTimeMark> = EnumMap(KeyCodes::class.java)
 
     var mousePosition: Vec2d = Vec2d.EMPTY
         private set
@@ -71,7 +70,7 @@ class InputManager(
 
     private fun onMouse(delta: Vec2d, position: Vec2d) {
         this.mousePosition = position
-        if (handler.onMouse(Vec2(position))) return
+        if (handler.onMouse(Vec2f(position))) return
         cameraInput.updateMouse(delta)
     }
 
@@ -85,7 +84,7 @@ class InputManager(
             KeyChangeTypes.REPEAT -> return
         }
 
-        val millis = millis()
+        val time = now()
 
 
         if (pressed) {
@@ -94,10 +93,10 @@ class InputManager(
             this.pressed -= code
         }
 
-        bindings.onKey(code, pressed, handler, millis)
+        bindings.onKey(code, pressed, handler, time)
 
         if (pressed) {
-            times[code] = millis
+            times[code] = time
         }
 
         this.handler.checkSkip(code, pressed, handler)
@@ -108,7 +107,7 @@ class InputManager(
     }
 
     private fun scroll(scrollOffset: Vec2d, event: MouseScrollEvent) {
-        if (!handler.onScroll(Vec2(scrollOffset))) return
+        if (!handler.onScroll(Vec2f(scrollOffset))) return
         event.cancelled = true
     }
 
@@ -148,7 +147,5 @@ class InputManager(
         interaction.draw()
     }
 
-    fun getLastPressed(key: KeyCodes): Long {
-        return this.times.getLong(key)
-    }
+    fun getLastPressed(key: KeyCodes) = times[key]
 }

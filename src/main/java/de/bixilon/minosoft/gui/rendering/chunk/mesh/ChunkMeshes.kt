@@ -13,128 +13,49 @@
 
 package de.bixilon.minosoft.gui.rendering.chunk.mesh
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
-import de.bixilon.kotlinglm.vec3.Vec3
-import de.bixilon.kotlinglm.vec3.Vec3i
-import de.bixilon.kutil.exception.Broken
-import de.bixilon.minosoft.gui.rendering.RenderContext
+import de.bixilon.kutil.enums.inline.IntInlineSet
+import de.bixilon.kutil.enums.inline.enums.IntInlineEnumSet
+import de.bixilon.minosoft.data.world.chunk.ChunkSection
+import de.bixilon.minosoft.data.world.positions.BlockPosition
+import de.bixilon.minosoft.data.world.positions.InSectionPosition
+import de.bixilon.minosoft.data.world.positions.SectionPosition
 import de.bixilon.minosoft.gui.rendering.chunk.entities.BlockEntityRenderer
-import de.bixilon.minosoft.gui.rendering.system.base.texture.TextureTransparencies
-import de.bixilon.minosoft.gui.rendering.system.base.texture.shader.ShaderTexture
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.of
-import de.bixilon.minosoft.util.collections.floats.DirectArrayFloatList
+import de.bixilon.minosoft.gui.rendering.chunk.mesh.details.ChunkMeshDetails
 
 class ChunkMeshes(
-    context: RenderContext,
-    val chunkPosition: Vec2i,
-    val sectionHeight: Int,
-    smallMesh: Boolean = false,
-) : BlockVertexConsumer {
-    val center: Vec3 = Vec3(Vec3i.of(chunkPosition, sectionHeight, Vec3i(8, 8, 8)))
-    var opaqueMesh: ChunkMesh? = ChunkMesh(context, if (smallMesh) 8192 else 65536)
-    var translucentMesh: ChunkMesh? = ChunkMesh(context, if (smallMesh) 4096 else 16384)
-    var textMesh: ChunkMesh? = ChunkMesh(context, if (smallMesh) 1024 else 4096)
-    var blockEntities: ArrayList<BlockEntityRenderer<*>>? = null
+    val section: ChunkSection,
+    val position: SectionPosition,
+    val min: InSectionPosition,
+    val max: InSectionPosition,
 
-    // used for frustum culling
-    val minPosition = Vec3i(16)
-    val maxPosition = Vec3i(0)
+    val details: IntInlineSet,
 
-    fun finish() {
-        this.opaqueMesh?.preload()
-        this.translucentMesh?.preload()
-        this.textMesh?.preload()
-    }
+    val opaque: ChunkMesh?,
+    val translucent: ChunkMesh?,
+    val text: ChunkMesh?,
+    val entities: Array<BlockEntityRenderer>?,
+) {
+    val center = BlockPosition.of(position, InSectionPosition(8, 8, 8))
+
+    var distance = 0
+    var sort = 0
 
     fun load() {
-        this.opaqueMesh?.load()
-        this.translucentMesh?.load()
-        this.textMesh?.load()
-        val blockEntities = this.blockEntities
-        if (blockEntities != null) {
-            for (blockEntity in blockEntities) {
-                blockEntity.load()
-            }
-        }
+        this.opaque?.load()
+        this.translucent?.load()
+        this.text?.load()
+        entities?.forEach { it.load() }
     }
 
-    fun clearEmpty(): Int {
-        var meshes = 0
-
-        fun processMesh(mesh: ChunkMesh?): Boolean {
-            if (mesh == null) {
-                return false
-            }
-            val data = mesh.data
-            if (data.isEmpty) {
-                if (data is DirectArrayFloatList) {
-                    data.unload()
-                }
-                return true
-            }
-            meshes++
-            return false
-        }
-
-        if (processMesh(opaqueMesh)) opaqueMesh = null
-        if (processMesh(translucentMesh)) translucentMesh = null
-
-        if (processMesh(textMesh)) textMesh = null
-
-        blockEntities?.let {
-            if (it.isEmpty()) {
-                blockEntities = null
-            } else {
-                meshes += it.size
-            }
-        }
-        return meshes
-    }
-
-    @Synchronized
     fun unload() {
-        opaqueMesh?.unload()
-        translucentMesh?.unload()
-        textMesh?.unload()
-
-        val blockEntities = blockEntities
-        if (blockEntities != null) {
-            for (blockEntity in blockEntities) {
-                blockEntity.unload()
-            }
-        }
+        opaque?.unload()
+        translucent?.unload()
+        text?.unload()
     }
 
-    fun addBlock(x: Int, y: Int, z: Int) {
-        if (x < minPosition.x) {
-            minPosition.x = x
-        }
-        if (y < minPosition.y) {
-            minPosition.y = y
-        }
-        if (z < minPosition.z) {
-            minPosition.z = z
-        }
-
-        if (x > maxPosition.x) {
-            maxPosition.x = x
-        }
-        if (y > maxPosition.y) {
-            maxPosition.y = y
-        }
-        if (z > maxPosition.z) {
-            maxPosition.z = z
-        }
+    fun drop() {
+        this.opaque?.drop()
+        this.translucent?.drop()
+        this.text?.drop()
     }
-
-    override val order get() = Broken()
-    override fun ensureSize(floats: Int) = Unit
-    override fun addVertex(position: FloatArray, uv: Vec2, texture: ShaderTexture, tintColor: Int, light: Int) = Broken()
-    override fun addVertex(x: Float, y: Float, z: Float, u: Float, v: Float, textureId: Float, lightTint: Float) = Broken()
-
-    override fun get(transparency: TextureTransparencies) = when (transparency) {
-        TextureTransparencies.TRANSLUCENT -> translucentMesh
-        else -> opaqueMesh
-    }!!
 }

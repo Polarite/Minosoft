@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,10 @@
 
 package de.bixilon.minosoft.gui.rendering.input.key.manager
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.config.key.KeyCodes.Companion.isPrintable
+import de.bixilon.minosoft.gui.rendering.RenderingOptions
 import de.bixilon.minosoft.gui.rendering.input.InputHandler
 import de.bixilon.minosoft.gui.rendering.system.window.CursorModes
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
@@ -47,7 +48,7 @@ class InputHandlerManager(
     private var skipKey = false
 
 
-    fun onMouse(position: Vec2): Boolean {
+    fun onMouse(position: Vec2f): Boolean {
         if (skipMouse) {
             skipMouse = false
             return true
@@ -76,7 +77,7 @@ class InputHandlerManager(
         handler.onCharPress(char)
     }
 
-    fun onScroll(delta: Vec2): Boolean {
+    fun onScroll(delta: Vec2f): Boolean {
         val handler = this.handler ?: return false
         handler.onScroll(delta)
 
@@ -90,7 +91,9 @@ class InputHandlerManager(
     }
 
     private fun disable() {
-        context.window.cursorMode = CursorModes.DISABLED
+        if (RenderingOptions.cursorCatch) {
+            context.window.cursorMode = CursorModes.DISABLED
+        }
     }
 
     fun checkSkip(code: KeyCodes, pressed: Boolean, previous: InputHandler?) {

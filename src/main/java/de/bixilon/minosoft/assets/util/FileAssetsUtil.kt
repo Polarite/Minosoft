@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -16,7 +16,7 @@ package de.bixilon.minosoft.assets.util
 import com.github.luben.zstd.ZstdInputStream
 import com.github.luben.zstd.ZstdOutputStream
 import de.bixilon.kutil.array.ByteArrayUtil.toHex
-import de.bixilon.kutil.file.FileUtil.createParent
+import de.bixilon.kutil.file.FileUtil.mkdirParent
 import de.bixilon.kutil.stream.InputStreamUtil.copy
 import de.bixilon.minosoft.assets.AssetsManager
 import de.bixilon.minosoft.assets.util.HashTypes.Companion.hashType
@@ -31,7 +31,7 @@ object FileAssetsUtil {
 
     private fun save(input: InputStream, type: String, compress: Boolean, hash: HashTypes, close: Boolean, store: OutputStream?): String {
         val temp = FileUtil.createTempFile()
-        temp.createParent()
+        temp.mkdirParent()
 
         val digest = hash.createDigest()
         val output = FileOutputStream(temp).upgrade(compress)
@@ -55,7 +55,7 @@ object FileAssetsUtil {
             return hash
         }
 
-        file.createParent()
+        file.mkdirParent()
 
         Files.move(temp.toPath(), file.toPath())
 
@@ -75,7 +75,7 @@ object FileAssetsUtil {
     fun verify(hash: String, type: String, lazy: Boolean = true, compress: Boolean = true): Boolean {
         val file = PathUtil.getAssetsPath(hash = hash, type = type).toFile()
 
-        if (!file.verify()) return false
+        if (!file.isNotEmpty()) return false
 
         if (lazy) return true
 
@@ -96,7 +96,7 @@ object FileAssetsUtil {
     fun read(hash: String, type: String, verify: Boolean = true, compress: Boolean = true): ByteArray {
         val file = PathUtil.getAssetsPath(hash = hash, type = type).toFile()
 
-        if (!file.verify()) throw IOException("Invalid file: $file")
+        if (!file.isNotEmpty()) throw IOException("Invalid file: $file")
 
         val digest = hash.hashType.createDigest()
         val stream = FileInputStream(file).upgrade(compress)
@@ -117,7 +117,7 @@ object FileAssetsUtil {
     fun readOrNull(hash: String, type: String, verify: Boolean = true, compress: Boolean = true): ByteArray? {
         val file = PathUtil.getAssetsPath(hash = hash, type = type).toFile()
 
-        if (!file.verify()) return null
+        if (!file.isNotEmpty()) return null
 
         val digest = hash.hashType.createDigest()
         val stream = FileInputStream(file).upgrade(compress)
@@ -173,12 +173,12 @@ object FileAssetsUtil {
         return this
     }
 
-    private fun File.verify(): Boolean {
+    private fun File.isNotEmpty(): Boolean {
         if (!exists() || !isFile) {
             return false
         }
         val size = length()
-        if (size < 0) {
+        if (size <= 0) {
             delete()
             return false
         }

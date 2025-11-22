@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,24 +13,24 @@
 
 package de.bixilon.minosoft.gui.rendering.font.renderer.code
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.kutil.enums.BitEnumSet
 import de.bixilon.minosoft.data.text.formatting.FormattingCodes
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.font.renderer.CodePointAddResult
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextOffset
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderInfo
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
 import de.bixilon.minosoft.gui.rendering.font.renderer.properties.FormattingProperties.SHADOW_OFFSET
 import de.bixilon.minosoft.gui.rendering.gui.elements.HorizontalAlignments.Companion.getOffset
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.CharVertexConsumer
 
 interface CodePointRenderer {
 
     fun calculateWidth(scale: Float, shadow: Boolean): Float
 
-    fun render(position: Vec2, properties: TextRenderProperties, color: RGBColor, shadow: Boolean, bold: Boolean, italic: Boolean, scale: Float, consumer: GUIVertexConsumer, options: GUIVertexOptions?)
+    fun render(position: Vec2f, properties: TextRenderProperties, color: RGBAColor, shadow: Boolean, bold: Boolean, italic: Boolean, scale: Float, consumer: CharVertexConsumer, options: GUIVertexOptions?)
 
     private fun getVerticalSpacing(offset: TextOffset, properties: TextRenderProperties, info: TextRenderInfo, align: Boolean): Float {
         var lineStart = offset.initial.x
@@ -48,7 +48,7 @@ interface CodePointRenderer {
     }
 
 
-    fun render(offset: TextOffset, color: RGBColor, properties: TextRenderProperties, info: TextRenderInfo, formatting: BitEnumSet<FormattingCodes>, codePoint: Int, consumer: GUIVertexConsumer?, options: GUIVertexOptions?): CodePointAddResult {
+    fun render(offset: TextOffset, color: RGBAColor, properties: TextRenderProperties, info: TextRenderInfo, formatting: BitEnumSet<FormattingCodes>, codePoint: Int, consumer: CharVertexConsumer?, options: GUIVertexOptions?): CodePointAddResult {
         val width = calculateWidth(properties.scale, properties.shadow)
         var spacing = getVerticalSpacing(offset, properties, info, consumer != null)
         val height = offset.getNextLineHeight(properties)
@@ -69,7 +69,7 @@ interface CodePointRenderer {
 
 
         if (consumer != null) {
-            render(offset.offset, properties, color, properties.shadow, FormattingCodes.BOLD in formatting, FormattingCodes.ITALIC in formatting, properties.scale, consumer, options)
+            render(offset.offset.unsafe, properties, color, properties.shadow, FormattingCodes.BOLD in formatting, FormattingCodes.ITALIC in formatting, properties.scale, consumer, options)
         } else {
             info.update(offset, properties, width, spacing, false) // info should only be updated when we determinate text properties, we know all that already when actually rendering it        }
         }

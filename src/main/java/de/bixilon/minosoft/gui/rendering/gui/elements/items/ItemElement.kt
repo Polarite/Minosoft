@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,12 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements.items
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.minosoft.config.key.KeyCodes
 import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.container.actions.types.*
 import de.bixilon.minosoft.data.container.stack.ItemStack
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.ImageElement
@@ -28,15 +28,15 @@ import de.bixilon.minosoft.gui.rendering.gui.gui.popper.item.ItemInfoPopper
 import de.bixilon.minosoft.gui.rendering.gui.input.ModifierKeys
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseActions
 import de.bixilon.minosoft.gui.rendering.gui.input.mouse.MouseButtons
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions.Companion.copy
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 import de.bixilon.minosoft.gui.rendering.system.window.CursorShapes
 import de.bixilon.minosoft.gui.rendering.system.window.KeyChangeTypes
 
 class ItemElement(
     guiRenderer: GUIRenderer,
-    size: Vec2 = RawItemElement.DEFAULT_SIZE,
+    size: Vec2f = RawItemElement.DEFAULT_SIZE,
     item: ItemStack?,
     val slotId: Int = 0,
     val itemsElement: ContainerItemsElement,
@@ -55,7 +55,7 @@ class ItemElement(
         forceApply()
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         if (raw.stack == null) {
             if (hovered) {
                 ImageElement(guiRenderer, context.textures.whiteTexture.texture, size = this.size, tint = HOVERED_COLOR).forceRender(offset, consumer, options)
@@ -72,7 +72,7 @@ class ItemElement(
         raw.silentApply()
     }
 
-    override fun onMouseEnter(position: Vec2, absolute: Vec2): Boolean {
+    override fun onMouseEnter(position: Vec2f, absolute: Vec2f): Boolean {
         context.window.cursorShape = CursorShapes.HAND
         val stack = this.stack
         if (stack != null) {
@@ -92,12 +92,12 @@ class ItemElement(
         return true
     }
 
-    override fun onMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int): Boolean {
+    override fun onMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int): Boolean {
         if (action != MouseActions.PRESS) {
             return true
         }
-        if (button == MouseButtons.LEFT && count == 2 && itemsElement.container[slotId] == null) {
-            itemsElement.container.actions.invoke(PickAllContainerAction(slotId))
+        if (button == MouseButtons.LEFT && count == 2 && itemsElement.container.items[slotId] == null) {
+            itemsElement.container.execute(PickAllContainerAction(slotId))
             return true
         }
 
@@ -106,26 +106,27 @@ class ItemElement(
             if (guiRenderer.session.player.gamemode != Gamemodes.CREATIVE) {
                 return true
             }
-            itemsElement.container.actions.invoke(CloneContainerAction(slotId))
+            itemsElement.container.execute(CloneContainerAction(slotId))
             return true
         }
         if (button == MouseButtons.LEFT || button == MouseButtons.RIGHT) {
-            itemsElement.container.actions.invoke(if (shiftDown) {
+            val action = if (shiftDown) {
                 FastMoveContainerAction(slotId)
             } else {
-                SimpleContainerAction(slotId, if (button == MouseButtons.LEFT) SimpleContainerAction.ContainerCounts.ALL else SimpleContainerAction.ContainerCounts.PART)
-            })
+                SimpleContainerAction(slotId, if (button == MouseButtons.LEFT) SlotCounts.ALL else SlotCounts.PART)
+            }
+            itemsElement.container.execute(action)
             return true
         }
         return true
     }
 
-    override fun onDragMouseAction(position: Vec2, button: MouseButtons, action: MouseActions, count: Int, draggable: Dragged): Element {
+    override fun onDragMouseAction(position: Vec2f, button: MouseButtons, action: MouseActions, count: Int, draggable: Dragged): Element {
         if (action != MouseActions.PRESS) {
             return this
         }
         if (button == MouseButtons.LEFT && count == 2) {
-            itemsElement.container.actions.invoke(PickAllContainerAction(slotId))
+            itemsElement.container.execute(PickAllContainerAction(slotId))
             return this
         }
         if (draggable !is FloatingItem) {
@@ -133,9 +134,9 @@ class ItemElement(
         }
         val shiftDown = guiRenderer.isKeyDown(ModifierKeys.SHIFT)
         if (shiftDown && button == MouseButtons.LEFT) {
-            itemsElement.container.actions.invoke(FastMoveContainerAction(slotId))
+            itemsElement.container.execute(FastMoveContainerAction(slotId))
         } else if (button == MouseButtons.LEFT || button == MouseButtons.RIGHT) {
-            itemsElement.container.actions.invoke(SimpleContainerAction(slotId, if (button == MouseButtons.LEFT) SimpleContainerAction.ContainerCounts.ALL else SimpleContainerAction.ContainerCounts.PART))
+            itemsElement.container.execute(SimpleContainerAction(slotId, if (button == MouseButtons.LEFT) SlotCounts.ALL else SlotCounts.PART))
             return this
         }
         return this
@@ -146,27 +147,32 @@ class ItemElement(
             return true
         }
         val container = itemsElement.container
-        when (key) {
+        val action = when (key) {
             // ToDo: Make this configurable
-            KeyCodes.KEY_Q -> container.actions.invoke(DropContainerAction(slotId, guiRenderer.isKeyDown(ModifierKeys.CONTROL)))
+            KeyCodes.KEY_Q -> DropSlotContainerAction(slotId, guiRenderer.isKeyDown(ModifierKeys.CONTROL))
 
-            KeyCodes.KEY_1 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_1))
-            KeyCodes.KEY_2 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_2))
-            KeyCodes.KEY_3 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_3))
-            KeyCodes.KEY_4 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_4))
-            KeyCodes.KEY_5 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_5))
-            KeyCodes.KEY_6 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_6))
-            KeyCodes.KEY_7 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_7))
-            KeyCodes.KEY_8 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_8))
-            KeyCodes.KEY_9 -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_9))
-            KeyCodes.KEY_F -> container.actions.invoke(SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.OFFHAND))
-            else -> Unit
+            KeyCodes.KEY_1 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_1)
+            KeyCodes.KEY_2 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_2)
+            KeyCodes.KEY_3 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_3)
+            KeyCodes.KEY_4 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_4)
+            KeyCodes.KEY_5 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_5)
+            KeyCodes.KEY_6 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_6)
+            KeyCodes.KEY_7 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_7)
+            KeyCodes.KEY_8 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_8)
+            KeyCodes.KEY_9 -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.HOTBAR_9)
+
+            KeyCodes.KEY_F -> SlotSwapContainerAction(slotId, SlotSwapContainerAction.SwapTargets.OFFHAND)
+            else -> null
+        }
+
+        if (action != null) {
+            container.execute(action)
         }
 
         return true
     }
 
-    override fun onDragEnter(position: Vec2, absolute: Vec2, draggable: Dragged): Element {
+    override fun onDragEnter(position: Vec2f, absolute: Vec2f, draggable: Dragged): Element {
         if (draggable !is FloatingItem) {
             return this
         }
@@ -191,6 +197,6 @@ class ItemElement(
     }
 
     companion object {
-        private val HOVERED_COLOR = RGBColor(0xFF_FF_FF_80.toInt())
+        private val HOVERED_COLOR = RGBAColor(0xFF, 0xFF, 0xFF, 0x80)
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -22,17 +22,20 @@ import de.bixilon.minosoft.data.registries.blocks.types.fluid.FluidBlock
 import de.bixilon.minosoft.data.registries.blocks.types.fluid.water.BubbleColumnBlock
 import de.bixilon.minosoft.test.IT
 import org.testng.Assert.assertEquals
+import org.testng.Assert.assertFalse
 import org.testng.annotations.Test
 
 @Test(groups = ["fluid"])
 class WaterFluidTest {
     private var block: FluidBlock = unsafeNull()
     private var water: WaterFluid = unsafeNull()
+    private var lava: LavaFluid = unsafeNull()
 
     @Test(priority = -1)
     fun getWater() {
         this.block = IT.REGISTRIES.block[WaterFluid].unsafeCast()
         this.water = IT.REGISTRIES.fluid[WaterFluid].unsafeCast()
+        this.lava = IT.REGISTRIES.fluid[LavaFluid].unsafeCast()
     }
 
     fun heightLevel0() {
@@ -73,5 +76,9 @@ class WaterFluidTest {
     fun stone() {
         val state = IT.REGISTRIES.block[StoneBlock.Block]!!.states.default
         assertEquals(this.water.getHeight(state), 0.0f)
+    }
+
+    fun `no match with lava`() {
+        assertFalse(water.matches(lava))
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,9 +12,10 @@
  */
 package de.bixilon.minosoft.protocol.packets.s2c.login
 
-import com.google.common.primitives.Longs
 import de.bixilon.kutil.base64.Base64Util.toBase64
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
+import de.bixilon.kutil.primitive.LongUtil.toByteArray
+import de.bixilon.minosoft.data.accounts.AccountCapabilities
 import de.bixilon.minosoft.protocol.network.NetworkConnection
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.c2s.login.EncryptionC2SP
@@ -26,6 +27,7 @@ import de.bixilon.minosoft.util.logging.Log
 import de.bixilon.minosoft.util.logging.LogLevels
 import de.bixilon.minosoft.util.logging.LogMessageType
 import java.math.BigInteger
+import java.nio.ByteOrder
 import java.security.SecureRandom
 import javax.crypto.Cipher
 
@@ -35,7 +37,7 @@ class EncryptionS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
     val nonce: ByteArray = buffer.readByteArray()
 
     override fun handle(session: PlaySession) {
-        if (!session.account.supportsEncryption && !session.profiles.account.ignoreNotEncryptedAccount) {
+        if (AccountCapabilities.ENCRYPTION !in session.account.capabilities && !session.profiles.account.ignoreNotEncryptedAccount) {
             throw IllegalAccessError("Account does not support encryption, but the server requested it!\nMaybe you try to join with an offline account on an online server?")
         }
 
@@ -55,7 +57,7 @@ class EncryptionS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
             val signature = CryptManager.createSignature(session.version)
             signature.initSign(privateKey.private)
             signature.update(nonce)
-            signature.update(Longs.toByteArray(salt))
+            signature.update(salt.toByteArray(ByteOrder.BIG_ENDIAN))
             val signed = signature.sign()
 
             session.connection.send(EncryptionC2SP(encryptedSecretKey, EncryptionSignatureData(salt, signed)))
@@ -67,6 +69,6 @@ class EncryptionS2CP(buffer: PlayInByteBuffer) : PlayS2CPacket {
     }
 
     override fun log(reducedLog: Boolean) {
-        Log.log(LogMessageType.NETWORK_IN, level = LogLevels.VERBOSE) { "Encryption request (serverId=$serverId, publicKey=${publicKey.toBase64()}, nonce=${nonce.toBase64()})" }
+        Log.log(LogMessageType.NETWORK_IN, level = LogLevels.VERBOSE) { "Encryption (serverId=$serverId, publicKey=${publicKey.toBase64()}, nonce=${nonce.toBase64()})" }
     }
 }

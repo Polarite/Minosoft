@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,16 +13,16 @@
 
 package de.bixilon.minosoft.gui.rendering.sky.planet
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.kutil.hash.HashUtil.murmur64
-import de.bixilon.kutil.random.RandomUtil.nextFloat
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.world.time.DayPhases
 import de.bixilon.minosoft.data.world.time.MoonPhases
 import de.bixilon.minosoft.data.world.time.WorldTime
 import de.bixilon.minosoft.gui.rendering.sky.SkyRenderer
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.texture
+import de.bixilon.minosoft.util.Backports.nextFloatPort
 import java.util.*
 
 class MoonRenderer(
@@ -33,9 +33,9 @@ class MoonRenderer(
 
     private fun updateUV(phases: MoonPhases) {
         val coordinates = PHASE_UV[phases.ordinal]
-        val end = texture.array.uvEnd ?: Vec2i(1.0f)
-        uvStart = Vec2(1.0f / 4 * coordinates.x, 1.0f / 2 * coordinates.y) * end
-        uvEnd = Vec2(1.0f / 4 * (coordinates.x + 1), 1.0f / 2 * (coordinates.y + 1)) * end
+        val end = texture.array.uvEnd ?: Vec2f.ONE
+        uvStart = Vec2f(1.0f / 4 * coordinates.x, 1.0f / 2 * coordinates.y) * end
+        uvEnd = Vec2f(1.0f / 4 * (coordinates.x + 1), 1.0f / 2 * (coordinates.y + 1)) * end
         meshInvalid = true
     }
 
@@ -71,7 +71,7 @@ class MoonRenderer(
     }
 
     override fun calculateModifier(day: Long): Float {
-        return Random((day / MoonPhases.VALUES.size).murmur64()).nextFloat(0.0f, 0.2f)
+        return Random((day / MoonPhases.VALUES.size).murmur64()).nextFloatPort(0.0f, 0.2f)
     }
 
     override fun draw() {

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -14,31 +14,38 @@
 package de.bixilon.minosoft.data.world.container.biome
 
 import de.bixilon.kutil.concurrent.lock.Lock
+import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.registries.biomes.Biome
 import de.bixilon.minosoft.data.world.chunk.ChunkSection
+import de.bixilon.minosoft.data.world.chunk.ChunkSize
 import de.bixilon.minosoft.data.world.container.SectionDataProvider
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.inSectionHeight
+import de.bixilon.minosoft.data.world.positions.InChunkPosition
+import de.bixilon.minosoft.data.world.positions.InSectionPosition
 
 class BiomeSectionDataProvider(
     lock: Lock? = null,
     val section: ChunkSection,
-) : SectionDataProvider<Biome?>(lock, false) {
+) : SectionDataProvider<Biome>(lock, false) {
 
-    @Deprecated("Wrong y coordinate for biomes")
-    override fun get(index: Int): Biome? {
-        var biome = super.get(index)
-        if (biome != null) return biome
-        biome = section.chunk.world.biomes.noise?.get(index and 0x0F, (index shr 8) and 0x0F, (index shr 4) and 0x0F, section.chunk)
-        unsafeSet(index, biome)
+    override fun create() = arrayOfNulls<Biome?>(ChunkSize.BLOCKS_PER_SECTION)
+
+
+    fun getCached(position: InSectionPosition): Biome? {
+        return super.get(position)
+    }
+
+    @Deprecated("Wrong y coordinate for biomes", level = DeprecationLevel.ERROR)
+    override fun get(position: InSectionPosition) = Broken()
+
+    operator fun get(position: InChunkPosition): Biome? {
+        super.get(position.inSectionPosition)?.let { return it }
+
+        val biome = section.chunk.world.biomes.noise?.get(position, section.chunk)
+        unsafeSet(position.inSectionPosition, biome)
+
         return biome
     }
 
-    override fun get(x: Int, y: Int, z: Int): Biome? {
-        val inSectionY = y.inSectionHeight
-        var biome = super.get(x, inSectionY, z)
-        if (biome != null) return biome
-        biome = section.chunk.world.biomes.noise?.get(x, y, z, section.chunk)
-        unsafeSet(x, inSectionY, z, biome)
-        return biome
-    }
+    @Deprecated("Wrong y coordinate for biomes", level = DeprecationLevel.ERROR)
+    override fun get(x: Int, y: Int, z: Int) = Broken()
 }

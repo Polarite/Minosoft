@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,12 +13,11 @@
 
 package de.bixilon.minosoft.data.registries.dimension.effects.minecraft
 
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.kutil.exception.Broken
 import de.bixilon.minosoft.data.registries.dimension.effects.DimensionEffects
 import de.bixilon.minosoft.data.registries.dimension.effects.FogEffects
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.textures.TextureUtil.texture
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 
@@ -27,7 +26,7 @@ object EndEffects : DimensionEffects {
 
     override val daylightCycle: Boolean get() = false
     override val skyLight: Boolean get() = false
-    override val fixedTexture: ResourceLocation = minecraft("environment/end_sky").texture()
+    override val fixedTexture = minecraft("environment/end_sky").texture()
 
     override val weather: Boolean get() = false
     override val sun: Boolean get() = false
@@ -37,7 +36,7 @@ object EndEffects : DimensionEffects {
     override val clouds: Boolean get() = false
     override fun getCloudHeight(session: PlaySession): IntRange = Broken()
 
-    override val brighten = Vec3(0.99f, 1.12f, 1.0f) // bit more green
+    override val brighten = Vec3f(0.99f, 1.12f, 1.0f) // bit more green
 
     override val fog: FogEffects? get() = null
 }

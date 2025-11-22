@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,23 +13,22 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.gui.screen
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.LayoutedElement
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 abstract class Screen(
     guiRenderer: GUIRenderer,
 ) : Element(guiRenderer), LayoutedElement {
-    protected val background = AtlasImageElement(guiRenderer, context.textures.whiteTexture, size = guiRenderer.scaledSize, tint = RGBColor(0.0f, 0.0f, 0.0f, 0.8f))
-    override val layoutOffset: Vec2 = Vec2(0, 0)
+    protected val background = AtlasImageElement(guiRenderer, context.textures.whiteTexture, size = guiRenderer.scaledSize, tint = RGBAColor(0.0f, 0.0f, 0.0f, 0.8f))
+    override val layoutOffset: Vec2f = Vec2f(0, 0)
 
-    override var _size: Vec2
+    override var _size: Vec2f
         get() = guiRenderer.scaledSize
         set(value) {}
 
@@ -38,7 +37,7 @@ abstract class Screen(
         _size = guiRenderer.scaledSize
     }
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
-        background.render(Vec2.EMPTY, consumer, options)
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
+        background.render(Vec2f.EMPTY, consumer, options)
     }
 }

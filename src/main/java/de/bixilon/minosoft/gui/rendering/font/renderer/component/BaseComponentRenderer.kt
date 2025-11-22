@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -18,17 +18,17 @@ import de.bixilon.minosoft.gui.rendering.font.manager.FontManager
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextOffset
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderInfo
 import de.bixilon.minosoft.gui.rendering.font.renderer.element.TextRenderProperties
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.CharVertexConsumer
 
 object BaseComponentRenderer : ChatComponentRenderer<BaseComponent> {
 
-    override fun render(offset: TextOffset, fontManager: FontManager, properties: TextRenderProperties, info: TextRenderInfo, consumer: GUIVertexConsumer?, options: GUIVertexOptions?, text: BaseComponent): Boolean {
+    override fun render(offset: TextOffset, fontManager: FontManager, properties: TextRenderProperties, info: TextRenderInfo, consumer: CharVertexConsumer?, options: GUIVertexOptions?, text: BaseComponent): TextRenderResults {
         for (part in text.parts) {
-            val filled = ChatComponentRenderer.render(offset, fontManager, properties, info, consumer, options, part)
-            if (filled) return true
+            val result = ChatComponentRenderer.render(offset, fontManager, properties, info, consumer, options, part)
+            if (result == TextRenderResults.CUT_OFF) return TextRenderResults.CUT_OFF
         }
-        return false
+        return TextRenderResults.OK
     }
 
     override fun calculatePrimitiveCount(text: BaseComponent): Int {

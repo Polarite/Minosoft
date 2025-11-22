@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,8 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.hud.elements.hotbar
 
-import de.bixilon.kotlinglm.vec2.Vec2
-import de.bixilon.kotlinglm.vec2.Vec2i
+import de.bixilon.kmath.vec.vec2.f.Vec2f
+import de.bixilon.kmath.vec.vec2.i.Vec2i
 import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.item.items.armor.DefendingArmorItem.Companion.getProtection
 import de.bixilon.minosoft.gui.rendering.gui.GUIRenderer
@@ -23,9 +23,8 @@ import de.bixilon.minosoft.gui.rendering.gui.atlas.Atlas.Companion.get
 import de.bixilon.minosoft.gui.rendering.gui.elements.Element
 import de.bixilon.minosoft.gui.rendering.gui.elements.Pollable
 import de.bixilon.minosoft.gui.rendering.gui.elements.primitive.AtlasImageElement
-import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexConsumer
 import de.bixilon.minosoft.gui.rendering.gui.mesh.GUIVertexOptions
-import de.bixilon.minosoft.gui.rendering.util.vec.vec2.Vec2Util.EMPTY
+import de.bixilon.minosoft.gui.rendering.gui.mesh.consumer.GuiVertexConsumer
 
 class HotbarProtectionElement(guiRenderer: GUIRenderer) : Element(guiRenderer), Pollable {
     private val atlas = ProtectionAtlas(guiRenderer.atlas[ATLAS])
@@ -36,7 +35,7 @@ class HotbarProtectionElement(guiRenderer: GUIRenderer) : Element(guiRenderer), 
 
     private var protection = 0.0f
 
-    override fun forceRender(offset: Vec2, consumer: GUIVertexConsumer, options: GUIVertexOptions?) {
+    override fun forceRender(offset: Vec2f, consumer: GuiVertexConsumer, options: GUIVertexOptions?) {
         if (protection <= 0.0f) {
             return
         }
@@ -52,7 +51,7 @@ class HotbarProtectionElement(guiRenderer: GUIRenderer) : Element(guiRenderer), 
 
             val image = AtlasImageElement(guiRenderer, atlasElement)
 
-            image.render(offset + Vec2i(i * ARMOR_SIZE.x, 0), consumer, options)
+            image.render(offset + Vec2f(i * ARMOR_SIZE.x, 0), consumer, options)
 
             protectionLeft -= 2.0f
         }
@@ -73,7 +72,7 @@ class HotbarProtectionElement(guiRenderer: GUIRenderer) : Element(guiRenderer), 
 
     override fun forceSilentApply() {
         _size = if (protection <= 0.0f) {
-            Vec2.EMPTY
+            Vec2f.EMPTY
         } else {
             SIZE
         }
@@ -94,6 +93,6 @@ class HotbarProtectionElement(guiRenderer: GUIRenderer) : Element(guiRenderer), 
     companion object {
         val ATLAS = minecraft("hud/hotbar/protection")
         private val ARMOR_SIZE = Vec2i(8, 9)
-        private val SIZE = Vec2(10 * ARMOR_SIZE.x, ARMOR_SIZE.y)
+        private val SIZE = Vec2f(10 * ARMOR_SIZE.x, ARMOR_SIZE.y)
     }
 }

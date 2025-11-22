@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,26 +15,27 @@ package de.bixilon.minosoft.gui.rendering.gui.hud.elements.other.debug
 
 import de.bixilon.kutil.concurrent.schedule.RepeatedTask
 import de.bixilon.kutil.concurrent.schedule.TaskScheduler
+import de.bixilon.kutil.unit.Bytes.Companion.bytes
+import kotlin.time.Duration.Companion.seconds
 
 object AllocationRate {
-    const val RUNS_PER_SECOND = 3
     private val RUNTIME = Runtime.getRuntime()
-    var allocationRate = 0L
+    var allocationRate = 0.bytes
         private set
-    private var previous = 0L
+    private var previous = 0.bytes
 
     init {
-        TaskScheduler += RepeatedTask(1000 / RUNS_PER_SECOND) { tick() }
+        TaskScheduler += RepeatedTask(1.seconds) { tick() }
     }
 
     private fun tick() {
         val previous = this.previous
-        val allocated = RUNTIME.totalMemory() - RUNTIME.freeMemory()
+        val allocated = RUNTIME.totalMemory().bytes - RUNTIME.freeMemory().bytes
         this.previous = allocated
-        if (allocated < previous) {
+        if (allocated.bytes < previous.bytes) {
             // gc was active
             return
         }
-        this.allocationRate = (allocated - previous) * RUNS_PER_SECOND
+        this.allocationRate = allocated - previous
     }
 }

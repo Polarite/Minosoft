@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2022 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.gui.rendering.gui.elements
 
-import de.bixilon.kotlinglm.vec2.Vec2
+import de.bixilon.kmath.vec.vec2.f.Vec2f
 import de.bixilon.kutil.enums.EnumUtil
 import de.bixilon.kutil.enums.ValuesEnum
 
@@ -35,8 +35,8 @@ enum class HorizontalAlignments {
             }
         }
 
-        fun HorizontalAlignments.getOffset(size: Vec2, childSize: Vec2): Vec2 {
-            return Vec2(getOffset(size.x, childSize.x), 0)
+        fun HorizontalAlignments.getOffset(size: Vec2f, childSize: Vec2f): Vec2f {
+            return Vec2f(getOffset(size.x, childSize.x), 0f)
         }
     }
 }

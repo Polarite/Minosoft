@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,18 +13,19 @@
 
 package de.bixilon.minosoft.gui.rendering.particle
 
-import de.bixilon.kutil.concurrent.schedule.RepeatedTask
 import de.bixilon.kutil.exception.ExceptionUtil.ignoreAll
-import de.bixilon.kutil.time.TimeUtil.millis
+import de.bixilon.kutil.time.TimeUtil.now
+import de.bixilon.minosoft.data.world.chunk.ChunkUtil.isInViewDistance
 import de.bixilon.minosoft.data.world.positions.ChunkPosition
+import de.bixilon.minosoft.gui.rendering.particle.mesh.ParticleMeshBuilder
 import de.bixilon.minosoft.gui.rendering.particle.types.Particle
 import de.bixilon.minosoft.protocol.network.session.play.PlaySessionStates
-import de.bixilon.minosoft.protocol.packets.s2c.play.block.chunk.ChunkUtil.isInViewDistance
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 class ParticleTicker(val renderer: ParticleRenderer) {
     private val particles = renderer.particles
     private val context = renderer.context
-    private var task: RepeatedTask? = null
 
 
     private fun canTick(): Boolean {
@@ -36,7 +37,7 @@ class ParticleTicker(val renderer: ParticleRenderer) {
         return true
     }
 
-    private fun Particle.tick(viewDistance: Int, cameraPosition: ChunkPosition, millis: Long) {
+    private fun Particle.tick(viewDistance: Int, cameraPosition: ChunkPosition, millis: ValueTimeMark) {
         if (!chunkPosition.isInViewDistance(viewDistance, cameraPosition)) { // ToDo: Check fog distance
             dead = true
         }
@@ -44,18 +45,18 @@ class ParticleTicker(val renderer: ParticleRenderer) {
         ignoreAll { tryTick(millis) }
     }
 
-    fun tick(collect: Boolean) {
+    fun tick(mesh: ParticleMeshBuilder?, translucent: ParticleMeshBuilder?) {
         if (!canTick()) return
 
         val camera = context.session.camera.entity.physics.positionInfo
         val cameraPosition = camera.chunkPosition
         val viewDistance = context.session.world.view.particleViewDistance
-        val start = millis()
+        val start = now()
         var time = start
 
 
         particles.lock.lock()
-        renderer.queue.add(particles.particles)
+        renderer.queue.addTo(particles.particles)
 
         val iterator = particles.particles.iterator()
         var index = 0
@@ -66,27 +67,26 @@ class ParticleTicker(val renderer: ParticleRenderer) {
                 iterator.remove()
                 continue
             }
-            if (collect) {
-                particle.addVertex(renderer.mesh, renderer.translucentMesh, time)
+            if (mesh != null && translucent != null) {
+                particle.addVertex(mesh, translucent, time)
             }
-            if (index % 1000 == 0) {
-                // check periodically if time is exceeded
-                time = millis()
+            if (index % 1000 == 0) { // don't spam the os with time calls
+                time = now()
                 if (time - start > MAX_TICK_TIME) {
                     break
                 }
             }
             index++
         }
-        renderer.queue.add(particles.particles)
+        renderer.queue.addTo(particles.particles)
         particles.lock.unlock()
     }
 
     fun init() {
-        context.session.ticker += { tick(false) }
+        context.session.ticker += { tick(null, null) }
     }
 
     companion object {
-        const val MAX_TICK_TIME = 5
+        val MAX_TICK_TIME = 5.milliseconds
     }
 }

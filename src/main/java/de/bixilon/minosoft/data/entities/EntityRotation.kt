@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,28 +12,35 @@
  */
 package de.bixilon.minosoft.data.entities
 
-import de.bixilon.kotlinglm.func.cos
-import de.bixilon.kotlinglm.func.rad
-import de.bixilon.kotlinglm.func.sin
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec3.f.MVec3f
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.kutil.math.interpolation.FloatInterpolation.interpolateLinear
+import de.bixilon.kutil.primitive.FloatUtil.rad
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 data class EntityRotation(
     val yaw: Float,
     val pitch: Float,
 ) {
-    val front: Vec3
+    private var _front: Vec3f? = null
+    val front: Vec3f
         get() {
+            if (_front != null) return _front!!
+
+
             val pitchRad = pitch.rad
-            val pitchCos = pitchRad.cos
+            val pitchCos = cos(pitchRad)
             val yawRad = -yaw.rad
 
-            return Vec3(
-                yawRad.sin * pitchCos,
-                -pitchRad.sin,
-                yawRad.cos * pitchCos
-            ).normalizeAssign()
+            _front = MVec3f(
+                sin(yawRad) * pitchCos,
+                -sin(pitchRad),
+                cos(yawRad) * pitchCos
+            ).apply { normalizeAssign() }.unsafe
+
+            return _front!!
         }
 
     override fun toString(): String {

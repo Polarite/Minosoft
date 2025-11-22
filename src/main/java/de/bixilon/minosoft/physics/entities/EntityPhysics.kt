@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,9 +13,11 @@
 
 package de.bixilon.minosoft.physics.entities
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.kutil.math.simple.IntMath.clamp
 import de.bixilon.kutil.primitive.DoubleUtil
+import de.bixilon.kutil.primitive.DoubleUtil.matches
 import de.bixilon.minosoft.data.direction.Directions
 import de.bixilon.minosoft.data.entities.EntityRotation
 import de.bixilon.minosoft.data.entities.entities.Entity
@@ -24,15 +26,14 @@ import de.bixilon.minosoft.data.registries.blocks.handler.entity.StepHandler
 import de.bixilon.minosoft.data.registries.blocks.handler.entity.landing.LandingHandler
 import de.bixilon.minosoft.data.registries.blocks.handler.entity.landing.LandingHandler.Companion.handleLanding
 import de.bixilon.minosoft.data.registries.blocks.state.BlockState
+import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.PixLyzerBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.VelocityBlock
 import de.bixilon.minosoft.data.registries.fluid.fluids.WaterFluid
 import de.bixilon.minosoft.data.registries.shapes.aabb.AABB
+import de.bixilon.minosoft.data.registries.shapes.aabb.AABBIterator
 import de.bixilon.minosoft.data.world.iterator.WorldIterator
 import de.bixilon.minosoft.data.world.positions.BlockPosition
-import de.bixilon.minosoft.data.world.positions.ChunkPositionUtil.inChunkPosition
-import de.bixilon.minosoft.gui.rendering.util.VecUtil.plus
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.physics.EntityPositionInfo
 import de.bixilon.minosoft.physics.handlers.general.AbstractEntityPhysics
 import de.bixilon.minosoft.physics.handlers.movement.SneakAdjuster
@@ -52,7 +53,7 @@ open class EntityPhysics<E : Entity>(val entity: E) : BasicPhysicsEntity(), Abst
         protected set
 
 
-    override var aabb = AABB.EMPTY
+    override var aabb = AABB.INVALID
         protected set
     open var onGround = false
 
@@ -101,15 +102,16 @@ open class EntityPhysics<E : Entity>(val entity: E) : BasicPhysicsEntity(), Abst
     }
 
     open fun reset() {
-        this.velocity = Vec3d.EMPTY
+        this.velocity.clear()
     }
 
     fun getLandingPosition(): BlockPosition {
         val info = this.positionInfo
-        val position = Vec3i(info.inChunkPosition.x, (position.y - 0.2).toInt(), info.inChunkPosition.z)
-        val state = positionInfo.chunk?.get(position)
-        if (state == null) {
-            val down = positionInfo.chunk?.get(position + Directions.DOWN)
+        val position = BlockPosition(info.position.x, (position.y - 0.2).toInt().clamp(BlockPosition.MIN_Y, BlockPosition.MAX_Y), info.position.z) // TODO: can y get below 0?
+        val inChunk = position.inChunkPosition
+        val state = positionInfo.chunk?.get(inChunk)
+        if (state == null && inChunk.y > BlockPosition.MIN_Y) {
+            val down = positionInfo.chunk?.get(inChunk + Directions.DOWN)
             // TODO: check if block is fence, fence gate or wall
             // return down
         }
@@ -119,58 +121,62 @@ open class EntityPhysics<E : Entity>(val entity: E) : BasicPhysicsEntity(), Abst
 
     open fun getVelocityMultiplier(): Float {
         val info = this.positionInfo
-        var block = info.block?.block
+        var state = info.state
 
-        if (block is VelocityBlock) {
-            val multiplier = block.velocity
+        if (state != null && BlockStateFlags.VELOCITY in state.flags && state.block is VelocityBlock) {
+            val multiplier = state.block.velocity
 
-            if (multiplier != 1.0f || block !is PixLyzerBlock) {
+            if (multiplier != 1.0f || state.block !is PixLyzerBlock) {
                 return multiplier
             }
         }
-        block = info.velocityBlock?.block
-        if (block is VelocityBlock) {
-            return block.velocity
+        state = info.velocityState ?: return 1.0f
+        if (BlockStateFlags.VELOCITY in state.flags && state.block is VelocityBlock) {
+            return state.block.velocity
         }
+
         return 1.0f
     }
 
-    private fun applyMovementMultiplier(movement: Vec3d): Vec3d {
+    private fun applyMovementMultiplier(movement: MVec3d) {
         val multiplier = this.movementMultiplier
-        if (multiplier.length2() <= 1.0E-7) return movement
+        if (multiplier.length2() <= 1.0E-7) return
 
         this.movementMultiplier = Vec3d.EMPTY
-        this.velocity = Vec3d.EMPTY
+        this.velocity.clear()
 
-        return movement * multiplier
+        movement *= multiplier
     }
 
     private fun updateCollision(movement: Vec3d, collision: Vec3d): Boolean {
-        val collided = !movement.equal(collision, DoubleUtil.DEFAULT_MARGIN)
-        this.horizontalCollision = collided.x || collided.z
+        val collidedX = !movement.x.matches(collision.x, DoubleUtil.DEFAULT_MARGIN)
+        val collidedY = !movement.y.matches(collision.y, DoubleUtil.DEFAULT_MARGIN)
+        val collidedZ = !movement.z.matches(collision.z, DoubleUtil.DEFAULT_MARGIN)
+        this.horizontalCollision = collidedX || collidedZ
 
-        this.onGround = collided.y && movement.y < 0.0
+        this.onGround = collidedY && movement.y < 0.0
 
         if (this.horizontalCollision) {
-            this.velocity = Vec3d(if (collided.x) 0.0 else velocity.x, velocity.y, if (collided.z) 0.0 else velocity.z)
+            if (collidedX) this.velocity.x = 0.0
+            if (collidedZ) this.velocity.z = 0.0
         }
 
-        return collided.y
+        return collidedY
     }
 
-    open fun move(movement: Vec3d, pushed: Boolean = false) {
-        var adjusted = movement
+    open fun move(movement: Vec3d = this.velocity.unsafe, pushed: Boolean = false) {
+        val adjusted = MVec3d(movement)
 
-        adjusted = applyMovementMultiplier(adjusted)
+        applyMovementMultiplier(adjusted)
 
         if (this is SneakAdjuster && !pushed) {
-            adjusted = adjustMovementForSneaking(adjusted)
+            adjustMovementForSneaking(adjusted)
         }
-        val collisionMovement = collide(adjusted)
+        val collisionMovement = if (adjusted.length2() >= 1.0E-7) collide(adjusted.unsafe) else adjusted
         // TODO: prevent moving into unloaded chunks
 
-        forceMove(collisionMovement)
-        val vertical = updateCollision(adjusted, collisionMovement)
+        forceMove(collisionMovement.unsafe)
+        val vertical = updateCollision(adjusted.unsafe, collisionMovement.unsafe)
 
         handleFalling(collisionMovement.y, vertical)
 
@@ -203,9 +209,11 @@ open class EntityPhysics<E : Entity>(val entity: E) : BasicPhysicsEntity(), Abst
     }
 
     private fun applyVelocityMultiplier() {
-        val velocityMultiplier = getVelocityMultiplier()
-        val velocity = velocity
-        this.velocity = Vec3d(velocity.x * velocityMultiplier, velocity.y, velocity.z * velocityMultiplier)
+        val multiplier = getVelocityMultiplier()
+        if (multiplier == 1.0f) return
+
+        this.velocity.x *= multiplier
+        this.velocity.z *= multiplier
     }
 
     open fun slowMovement(state: BlockState, multiplier: Vec3d) {
@@ -214,19 +222,15 @@ open class EntityPhysics<E : Entity>(val entity: E) : BasicPhysicsEntity(), Abst
     }
 
     fun checkBlockCollisions() {
-        val aabb = aabb.shrink()
-
-        for ((position, state) in WorldIterator(aabb.positions(), entity.session.world, positionInfo.chunk)) {
+        for ((position, state) in WorldIterator(aabb.innerPositions(AABBIterator.IterationOrder.NATURAL), entity.session.world, positionInfo.chunk)) {
             val block = state.block
-            if (block !is EntityCollisionHandler) {
-                continue
-            }
+            if (block !is EntityCollisionHandler) continue // TODO (performance): cache with block state flags
             block.onEntityCollision(entity, this, position, state)
         }
     }
 
     open fun tickRiding() {
-        this.velocity = Vec3d.EMPTY
+        this.velocity.clear()
         entity.forceTick()
         val vehicle = entity.attachment.vehicle ?: return
 

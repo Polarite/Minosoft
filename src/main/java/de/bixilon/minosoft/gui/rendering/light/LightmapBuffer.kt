@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,39 +13,39 @@
 
 package de.bixilon.minosoft.gui.rendering.light
 
-import de.bixilon.kotlinglm.vec3.Vec3
+import de.bixilon.kmath.vec.vec3.f.Vec3f
 import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.world.chunk.light.types.LightLevel
+import de.bixilon.minosoft.gui.rendering.shader.types.LightShader
 import de.bixilon.minosoft.gui.rendering.system.base.RenderSystem
-import de.bixilon.minosoft.gui.rendering.system.base.shader.NativeShader
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
 import org.lwjgl.system.MemoryUtil.memAllocFloat
 
-class LightmapBuffer(renderSystem: RenderSystem) {
-    val buffer = renderSystem.createFloatUniformBuffer(memAllocFloat(UNIFORM_BUFFER_SIZE))
+class LightmapBuffer(system: RenderSystem) {
+    val buffer = system.createFloatUniformBuffer(memAllocFloat(UNIFORM_BUFFER_SIZE))
     private var upload = false
 
     fun init() {
         // Set Alpha for all of them
         for (i in 0 until UNIFORM_BUFFER_SIZE / 4) {
-            buffer.buffer.put(i * 4 + 3, 1.0f)
+            buffer.data.put(i * 4 + 3, 1.0f)
         }
         buffer.init()
         buffer.upload()
     }
 
-    operator fun set(sky: Int, block: Int, color: Vec3) {
+    operator fun set(sky: Int, block: Int, color: Vec3f) {
         val index = ((sky shl 4) or block) * 4
 
-        if (upload || buffer.buffer.get(index + 0) != color.r) {
-            buffer.buffer.put(index + 0, color.r)
+        if (upload || buffer.data.get(index + 0) != color.x) {
+            buffer.data.put(index + 0, color.x)
             upload = true
         }
-        if (upload || buffer.buffer.get(index + 1) != color.g) {
-            buffer.buffer.put(index + 1, color.g)
+        if (upload || buffer.data.get(index + 1) != color.y) {
+            buffer.data.put(index + 1, color.y)
             upload = true
         }
-        if (upload || buffer.buffer.get(index + 2) != color.b) {
-            buffer.buffer.put(index + 2, color.b)
+        if (upload || buffer.data.get(index + 2) != color.z) {
+            buffer.data.put(index + 2, color.z)
             upload = true
         }
     }
@@ -53,7 +53,7 @@ class LightmapBuffer(renderSystem: RenderSystem) {
     operator fun get(sky: Int, block: Int) = get((sky shl 4) or block)
     operator fun get(light: Int): RGBColor {
         val offset = light * 4
-        return RGBColor(buffer.buffer.get(offset + 0), buffer.buffer.get(offset + 1), buffer.buffer.get(offset + 2), 1.0f)
+        return RGBColor(buffer.data.get(offset + 0), buffer.data.get(offset + 1), buffer.data.get(offset + 2))
     }
 
     fun upload() {
@@ -64,12 +64,16 @@ class LightmapBuffer(renderSystem: RenderSystem) {
         upload = false
     }
 
-    fun use(shader: NativeShader, name: String) {
+    fun use(shader: LightShader, name: String) {
         buffer.use(shader, name)
+    }
+
+    fun unload() {
+        buffer.unload()
     }
 
 
     private companion object {
-        private const val UNIFORM_BUFFER_SIZE = ProtocolDefinition.LIGHT_LEVELS * ProtocolDefinition.LIGHT_LEVELS * 4 // skyLight * blockLight * RGBA
+        private const val UNIFORM_BUFFER_SIZE = LightLevel.LEVELS * LightLevel.LEVELS * 4 // skyLight * blockLight * RGBA
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,25 +13,24 @@
 
 package de.bixilon.minosoft.gui.rendering.particle.types.render.texture.simple.water
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.minosoft.data.registries.identified.ResourceLocation
+import de.bixilon.kmath.vec.vec3.d.MVec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.particle.data.ParticleData
-import de.bixilon.minosoft.data.text.formatting.color.RGBColor
+import de.bixilon.minosoft.data.text.formatting.color.RGBAColor
 import de.bixilon.minosoft.gui.rendering.particle.ParticleFactory
-import de.bixilon.minosoft.gui.rendering.util.vec.vec3.Vec3dUtil.EMPTY
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
-import de.bixilon.minosoft.util.KUtil.toResourceLocation
 
-class UnderwaterParticle(session: PlaySession, position: Vec3d, data: ParticleData? = null) : WaterSuspendParticle(session, position, Vec3d.EMPTY, data) {
+class UnderwaterParticle(session: PlaySession, position: Vec3d, data: ParticleData? = null) : WaterSuspendParticle(session, position, MVec3d.EMPTY, data) {
 
     init {
-        color = RGBColor(0.4f, 0.4f, 0.7f)
+        color = RGBAColor(0.4f, 0.4f, 0.7f)
     }
 
     companion object : ParticleFactory<UnderwaterParticle> {
-        override val identifier: ResourceLocation = "minecraft:underwater".toResourceLocation()
+        override val identifier = minecraft("underwater")
 
-        override fun build(session: PlaySession, position: Vec3d, velocity: Vec3d, data: ParticleData): UnderwaterParticle {
+        override fun build(session: PlaySession, position: Vec3d, velocity: MVec3d, data: ParticleData): UnderwaterParticle {
             return UnderwaterParticle(session, position, data)
         }
     }

@@ -14,17 +14,18 @@
 #version 330 core
 
 layout (location = 0) in vec3 vinPosition;
-layout (location = 1) in vec2 vinUV;
+layout (location = 1) in float vinUV;
 layout (location = 2) in float vinIndexLayerAnimation;// texture index (0xF0000000), texture layer (0x0FFFF000)
 layout (location = 3) in float vinTint;
 
 uniform mat4 uViewProjectionMatrix;
 uniform mat4 uMatrix;
-uniform uint uTintColor;
+uniform vec4 uTintColor;
 
 out vec3 finFragmentPosition;
 
 
+#include "minosoft:vsh"
 #include "minosoft:tint"
 #include "minosoft:animation"
 #include "minosoft:color"
@@ -32,8 +33,9 @@ out vec3 finFragmentPosition;
 void main() {
     vec4 position = uMatrix * vec4(vinPosition, 1.0f);
     gl_Position = uViewProjectionMatrix * position;
-    finTintColor = getRGBColor(floatBitsToUint(vinTint)) * getRGBColor(uTintColor);
+    finTintColor = getRGBColor(floatBitsToUint(vinTint)) * uTintColor;
     finFragmentPosition = position.xyz;
 
-    setTexture(vinUV, vinIndexLayerAnimation);
+    vec2 uv = uv_unpack(floatBitsToUint(vinUV));
+    setTexture(uv, vinIndexLayerAnimation);
 }

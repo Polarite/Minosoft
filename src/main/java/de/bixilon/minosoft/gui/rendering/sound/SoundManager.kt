@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -15,6 +15,7 @@ package de.bixilon.minosoft.gui.rendering.sound
 
 import de.bixilon.kutil.json.JsonUtil.asJsonObject
 import de.bixilon.minosoft.assets.util.InputStreamUtil.readJsonObject
+import de.bixilon.minosoft.data.registries.identified.Namespaces.minecraft
 import de.bixilon.minosoft.data.registries.identified.ResourceLocation
 import de.bixilon.minosoft.gui.rendering.sound.sounds.Sound
 import de.bixilon.minosoft.gui.rendering.sound.sounds.SoundType
@@ -40,8 +41,8 @@ class SoundManager(
         }
 
         for ((name, data) in soundsIndex) {
-            val resourceLocation = name.toResourceLocation()
-            sounds[resourceLocation] = SoundType(resourceLocation, data.asJsonObject())
+            val identifier = name.toResourceLocation()
+            sounds[identifier] = SoundType(identifier, data.asJsonObject())
         }
     }
 
@@ -71,6 +72,6 @@ class SoundManager(
     }
 
     companion object {
-        private val SOUNDS_INDEX_FILE = "minecraft:sounds.json".toResourceLocation()
+        private val SOUNDS_INDEX_FILE = minecraft("sounds.json")
     }
 }

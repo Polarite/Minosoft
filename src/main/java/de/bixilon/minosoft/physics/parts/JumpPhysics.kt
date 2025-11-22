@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,10 +13,11 @@
 
 package de.bixilon.minosoft.physics.parts
 
-import de.bixilon.kotlinglm.func.rad
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.MVec3d
 import de.bixilon.kutil.math.Trigonometry
+import de.bixilon.kutil.primitive.FloatUtil.rad
 import de.bixilon.minosoft.data.entities.entities.LivingEntity
+import de.bixilon.minosoft.data.registries.blocks.state.BlockStateFlags
 import de.bixilon.minosoft.data.registries.blocks.types.pixlyzer.PixLyzerBlock
 import de.bixilon.minosoft.data.registries.blocks.types.properties.physics.JumpBlock
 import de.bixilon.minosoft.data.registries.effects.movement.MovementEffect
@@ -34,23 +35,25 @@ object JumpPhysics {
 
     fun LivingEntityPhysics<*>.getJumpVelocityMultiplier(): Float {
         val info = this.positionInfo
-        var block = info.block?.block
+        var state = info.state
 
-        if (block is JumpBlock) {
-            val multiplier = block.jumpBoost
+        if (state != null && BlockStateFlags.JUMP in state.flags && state.block is JumpBlock) {
+            val multiplier = state.block.jumpBoost
 
-            if (multiplier != 1.0f || block !is PixLyzerBlock) {
+            if (multiplier != 1.0f || state.block !is PixLyzerBlock) {
                 return multiplier * BLOCK_MODIFIER
             }
         }
-        block = info.velocityBlock?.block
-        if (block is JumpBlock) {
-            return block.jumpBoost * BLOCK_MODIFIER
+        state = info.velocityState ?: return BLOCK_MODIFIER
+
+        if (BlockStateFlags.JUMP in state.flags && state.block is JumpBlock) {
+            return state.block.jumpBoost * BLOCK_MODIFIER
         }
+
         return BLOCK_MODIFIER
     }
 
-    fun LivingEntityPhysics<*>.applySprintJump(velocity: Vec3d) {
+    fun LivingEntityPhysics<*>.applySprintJump(velocity: MVec3d) {
         if (!entity.isSprinting) return
 
         val yaw = rotation.yaw.rad
@@ -60,10 +63,10 @@ object JumpPhysics {
 
     fun LivingEntityPhysics<*>.addJumpVelocity() {
         val jumpBoost = getJumpVelocityMultiplier().toDouble() + entity.getJumpBoost()
-        val velocity = Vec3d(velocity.x, jumpBoost, velocity.z)
+        val velocity = MVec3d(velocity.x, jumpBoost, velocity.z)
 
         applySprintJump(velocity)
 
-       this.velocity = velocity
+        this.velocity.put(velocity)
     }
 }

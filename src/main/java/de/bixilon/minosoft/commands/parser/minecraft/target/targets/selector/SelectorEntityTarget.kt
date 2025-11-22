@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2023 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.commands.parser.minecraft.target.targets.selector
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.MVec3d
 import de.bixilon.minosoft.commands.parser.minecraft.target.TargetSelectors
 import de.bixilon.minosoft.commands.parser.minecraft.target.targets.CommandEntityTarget
 import de.bixilon.minosoft.commands.parser.minecraft.target.targets.selector.properties.EntityTargetProperty
@@ -40,14 +40,14 @@ class SelectorEntityTarget(
 
         val selectorProperties = EntitySelectorProperties(
             entities = selected,
-            center = executor?.physics?.position ?: Vec3d(),
+            center = executor?.physics?.position?.unsafe ?: MVec3d(),
             executor = executor,
         )
 
         properties[XCenterProperty.name]?.updateProperties(selectorProperties)
         properties[YCenterProperty.name]?.updateProperties(selectorProperties)
         properties[ZCenterProperty.name]?.updateProperties(selectorProperties)
-        properties[SortProperty.name]?.updateProperties(selectorProperties) ?: selector.sort(selectorProperties.center, selectorProperties.entities)
+        properties[SortProperty.name]?.updateProperties(selectorProperties) ?: selector.sort(selectorProperties.center.unsafe, selectorProperties.entities)
 
 
         val output: MutableList<Entity> = mutableListOf()

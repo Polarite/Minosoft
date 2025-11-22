@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,8 +13,7 @@
 
 package de.bixilon.minosoft.data.physics.potion
 
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3i
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.minosoft.data.entities.StatusEffectInstance
 import de.bixilon.minosoft.data.entities.entities.player.local.LocalPlayerEntity
 import de.bixilon.minosoft.data.physics.PhysicsTestUtil.assertGround
@@ -22,10 +21,12 @@ import de.bixilon.minosoft.data.physics.PhysicsTestUtil.assertPosition
 import de.bixilon.minosoft.data.physics.PhysicsTestUtil.assertVelocity
 import de.bixilon.minosoft.data.physics.PhysicsTestUtil.createPlayer
 import de.bixilon.minosoft.data.physics.PhysicsTestUtil.runTicks
-import de.bixilon.minosoft.data.registries.blocks.types.stone.StoneTest0
 import de.bixilon.minosoft.data.registries.effects.vision.VisionEffect
+import de.bixilon.minosoft.data.world.positions.BlockPosition
 import de.bixilon.minosoft.input.camera.PlayerMovementInput
 import de.bixilon.minosoft.protocol.network.session.play.SessionTestUtil.createSession
+import de.bixilon.minosoft.protocol.network.session.play.tick.Ticks.Companion.ticks
+import de.bixilon.minosoft.test.IT
 import org.testng.Assert
 import org.testng.annotations.Test
 
@@ -33,13 +34,13 @@ import org.testng.annotations.Test
 class BlindnessIT {
 
     private fun LocalPlayerEntity.applyBlindness() {
-        effects += StatusEffectInstance(VisionEffect.Blindness, 1, 1000000)
+        effects += StatusEffectInstance(VisionEffect.Blindness, 1, 1000000.ticks)
     }
 
     fun blindness5() {
         val player = createPlayer(createSession(3))
         player.forceTeleport(Vec3d(17.0, 9.0, 8.0))
-        player.session.world[Vec3i(17, 8, 8)] = StoneTest0.state
+        player.session.world[BlockPosition(17, 8, 8)] = IT.BLOCK_1
         player.applyBlindness()
         player.input = PlayerMovementInput(forward = true, sprint = true)
         player.runTicks(5)
@@ -52,7 +53,7 @@ class BlindnessIT {
     fun blindness30() {
         val player = createPlayer(createSession(3))
         player.forceTeleport(Vec3d(17.0, 9.0, 8.0))
-        player.session.world[Vec3i(17, 8, 8)] = StoneTest0.state
+        player.session.world[BlockPosition(17, 8, 8)] = IT.BLOCK_1
         player.applyBlindness()
         player.input = PlayerMovementInput(forward = true, sprint = true)
         player.runTicks(30)

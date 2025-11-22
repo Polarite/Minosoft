@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -12,7 +12,7 @@
  */
 package de.bixilon.minosoft.data.entities.entities.animal.horse
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.enums.EnumUtil
 import de.bixilon.kutil.enums.ValuesEnum
 import de.bixilon.minosoft.data.entities.EntityRotation
@@ -89,7 +89,7 @@ class Horse(session: PlaySession, entityType: EntityType, data: EntityData, posi
     }
 
     companion object : EntityFactory<Horse> {
-        override val identifier: ResourceLocation = minecraft("horse")
+        override val identifier = minecraft("horse")
         private val VARIANT_DATA = EntityDataField("HORSE_VARIANT")
         private val LEGACY_ARMOR_DATA = EntityDataField("LEGACY_HORSE_ARMOR")
 

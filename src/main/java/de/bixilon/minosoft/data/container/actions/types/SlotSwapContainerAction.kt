@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,45 +13,37 @@
 
 package de.bixilon.minosoft.data.container.actions.types
 
+import de.bixilon.minosoft.data.abilities.Gamemodes
 import de.bixilon.minosoft.data.container.Container
-import de.bixilon.minosoft.data.container.ContainerUtil.slotsOf
 import de.bixilon.minosoft.data.container.actions.ContainerAction
+import de.bixilon.minosoft.data.container.transaction.ContainerTransaction
+import de.bixilon.minosoft.data.container.types.PlayerInventory
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.packets.c2s.play.container.ContainerClickC2SP
+import de.bixilon.minosoft.protocol.packets.c2s.play.item.ItemStackCreateC2SP
 
 class SlotSwapContainerAction(
     val sourceId: Int,
     val target: SwapTargets,
 ) : ContainerAction {
 
-    override fun invoke(session: PlaySession, containerId: Int, container: Container) {
+    override fun execute(session: PlaySession, container: Container, transaction: ContainerTransaction) {
         val targetId = container.getSlotSwap(target) ?: return
-        container.lock()
-        try {
-            val source = container[sourceId]
-            val target = container[targetId]
+        val source = transaction[sourceId]
+        val target = transaction[targetId]
 
-            if (source == null && target == null) {
-                return
-            }
-            container[this.sourceId] = target
-            container[targetId] = source
+        if (source == null && target == null) return
+        transaction[this.sourceId] = target
+        transaction[targetId] = source
 
-            session.connection.send(ContainerClickC2SP(containerId, container.serverRevision, sourceId, 2, this.target.button, container.actions.createId(this), slotsOf(sourceId to target, targetId to source), source))
+        val (id, changes) = transaction.commit()
 
-        } finally {
-            container.commit()
+        if (session.player.gamemode == Gamemodes.CREATIVE && container is PlayerInventory) {
+            session.connection += ItemStackCreateC2SP(this.sourceId, target)
+            session.connection += ItemStackCreateC2SP(targetId, source)
+        } else {
+            session.connection += ContainerClickC2SP(container.id, container.serverRevision, sourceId, 2, this.target.button, id, changes, source)
         }
-    }
-
-    override fun revert(session: PlaySession, containerId: Int, container: Container) {
-        val targetId = container.getSlotSwap(target) ?: return
-        container.lock()
-        val target = container[targetId]
-        val source = container[sourceId]
-        container[sourceId] = target
-        container[targetId] = source
-        container.commit()
     }
 
     enum class SwapTargets(val button: Int) {

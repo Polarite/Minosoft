@@ -1,6 +1,6 @@
 /*
  * Minosoft
- * Copyright (C) 2020-2024 Moritz Zwerger
+ * Copyright (C) 2020-2025 Moritz Zwerger
  *
  * This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
  *
@@ -13,7 +13,7 @@
 
 package de.bixilon.minosoft.physics.parts.climbing
 
-import de.bixilon.kotlinglm.vec3.Vec3d
+import de.bixilon.kmath.vec.vec3.d.MVec3d
 import de.bixilon.kutil.math.simple.DoubleMath.clamp
 import de.bixilon.minosoft.data.registries.blocks.handler.entity.Climbable
 import de.bixilon.minosoft.data.registries.blocks.types.climbing.ScaffoldingBlock
@@ -30,43 +30,39 @@ object ClimbingPhysics {
     const val MAX_MOVEMENT = 0.15f.toDouble()
     const val UPWARDS = 0.2
 
-    private fun Vec3d.clamp() = Vec3d(
-        x.clamp(-MAX_MOVEMENT, MAX_MOVEMENT),
-        maxOf(y, -MAX_MOVEMENT),
-        z.clamp(-MAX_MOVEMENT, MAX_MOVEMENT),
-    )
+    private fun MVec3d.clamp() {
+        this.x = this.x.clamp(-MAX_MOVEMENT, MAX_MOVEMENT)
+        this.y = maxOf(this.y, -MAX_MOVEMENT)
+        this.z = this.z.clamp(-MAX_MOVEMENT, MAX_MOVEMENT)
+    }
 
     fun LivingEntityPhysics<*>.limitClimbingSpeed() {
         if (!isClimbing()) return
 
         fallDistance = 0.0f
-        val velocity = velocity.clamp()
+        velocity.clamp()
 
-        if (velocity.y < 0.0 && positionInfo.block?.block !is ScaffoldingBlock && (this is ClimbablePhysics && this.isHolding()) && this is PlayerPhysics) {
+        if (velocity.y < 0.0 && positionInfo.state?.block !is ScaffoldingBlock && (this is ClimbablePhysics && this.isHolding()) && this is PlayerPhysics) {
             velocity.y = 0.0
         }
-
-       this.velocity = velocity
     }
 
     fun LivingEntityPhysics<*>.applyClimbingSpeed() {
         if (!horizontalCollision && !input.jumping) return
-        if (!isClimbing() && (positionInfo.block?.block !is PowderSnowBlock || !entity.canWalkOnPowderSnow())) return
+        if (!isClimbing() && (positionInfo.state?.block !is PowderSnowBlock || !entity.canWalkOnPowderSnow())) return
 
-        val velocity = this.velocity
-
-        this.velocity = Vec3d(velocity.x, UPWARDS, velocity.z)
+        this.velocity.y = UPWARDS
     }
 
     fun LivingEntityPhysics<*>.isClimbing(): Boolean {
         if (this is ClimbablePhysics && !this.canClimb()) return false
 
         val info = this.positionInfo
-        val state = info.block ?: return false
+        val state = info.state ?: return false
 
         if (state.isIn(entity.session.tags, TAG)) {
             return true
         }
-        return state.block is Climbable && state.block.canClimb(entity, this, info.blockPosition, state)
+        return state.block is Climbable && state.block.canClimb(entity, this, info.position, state)
     }
 }

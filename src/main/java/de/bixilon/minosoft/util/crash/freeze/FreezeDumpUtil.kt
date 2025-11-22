@@ -19,16 +19,20 @@ import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
 import de.bixilon.kutil.concurrent.pool.ThreadPool
 import de.bixilon.kutil.concurrent.schedule.TaskScheduler
 import de.bixilon.kutil.exception.ExceptionUtil.ignoreAll
-import de.bixilon.kutil.file.FileUtil.slashPath
+import de.bixilon.kutil.file.FileUtil.div
+import de.bixilon.kutil.file.PathUtil.div
 import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.kutil.reflection.ReflectionUtil.getFieldOrNull
-import de.bixilon.kutil.time.TimeUtil
+import de.bixilon.kutil.time.TimeUtil.format1
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.terminal.RunConfiguration
+import java.io.File
 import java.io.FileOutputStream
 import java.lang.management.ManagementFactory
 import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 
 object FreezeDumpUtil {
@@ -40,6 +44,7 @@ object FreezeDumpUtil {
         thread.start()
     }
 
+    @OptIn(ExperimentalTime::class)
     fun catch(callback: (FreezeDump) -> Unit) {
         val builder = StringBuilder()
 
@@ -80,12 +85,12 @@ object FreezeDumpUtil {
         val dump = builder.toString()
 
 
-        var path: String?
+        var path: File?
         try {
-            val crashReportFolder = RunConfiguration.HOME_DIRECTORY.resolve("dumps").resolve("freeze").toFile()
+            val crashReportFolder = (RunConfiguration.home / "dumps" / "freeze").toFile()
             crashReportFolder.mkdirs()
 
-            path = "${crashReportFolder.slashPath}/freeze-${SimpleDateFormat("yyyy-MM-dd-HH.mm.ss").format(TimeUtil.millis())}.txt"
+            path = crashReportFolder / "freeze-${SimpleDateFormat("yyyy-MM-dd-HH.mm.ss").format1(Clock.System.now())}.txt"
 
             val stream = FileOutputStream(path)
 

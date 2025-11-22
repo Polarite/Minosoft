@@ -18,31 +18,24 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import de.bixilon.jiibles.AnyString
 import de.bixilon.jiibles.Table
 import de.bixilon.jiibles.TableStyles
-import de.bixilon.kotlinglm.GLM
-import de.bixilon.kotlinglm.vec2.Vec2t
-import de.bixilon.kotlinglm.vec3.Vec3d
-import de.bixilon.kotlinglm.vec3.Vec3t
-import de.bixilon.kotlinglm.vec4.Vec4t
+import de.bixilon.kmath.vec.vec3.d.Vec3d
 import de.bixilon.kutil.cast.CastUtil.unsafeCast
-import de.bixilon.kutil.collections.CollectionUtil.synchronizedListOf
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedMapOf
 import de.bixilon.kutil.collections.CollectionUtil.synchronizedSetOf
 import de.bixilon.kutil.collections.CollectionUtil.toSynchronizedSet
 import de.bixilon.kutil.concurrent.pool.DefaultThreadPool
-import de.bixilon.kutil.concurrent.pool.runnable.ForcePooledRunnable
+import de.bixilon.kutil.concurrent.pool.runnable.ThreadPoolRunnable
 import de.bixilon.kutil.concurrent.schedule.TaskScheduler
-import de.bixilon.kutil.primitive.BooleanUtil.decide
 import de.bixilon.kutil.primitive.DoubleUtil
 import de.bixilon.kutil.primitive.DoubleUtil.matches
-import de.bixilon.kutil.primitive.IntUtil.checkInt
 import de.bixilon.kutil.reflection.ReflectionUtil.field
 import de.bixilon.kutil.reflection.ReflectionUtil.forceInit
 import de.bixilon.kutil.reflection.ReflectionUtil.getUnsafeField
 import de.bixilon.kutil.reflection.ReflectionUtil.realName
 import de.bixilon.kutil.shutdown.ShutdownManager
 import de.bixilon.kutil.url.URLProtocolStreamHandlers
+import de.bixilon.minosoft.commands.util.StringReader
 import de.bixilon.minosoft.config.profile.manager.ProfileManagers
-import de.bixilon.minosoft.data.container.stack.ItemStack
 import de.bixilon.minosoft.data.entities.entities.Entity
 import de.bixilon.minosoft.data.registries.blocks.factory.BlockFactories
 import de.bixilon.minosoft.data.registries.effects.IntegratedStatusEffects
@@ -53,28 +46,31 @@ import de.bixilon.minosoft.data.text.ChatComponent
 import de.bixilon.minosoft.data.text.TextComponent
 import de.bixilon.minosoft.data.text.formatting.TextFormattable
 import de.bixilon.minosoft.data.text.formatting.color.ChatColors
+import de.bixilon.minosoft.gui.eros.ErosOptions
 import de.bixilon.minosoft.modding.event.master.GlobalEventMaster
 import de.bixilon.minosoft.protocol.network.network.client.netty.NettyClient
 import de.bixilon.minosoft.protocol.network.session.play.PlaySession
 import de.bixilon.minosoft.protocol.network.session.status.StatusSession
 import de.bixilon.minosoft.protocol.packets.registry.DefaultPackets
 import de.bixilon.minosoft.protocol.protocol.DefaultPacketMapping
-import de.bixilon.minosoft.protocol.protocol.ProtocolDefinition
-import de.bixilon.minosoft.protocol.protocol.buffers.OutByteBuffer
 import de.bixilon.minosoft.protocol.protocol.buffers.play.PlayInByteBuffer
 import de.bixilon.minosoft.protocol.versions.Versions
 import de.bixilon.minosoft.recipes.RecipeFactories
-import de.bixilon.minosoft.terminal.RunConfiguration
 import de.bixilon.minosoft.util.account.microsoft.MicrosoftOAuthUtils
-import de.bixilon.minosoft.util.json.Jackson
 import de.bixilon.minosoft.util.url.ResourceURLHandler
 import io.netty.channel.SimpleChannelInboundHandler
 import javafx.application.Platform
-import org.kamranzafar.jtar.TarHeader
 import java.io.FileOutputStream
 import java.security.SecureRandom
 import java.util.*
 import javax.net.ssl.SSLContext
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.nanoseconds
+import kotlin.time.Duration.Companion.seconds
 
 
 object KUtil {
@@ -87,14 +83,13 @@ object KUtil {
         return BitSet.valueOf(longArrayOf(long))
     }
 
-    fun Any?.toResourceLocation(): ResourceLocation {
-        return when (this) {
-            is String -> ResourceLocation.of(this)
-            is ResourceLocation -> this
-            else -> throw IllegalArgumentException("Don't know how to turn $this into a resource location!")
-        }
+    fun Any?.toResourceLocation() = when (this) {
+        is String -> ResourceLocation.of(this)
+        is ResourceLocation -> this
+        else -> throw IllegalArgumentException("Don't know how to turn $this into a resource location!")
     }
 
+    @Deprecated("sheet")
     fun <T> T.synchronizedDeepCopy(): T {
         return when (this) {
             is Map<*, *> -> {
@@ -104,16 +99,6 @@ object KUtil {
                     map[key.synchronizedDeepCopy()] = value.synchronizedDeepCopy()
                 }
                 map.unsafeCast()
-            }
-
-            is List<*> -> {
-                val list: MutableList<Any?> = synchronizedListOf()
-
-                for (key in this) {
-                    list += key.synchronizedDeepCopy()
-                }
-
-                list.unsafeCast()
             }
 
             is Set<*> -> {
@@ -126,31 +111,10 @@ object KUtil {
                 set.unsafeCast()
             }
 
-            is ItemStack -> this.copy().unsafeCast()
-            is ChatComponent -> this
-            is String -> this
-            is Number -> this
-            is Boolean -> this
             null -> null.unsafeCast()
             else -> TODO("Don't know how to copy ${(this as T)!!::class.java.name}")
         }
     }
-
-    fun pause() {
-        var setBreakPointHere = 1
-    }
-
-    /**
-     * Converts millis to ticks
-     */
-    val Number.ticks: Int
-        get() = this.toInt() / ProtocolDefinition.TICK_TIME
-
-    /**
-     * Converts ticks to millis
-     */
-    val Number.millis: Int
-        get() = this.toInt() * ProtocolDefinition.TICK_TIME
 
     fun Collection<Int>.entities(session: PlaySession): Set<Entity> {
         val entities: MutableList<Entity> = mutableListOf()
@@ -160,48 +124,46 @@ object KUtil {
         return entities.toSet()
     }
 
+    fun ChatComponent.format() = this
+    fun CharSequence.format() = ChatComponent.of(this.toString())
+    fun TextFormattable.format() = ChatComponent.of(this.toText())
+    fun Identified.format() = identifier.format()
+    fun Boolean.format() = if (this) TextFormattable.TRUE else TextFormattable.FALSE
+    inline fun Float.format() = TextComponent("%.3f".format(this)).color(ChatColors.LIGHT_PURPLE)
+    inline fun Double.format() = TextComponent("%.4f".format(this)).color(ChatColors.LIGHT_PURPLE)
+    inline fun Number.format() = TextComponent(this.toString()).color(ChatColors.LIGHT_PURPLE)
+
+    fun ResourceLocation.format() = TextComponent(this.toString()).color(ChatColors.GOLD)
+
+    @JvmName("formatNull")
     fun Any?.format(): ChatComponent {
-        return ChatComponent.of(
-            when (this) {
-                is ChatComponent -> return this
-                is CharSequence -> this.toString()
-                null -> TextComponent("null").color(ChatColors.DARK_RED)
-                is TextFormattable -> this.toText()
-                is Boolean -> TextComponent(this.toString()).color(this.decide(ChatColors.GREEN, ChatColors.RED))
-                is Enum<*> -> {
-                    val name = this.name
-                    TextComponent(
-                        if (name.length == 1) {
-                            name
-                        } else {
-                            name.lowercase()
-                        }
-                    ).color(ChatColors.YELLOW)
+        if (this == null) return TextFormattable.NULL
+
+        return this.format()
+    }
+
+    fun Any.format() = when (this) {
+        is ChatComponent -> this.format()
+        is CharSequence -> this.format()
+        is TextFormattable -> this.format()
+        is Float -> this.format()
+        is Double -> this.format()
+        is Number -> this.format()
+        is Boolean -> this.format()
+        is ResourceLocation -> this.format()
+        is Enum<*> -> {
+            val name = this.name
+            TextComponent(
+                if (name.length == 1) {
+                    name
+                } else {
+                    name.lowercase()
                 }
-
-                is Float -> "§d%.3f".format(this)
-                is Double -> "§d%.4f".format(this)
-                is Number -> TextComponent(this).color(ChatColors.LIGHT_PURPLE)
-                is ResourceLocation -> TextComponent(this.toString()).color(ChatColors.GOLD)
-                is Identified -> identifier.format()
-                is Vec4t<*> -> "(${this._x.format()} ${this._y.format()} ${this._z.format()} ${this._w.format()})"
-                is Vec3t<*> -> "(${this._x.format()} ${this._y.format()} ${this._z.format()})"
-                is Vec2t<*> -> "(${this._x.format()} ${this._y.format()})"
-                else -> this.toString()
-            }
-        )
-    }
-
-    fun Any.toJson(beautiful: Boolean = false): String {
-        return if (beautiful) {
-            Jackson.MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(this)
-        } else {
-            Jackson.MAPPER.writeValueAsString(this)
+            ).color(ChatColors.YELLOW)
         }
-    }
 
-    fun String.fromJson(): Any {
-        return Jackson.MAPPER.readValue(this, Jackson.JSON_MAP_TYPE)
+        is Identified -> identifier.format()
+        else -> ChatComponent.of(this.toString())
     }
 
     val Throwable.text: TextComponent
@@ -219,21 +181,6 @@ object KUtil {
         return null
     }
 
-    fun Any?.autoType(): Any? {
-        if (this == null) return null
-        if (this is Number) return this
-
-        val string = this.toString()
-
-        if (string == "true") return true
-        if (string == "false") return false
-
-        string.checkInt()?.let { return it }
-
-        return string
-    }
-
-
     val BooleanArray.isTrue: Boolean
         get() {
             for (boolean in this) {
@@ -244,49 +191,34 @@ object KUtil {
             return true
         }
 
-    fun TarHeader.generalize() {
-        userId = 0
-        groupId = 0
-        modTime = 0L
-        userName = StringBuffer("nobody")
-        groupName = StringBuffer("nobody")
-    }
-
 
     fun initBootClasses() {
-        DefaultThreadPool += ForcePooledRunnable { GlobalEventMaster::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { ShutdownManager::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { GlobalEventMaster::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { ShutdownManager::class.java.forceInit() }
 
         for (manager in ProfileManagers) {
             DefaultThreadPool += { manager.init() }
         }
-        DefaultThreadPool += ForcePooledRunnable { URLProtocolStreamHandlers::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { MicrosoftOAuthUtils::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { TaskScheduler::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { SystemInformation::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { StatusSession::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { NettyClient::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { SimpleChannelInboundHandler::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { SSLContext.getDefault() }
-        DefaultThreadPool += ForcePooledRunnable { DefaultPackets::class.java.forceInit() }
-        DefaultThreadPool += ForcePooledRunnable { DefaultPacketMapping::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { URLProtocolStreamHandlers::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { MicrosoftOAuthUtils::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { TaskScheduler::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { SystemInformation::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { StatusSession::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { NettyClient::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { SimpleChannelInboundHandler::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { SSLContext.getDefault() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { DefaultPackets::class.java.forceInit() }
+        DefaultThreadPool += ThreadPoolRunnable(forcePool = true) { DefaultPacketMapping::class.java.forceInit() }
 
     }
 
 
     fun initPlayClasses() {
         DefaultThreadPool += { PlaySession::class.java.forceInit() }
-        DefaultThreadPool += { GLM::class.java.forceInit() } // whole glm
         DefaultThreadPool += { ItemFactories::class.java.forceInit() }
         DefaultThreadPool += { BlockFactories::class.java.forceInit() }
         DefaultThreadPool += { RecipeFactories::class.java.forceInit() }
         DefaultThreadPool += { IntegratedStatusEffects::class.java.forceInit() }
-    }
-
-    fun ByteArray.withLengthPrefix(): ByteArray {
-        val prefixed = OutByteBuffer()
-        prefixed.writeByteArray(this)
-        return prefixed.toArray()
     }
 
     fun init() {
@@ -298,7 +230,7 @@ object KUtil {
             }
         }
         ShutdownManager += {
-            if (!RunConfiguration.DISABLE_EROS) {
+            if (!ErosOptions.disabled) {
                 Platform.exit()
             }
         }
@@ -338,10 +270,10 @@ object KUtil {
     }
 
     fun PlayInByteBuffer.dump(name: String) {
-        val pointer = pointer
-        this.pointer = 0
+        val pointer = offset
+        this.offset = data.offset
         val data = readRemaining()
-        this.pointer = pointer
+        this.offset = pointer
 
         val path = "/home/moritz/${name}_${Versions.getById(this.versionId)?.name?.replace(".", "_")}.bin"
         val stream = FileOutputStream(path)
@@ -351,4 +283,20 @@ object KUtil {
     }
 
     fun ObjectNode.toMap(): HashMap<String, JsonNode> = OBJECT_NODE_CHILDREN[this]
+
+
+    fun String.toDuration(): Duration {
+        val reader = StringReader(this)
+        val value = reader.readNumeric(true, true)!!.toDouble()
+        reader.skipWhitespaces()
+        return when (val unit = reader.readRest()) {
+            "d" -> value.days
+            "h" -> value.hours
+            "m" -> value.minutes
+            "s", "", null -> value.seconds
+            "ms" -> value.milliseconds
+            "ns" -> value.nanoseconds
+            else -> throw IllegalArgumentException("Unexpected time unit: $unit (value: $value)")
+        }
+    }
 }
